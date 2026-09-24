@@ -84,6 +84,7 @@ projects, tasks and users — every demo account uses the password `password`.
 | `APP_URL` | recommended | Public URL used in email links (auto-detected on Vercel) |
 | `BLOB_READ_WRITE_TOKEN` | optional | Store uploads in Vercel Blob instead of the database |
 | `SHOW_DEMO_ACCOUNTS` | optional | `true` lists demo logins on the sign-in page (demo sites only) |
+| `SEED_DEMO` | optional | `true` loads the demo agency on the first build of an **empty** database (demo sites only) |
 
 ## Fonts
 
