@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+@theme {
+  /* English: DM Sans. Arabic: IBM Plex Sans Arabic (both open-source, free to redistribute). */
+  --font-sans: "DM Sans Variable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Default palette. At runtime lib/brand.ts overrides these from the agency's two brand colours. */
+  --color-ink: #0a0a0a;
+  --color-sand-50: #faf7f1;
+  --color-sand-100: #f3ecdf;
+  --color-sand-200: #e8dcc8; /* primary beige */
+  --color-sand-300: #dccab0;
+  --color-sand-400: #c9b28f;
+  --color-sand-500: #b0966f;
+  --color-sand-600: #8f7753;
+  --color-sand-700: #6f5c40;
+  --color-sand-800: #4d402d;
+  --color-sand-900: #2e271c;
+  --color-sand-950: #1a160f;
+
+  /* The app's accent ("indigo") becomes a beige→black ramp, "violet" becomes sand. */
+  --color-indigo-50: #faf6ef;
+  --color-indigo-100: #f2eadb;
+  --color-indigo-200: #e6d8bf;
+  --color-indigo-300: #d4c09c;
+  --color-indigo-400: #a8977a;
+  --color-indigo-500: #4a463f;
+  --color-indigo-600: #1c1b19;
+  --color-indigo-700: #141312;
+  --color-indigo-800: #0f0e0d;
+  --color-indigo-900: #0a0a09;
+  --color-indigo-950: #050505;
+  --color-violet-50: #faf7f1;
+  --color-violet-100: #f3ecdf;
+  --color-violet-200: #e8dcc8;
+  --color-violet-300: #dccab0;
+  --color-violet-400: #c9b28f;
+  --color-violet-500: #b0966f;
+  --color-violet-600: #8f7753;
+  --color-violet-700: #6f5c40;
+  --color-violet-800: #4d402d;
+  --color-violet-900: #2e271c;
+  --color-violet-950: #1a160f;
+}
+
+html {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background:
+    radial-gradient(1200px 400px at 100% -10%, color-mix(in oklab, var(--color-sand-400) 12%, transparent), transparent 60%),
+    #f6f5f2;
+}
+
+/* Hide scrollbars on horizontal pill rows while keeping them scrollable */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ------------------------------------------------------------------ */
+/* Public site (landing + sign-in)                                     */
+/* ------------------------------------------------------------------ */
+
+.font-display, .font-arabic { font-family: var(--font-sans); }
+
+/* Layered star field made of tiny radial gradients */
+.starfield {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgb(255 255 255 / 0.9), transparent),
+    radial-gradient(1px 1px at 120px 80px, rgb(255 255 255 / 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 200px 160px, color-mix(in oklab, var(--color-sand-200) 90%, transparent), transparent),
+    radial-gradient(1px 1px at 300px 40px, rgb(255 255 255 / 0.7), transparent),
+    radial-gradient(1px 1px at 380px 210px, rgb(255 255 255 / 0.5), transparent),
+    radial-gradient(2px 2px at 60px 250px, color-mix(in oklab, var(--color-sand-200) 70%, transparent), transparent),
+    radial-gradient(1px 1px at 250px 290px, rgb(255 255 255 / 0.6), transparent);
+  background-size: 420px 320px;
+}
+.starfield-slow { animation: twinkle 6s ease-in-out infinite alternate; }
+
+@keyframes twinkle { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes meteor {
+  0% { transform: translate(0, 0) rotate(-35deg); opacity: 0; }
+  10% { opacity: 1; }
+  60% { opacity: 0; }
+  100% { transform: translate(-420px, 290px) rotate(-35deg); opacity: 0; }
+}
+.animate-orbit { animation: orbit 40s linear infinite; }
+.animate-orbit-fast { animation: orbit 18s linear infinite; }
+.animate-float { animation: float 7s ease-in-out infinite; }
+.animate-meteor { animation: meteor 5s ease-in infinite; }
+
+/* Scroll reveal (toggled by <Reveal>) */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.reveal[data-visible="true"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .starfield-slow, .animate-orbit, .animate-orbit-fast, .animate-float, .animate-meteor { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Built-in user guide (/guide) — renders static HTML from content/guide.ts */
+/* ------------------------------------------------------------------ */
+.guide { --g-muted: #6d685f; --g-line: #e5e0d6; --g-soft: #f3ece0; --g-deep: #b89b6e; color: #1c1b19; line-height: 1.75; }
+.guide section { scroll-margin-top: 72px; margin-bottom: 3.25rem; }
+.guide h2 { font-size: 1.5rem; font-weight: 700; line-height: 1.3; margin: 0 0 .35rem; text-wrap: balance; }
+.guide h3 { font-size: 1.1rem; font-weight: 700; margin: 1.75rem 0 .5rem; }
+.guide p { max-width: 68ch; margin: .5rem 0; }
+.guide b { font-weight: 700; }
+.guide .lede { color: var(--g-muted); margin-bottom: 1.25rem; }
+.guide .features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; border-top: 1px solid var(--g-line); }
+.guide .feat { padding: 1rem 0; border-bottom: 1px solid var(--g-line); }
+.guide .feat h4 { margin: 0 0 .25rem; font-size: .98rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+.guide .feat h4 i { font-style: normal; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: var(--color-ink); color: var(--color-sand-200); font-size: 13px; flex: none; }
+.guide .feat p { margin: 0; color: var(--g-muted); font-size: .92rem; }
+.guide .new { font-size: 10.5px; font-weight: 700; background: var(--color-sand-200); color: var(--color-ink); padding: 1px 7px; border-radius: 999px; }
+.guide .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .875rem; }
+.guide .role { background: #fff; border: 1px solid var(--g-line); border-radius: 14px; padding: 1.1rem; }
+.guide .role h4 { margin: 0 0 .5rem; font-weight: 700; }
+.guide .role ul { margin: 0; padding-inline-start: 1.1rem; list-style: disc; color: var(--g-muted); font-size: .9rem; }
+.guide ol.steps { list-style: none; padding: 0; margin: .875rem 0 0; counter-reset: s; display: grid; gap: .875rem; }
+.guide ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: .75rem; align-items: start; }
+.guide ol.steps > li::before { content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--g-deep); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.guide ol.steps b { display: block; }
+.guide ol.steps span { color: var(--g-muted); font-size: .92rem; }
+.guide .path, .guide code { font-size: 13px; background: var(--g-soft); border: 1px solid var(--g-line); border-radius: 6px; padding: 0 6px; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
+.guide .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .875rem 0; }
+.guide .chip { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--g-line); background: #fff; }
+.guide .chip.s1 { background: var(--g-soft); }
+.guide .chip.s4 { background: #fef7e6; color: #a16207; border-color: transparent; }
+.guide .chip.s5 { background: #ecfdf3; color: #15803d; border-color: transparent; }
+.guide .arrow { color: var(--g-muted); display: inline-block; }
+[dir="rtl"] .guide .arrow { transform: scaleX(-1); }
+.guide .note { border-inline-start: 3px solid var(--g-deep); background: var(--g-soft); padding: .75rem 1rem; border-start-end-radius: 10px; border-end-end-radius: 10px; margin: 1.1rem 0; font-size: .92rem; }
+.guide .note.warn { border-color: #a16207; background: #fef7e6; }
+.guide .note b { display: block; margin-bottom: 2px; }
+.guide .tbl { overflow-x: auto; border: 1px solid var(--g-line); border-radius: 12px; background: #fff; }
+.guide table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .9rem; }
+.guide th, .guide td { padding: .7rem .875rem; text-align: start; vertical-align: top; border-bottom: 1px solid var(--g-line); }
+.guide th { font-size: 12px; color: var(--g-muted); font-weight: 600; background: var(--g-soft); }
+.guide tr:last-child td { border-bottom: 0; }
+.guide td:first-child { font-weight: 600; white-space: nowrap; }
+.guide .health { display: flex; flex-wrap: wrap; gap: .625rem; margin: .75rem 0; }
+.guide .health div { flex: 1 1 180px; border-radius: 10px; padding: .625rem .875rem; font-size: .9rem; }
+.guide .health b { display: block; }
+.guide .h-ok { background: #ecfdf3; color: #15803d; }
+.guide .h-warn { background: #fef7e6; color: #a16207; }
+.guide .h-bad { background: #fef1f1; color: #b91c1c; }
+.guide details { border-bottom: 1px solid var(--g-line); padding: .75rem 0; }
+.guide summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: .75rem; }
+.guide summary::-webkit-details-marker { display: none; }
+.guide summary::after { content: "+"; color: var(--g-muted); font-weight: 400; }
+.guide details[open] summary::after { content: "–"; }
+.guide details p { color: var(--g-muted); margin: .5rem 0 0; font-size: .92rem; }
+.guide ul.check { list-style: none; padding: 0; margin: .75rem 0; display: grid; gap: .5rem; }
+.guide ul.check li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: .625rem; }
+.guide ul.check li::before { content: ""; width: 16px; height: 16px; border: 1.5px solid var(--g-deep); border-radius: 4px; margin-top: 6px; }
+@media (max-width: 767px) {
+  .guide .features, .guide .roles { grid-template-columns: minmax(0, 1fr); }
+}
