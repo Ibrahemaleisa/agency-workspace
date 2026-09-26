@@ -1,7 +1,11 @@
 import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { GUIDE, type GuideAudience } from "@/content/guide";
-import { appUrl } from "@/lib/email";
+import { appUrl, tenantEntryUrl } from "@/lib/platform";
+import { getOrgById } from "@/lib/tenant";
+import { getSaasT } from "@/lib/i18n-saas";
+import { restartTour } from "@/server/onboarding-actions";
+import { RestartTour } from "@/components/tour";
 import { withBrand } from "@/lib/brand";
 import { PageHeader } from "@/components/ui";
 import type { Role } from "@/db/schema";
@@ -17,7 +21,9 @@ const visible = (audience: GuideAudience, role: Role) =>
 export default async function GuidePage() {
   const user = await requireUser();
   const { t, lang, brand } = await getT();
-  const site = appUrl().replace(/^https?:\/\//, "");
+  const { t: st } = await getSaasT();
+  const org = await getOrgById(user.orgId);
+  const site = (org ? tenantEntryUrl(org) : appUrl()).replace(/^https?:\/\//, "");
   const sections = withBrand(GUIDE[lang], brand.name[lang])
     .filter((s) => visible(s.audience, user.role))
     .map((s) => ({ ...s, html: s.html.replaceAll("{site}", site) }));
@@ -25,6 +31,10 @@ export default async function GuidePage() {
   return (
     <>
       <PageHeader title={t.guide.title} description={t.guide.subtitle} />
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/80 bg-white px-4 py-3">
+        <p className="text-sm text-zinc-600">{st.tour.restartHint}</p>
+        <RestartTour label={st.tour.restart} persist={!user.readOnly} action={restartTour} />
+      </div>
       <div className="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)]">
         <nav aria-label={t.guide.contents} className="lg:sticky lg:top-20 lg:self-start">
           <p className="mb-2 text-xs font-medium text-zinc-500">{t.guide.contents}</p>

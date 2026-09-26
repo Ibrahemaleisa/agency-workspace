@@ -1,11 +1,14 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, isNull } from "drizzle-orm";
+import { format } from "date-fns";
 import { db } from "@/db";
-import { clients, users } from "@/db/schema";
+import { clients, invitations, users } from "@/db/schema";
+import { getSaasT } from "@/lib/i18n-saas";
+import { createInvitation, revokeInvitation } from "@/server/invite-actions";
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { createUser, updateUser } from "@/server/admin-actions";
 import { listClientsForOrg } from "@/server/queries";
-import { ActionForm, SubmitButton } from "@/components/forms";
+import { ActionForm, ConfirmSubmit, SubmitButton } from "@/components/forms";
 import { Avatar, Badge, Card, Checkbox, Field, Input, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 
 export async function generateMetadata() {
@@ -16,7 +19,9 @@ export async function generateMetadata() {
 
 export default async function TeamPage() {
   const admin = await requirePermission("users.manage");
-  const { t } = await getT();
+  const { t, locale } = await getT();
+  const { t: st } = await getSaasT();
+  const iv = st.invite;
   const m = t.team;
   const roleOptions = (["admin", "employee", "client"] as const).map((value) => ({ value, label: t.roles[value] }));
   const [people, clientOptions] = await Promise.all([
@@ -37,6 +42,22 @@ export default async function TeamPage() {
       .orderBy(asc(users.role), asc(users.name)),
     listClientsForOrg(admin.orgId),
   ]);
+  const pending = await db
+    .select({ id: invitations.id, email: invitations.email, role: invitations.role, expiresAt: invitations.expiresAt })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.orgId, admin.orgId),
+        isNull(invitations.acceptedAt),
+        isNull(invitations.revokedAt),
+        gt(invitations.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(asc(invitations.createdAt));
+  const focusOptions = [
+    { value: "account", label: st.focus.account },
+    { value: "production", label: st.focus.production },
+  ];
   const clientSelect = clientOptions.map((c) => ({ value: c.id, label: c.name }));
 
   return (
@@ -98,6 +119,54 @@ export default async function TeamPage() {
           </Table>
         </Card>
 
+        <div className="space-y-6">
+        <div data-tour="invite-card">
+        <Card title={iv.title}>
+          <p className="-mt-1 mb-4 text-sm text-zinc-500">{iv.sub}</p>
+          <ActionForm
+            action={createInvitation}
+            className="space-y-3"
+            resetOnSuccess
+            successMessage={iv.sent}
+            linkLabels={{ note: iv.linkNote, copy: iv.copy, copied: iv.copied }}
+          >
+            <Field label={iv.email}><Input name="email" type="email" required dir="ltr" /></Field>
+            <Field label={iv.role}><Select name="role" defaultValue="employee" options={roleOptions} /></Field>
+            <Field label={st.focus.label} hint={st.focus.hint}>
+              <Select name="focus" defaultValue="account" options={focusOptions} />
+            </Field>
+            <Field label={iv.jobTitle}><Input name="title" placeholder={m.titlePlaceholder} /></Field>
+            <Field label={iv.client} hint={iv.clientHint}>
+              <Select name="clientId" placeholder="—" options={clientSelect} />
+            </Field>
+            <div className="flex justify-end"><SubmitButton>{iv.submit}</SubmitButton></div>
+          </ActionForm>
+          <div className="mt-6 border-t border-zinc-100 pt-4">
+            <h3 className="text-sm font-semibold text-zinc-900">{iv.pending}</h3>
+            {pending.length === 0 ? (
+              <p className="mt-2 text-sm text-zinc-500">{iv.none}</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-zinc-100">
+                {pending.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium" dir="ltr">{p.email}</div>
+                      <div className="text-xs text-zinc-500">
+                        {t.roles[p.role]} · {iv.expires(format(p.expiresAt, "d MMM", { locale }))}
+                      </div>
+                    </div>
+                    <form action={revokeInvitation}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <ConfirmSubmit message={iv.revokeConfirm} variant="secondary">{iv.revoke}</ConfirmSubmit>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+        </div>
+
         <Card title={m.addUser}>
           <ActionForm action={createUser} className="space-y-3" resetOnSuccess successMessage={m.userCreated}>
             <Field label={m.fullName}><Input name="name" required /></Field>
@@ -110,9 +179,13 @@ export default async function TeamPage() {
             <Field label={m.tempPassword} hint={m.tempPasswordHint}>
               <Input name="password" type="password" required minLength={8} autoComplete="new-password" />
             </Field>
+            <Field label={st.focus.label} hint={st.focus.hint}>
+              <Select name="focus" defaultValue="account" options={focusOptions} />
+            </Field>
             <div className="flex justify-end"><SubmitButton>{m.createUser}</SubmitButton></div>
           </ActionForm>
         </Card>
+        </div>
       </div>
     </>
   );

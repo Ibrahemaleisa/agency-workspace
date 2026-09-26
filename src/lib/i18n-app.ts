@@ -26,6 +26,7 @@ const en = {
     search: "Search",
     guide: "Guide",
     brand: "Brand",
+    billing: "Plan & billing",
   },
   roles: { admin: "Admin / Manager", employee: "Employee", client: "Client" },
   taskStatus: {
@@ -556,6 +557,7 @@ const ar: AppDict = {
     search: "بحث",
     guide: "دليل الاستخدام",
     brand: "الهوية",
+    billing: "الخطة والفوترة",
   },
   roles: { admin: "مدير", employee: "موظف", client: "عميل" },
   taskStatus: {

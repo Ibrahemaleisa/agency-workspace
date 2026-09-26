@@ -23,6 +23,7 @@ import { bool, str, type ActionState } from "@/lib/action-state";
 import { TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
+import { parseFocus, startOnboarding } from "@/lib/onboarding";
 
 const msg = async () => (await getT()).t.actions;
 
@@ -118,15 +119,21 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
   const exists = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (exists) return { error: (await msg()).emailExists };
 
-  await db.insert(users).values({
-    orgId: admin.orgId,
-    name,
-    email,
-    passwordHash: await hashPassword(password),
-    role,
-    title: str(fd, "title"),
-    clientId,
-  });
+  const [created] = await db
+    .insert(users)
+    .values({
+      orgId: admin.orgId,
+      name,
+      email,
+      passwordHash: await hashPassword(password),
+      role,
+      title: str(fd, "title"),
+      focus: role === "employee" ? parseFocus(str(fd, "focus")) : null,
+      clientId,
+    })
+    .returning();
+  // Their first sign-in opens the tutorial for their role.
+  await startOnboarding(created);
   await logActivity(admin, { action: "user.created", summary: `added user ${name} (${role})` });
   refresh();
   return { ok: true };

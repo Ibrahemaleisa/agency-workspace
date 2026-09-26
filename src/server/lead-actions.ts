@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { leads, organizations } from "@/db/schema";
+import { leads } from "@/db/schema";
+import { getPublicTenant } from "@/lib/tenant";
 import { listAdminIds, notify } from "@/lib/events";
 import { nt } from "@/lib/notify-text";
 import { requireUser } from "@/lib/auth";
@@ -12,14 +13,6 @@ import { getLang } from "@/lib/lang";
 import { DICT } from "@/lib/i18n";
 import { str, type ActionState } from "@/lib/action-state";
 
-/** The agency that owns the public landing page (single-agency deployments use the first one). */
-async function siteOrg() {
-  const slug = process.env.SITE_ORG_SLUG;
-  return db.query.organizations.findFirst({
-    where: slug ? eq(organizations.slug, slug) : undefined,
-    orderBy: asc(organizations.createdAt),
-  });
-}
 
 /** Public: a visitor requests a project from the landing page. */
 export async function submitLead(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -33,8 +26,9 @@ export async function submitLead(_prev: ActionState, fd: FormData): Promise<Acti
   const phone = str(fd, "phone")?.slice(0, 40) ?? null;
   if (!name || (!email && !phone)) return { error: t.errorRequired };
 
-  const org = await siteOrg();
-  if (!org) return { error: "Unavailable" };
+  // The agency whose public page this is (host / branded link / single-agency deployment).
+  const org = await getPublicTenant();
+  if (!org || org.isDemo || org.status !== "active") return { error: "Unavailable" };
 
   const [lead] = await db
     .insert(leads)

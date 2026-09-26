@@ -2,9 +2,10 @@ import "server-only";
 import { after } from "next/server";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
-import { activityLog, notifications, projectMembers, projects, taskComments, tasks, users } from "@/db/schema";
+import { activityLog, notifications, organizations, projectMembers, projects, taskComments, tasks, users } from "@/db/schema";
 import { notificationEmail, sendEmail } from "./email";
-import { getBrand } from "./brand";
+import { orgBrand } from "./brand";
+import { tenantBaseUrl } from "./platform";
 import type { SessionUser } from "./auth";
 
 /* ------------------------------------------------------------------ */
@@ -74,19 +75,23 @@ export async function notify(
       link: n.link ?? null,
     })),
   );
-  after(() => emailRecipients(ids, { ...n, body }));
+  after(() => emailRecipients(actor.orgId, ids, { ...n, body }));
 }
 
-async function emailRecipients(ids: string[], n: { title: Localized; body?: string | null; link?: string }) {
+async function emailRecipients(orgId: string, ids: string[], n: { title: Localized; body?: string | null; link?: string }) {
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) });
+  // The shared preview tenant never sends email.
+  if (!org || org.isDemo) return;
   const people = await db
     .select({ email: users.email, lang: users.lang })
     .from(users)
-    .where(and(inArray(users.id, ids), eq(users.active, true), eq(users.emailNotifications, true)));
-  const brand = await getBrand();
+    .where(and(inArray(users.id, ids), eq(users.orgId, orgId), eq(users.active, true), eq(users.emailNotifications, true)));
+  const brand = orgBrand(org);
+  const baseUrl = tenantBaseUrl(org);
   await Promise.allSettled(
     people.map(async (p) => {
       const lang = p.lang === "en" ? "en" : "ar";
-      const mail = notificationEmail({ lang, title: n.title[lang], body: n.body, link: n.link, brand });
+      const mail = notificationEmail({ lang, title: n.title[lang], body: n.body, link: n.link, brand, baseUrl });
       try {
         await sendEmail({ to: p.email, ...mail });
       } catch (err) {

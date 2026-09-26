@@ -3,6 +3,7 @@ import { count } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getT } from "@/lib/lang";
+import { isPlatform } from "@/lib/platform";
 import { createWorkspace } from "@/server/setup-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { LangSwitch } from "@/components/site/lang-switch";
@@ -16,6 +17,8 @@ const field =
   "block w-full rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-sand-200/60 focus:bg-white/[0.08] focus:ring-4 focus:ring-sand-200/10";
 
 export default async function SetupPage() {
+  // On the Operra platform agencies sign up instead; this first-run screen is for single-agency deployments.
+  if (isPlatform()) redirect("/signup");
   // Only a brand-new deployment (no users yet) can be set up.
   const [{ n }] = await db.select({ n: count() }).from(users);
   if (n > 0) redirect("/login");

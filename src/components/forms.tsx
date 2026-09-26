@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { buttonClass, cn, inputClass } from "./ui";
@@ -41,12 +41,15 @@ export function ActionForm({
   className,
   resetOnSuccess,
   successMessage,
+  linkLabels,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   children: ReactNode;
   className?: string;
   resetOnSuccess?: boolean;
   successMessage?: string;
+  /** Shown with a copy button when the action returns a link (e.g. an invitation). */
+  linkLabels?: { note: string; copy: string; copied: string };
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const ref = useRef<HTMLFormElement>(null);
@@ -66,12 +69,35 @@ export function ActionForm({
         </div>
       )}
       {state?.ok && successMessage && (
-        <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <div role="status" className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {successMessage}
         </div>
       )}
+      {state?.ok && state.link && linkLabels && <CopyLink link={state.link} labels={linkLabels} />}
       {children}
     </form>
+  );
+}
+
+function CopyLink({ link, labels }: { link: string; labels: { note: string; copy: string; copied: string } }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="mb-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
+      <p className="text-zinc-600">{labels.note}</p>
+      <div className="mt-2 flex gap-2">
+        <input readOnly value={link} dir="ltr" aria-label={labels.note} className={cn(inputClass, "font-mono text-xs")} onFocus={(e) => e.currentTarget.select()} />
+        <button
+          type="button"
+          className={buttonClass("secondary", "sm")}
+          onClick={async () => {
+            await navigator.clipboard?.writeText(link).catch(() => {});
+            setCopied(true);
+          }}
+        >
+          {copied ? labels.copied : labels.copy}
+        </button>
+      </div>
+    </div>
   );
 }
 

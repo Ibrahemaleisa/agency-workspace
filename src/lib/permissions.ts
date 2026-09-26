@@ -29,6 +29,8 @@ export const PERMISSIONS = [
   "activity.viewAll",
   "leads.manage", // landing-page project requests
   "brand.manage", // white-label brand settings
+  "billing.manage", // plan, subscription and payment
+  "users.invite", // email invitations
   "dashboard.admin",
   "dashboard.employee",
   "dashboard.client",

@@ -10,6 +10,7 @@ import {
   BookOpen,
   Building2,
   CheckSquare,
+  CreditCard,
   FolderKanban,
   LayoutDashboard,
   LayoutTemplate,
@@ -43,6 +44,7 @@ const ICONS = {
   teamChat: MessagesSquare,
   guide: BookOpen,
   brand: Palette,
+  billing: CreditCard,
 };
 
 export type NavItem = {
@@ -112,6 +114,7 @@ export function Sidebar({
                 )}
                 <Link
                   href={item.href}
+                  data-tour={`nav-${item.icon}`}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
                     active ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white",
@@ -182,6 +185,7 @@ export function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={`nav-${item.icon}`}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
                   active ? "text-ink" : "text-zinc-400",

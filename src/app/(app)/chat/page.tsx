@@ -36,7 +36,8 @@ export default async function TeamChatPage() {
   const messages = recent.reverse();
 
   // Opening the chat marks it as read.
-  await db.update(users).set({ teamChatSeenAt: new Date() }).where(eq(users.id, user.id));
+  // Preview sessions never write (the demo tenant stays exactly as seeded).
+  if (!user.readOnly) await db.update(users).set({ teamChatSeenAt: new Date() }).where(eq(users.id, user.id));
 
   return (
     <>

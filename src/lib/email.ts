@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
+import { appUrl } from "./platform";
 
 /**
  * Outgoing email, chosen by environment:
@@ -41,12 +42,7 @@ export async function sendEmail(email: Email) {
   console.info(`[email skipped: no RESEND_API_KEY or SMTP_HOST] to=${email.to} subject=${email.subject}`);
 }
 
-/** Public base URL used for links inside emails. */
-export function appUrl() {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return "http://localhost:3000";
-}
+export { appUrl } from "./platform";
 
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -59,16 +55,22 @@ export function notificationEmail(opts: {
   link?: string | null;
   /** The agency's name and colours (from lib/brand.ts). */
   brand: { name: { en: string; ar: string }; primary: string; accent: string };
+  /** Where the tenant's workspace lives (subdomain, custom domain or the app URL). */
+  baseUrl?: string;
+  /** Overrides for non-notification emails (invitations, sign-up). */
+  cta?: string;
+  footer?: string;
 }): Omit<Email, "to"> {
   const { primary, accent } = opts.brand;
   const brandName = opts.brand.name[opts.lang];
   const ar = opts.lang === "ar";
   const dir = ar ? "rtl" : "ltr";
-  const url = opts.link ? `${appUrl()}${opts.link}` : appUrl();
-  const cta = ar ? `افتح في ${brandName}` : `Open in ${brandName}`;
-  const footer = ar
+  const base = opts.baseUrl ?? appUrl();
+  const url = opts.link ? `${base}${opts.link}` : base;
+  const cta = opts.cta ?? (ar ? `افتح في ${brandName}` : `Open in ${brandName}`);
+  const footer = opts.footer ?? (ar
     ? "وصلك هذا البريد لأن إشعارات البريد مفعّلة في حسابك. يمكنك إيقافها من صفحة الإشعارات."
-    : "You received this because email notifications are on for your account. You can turn them off on the Notifications page.";
+    : "You received this because email notifications are on for your account. You can turn them off on the Notifications page.");
   const font = ar ? "Tahoma, 'Segoe UI', Arial, sans-serif" : "'Helvetica Neue', Arial, sans-serif";
   const html = `<!doctype html><html lang="${opts.lang}" dir="${dir}"><body style="margin:0;background:#f6f5f2;font-family:${font}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;padding:24px 12px"><tr><td align="center">

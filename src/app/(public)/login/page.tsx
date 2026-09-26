@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, ArrowRight, BadgeCheck, FolderKanban, MessagesSquare } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { isPlatform } from "@/lib/platform";
 import { getDict } from "@/lib/lang";
 import { loginAction } from "@/server/auth-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
@@ -28,8 +29,12 @@ const field =
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
   const { lang, t, brand } = await getDict();
-  if (!brand.orgId) redirect("/setup");
-  const showDemo = process.env.NODE_ENV !== "production" || process.env.SHOW_DEMO_ACCOUNTS === "true";
+  const platform = isPlatform();
+  if (!brand.orgId && !platform) redirect("/setup");
+  // Single-agency deployments may list the sample logins; the platform uses /preview instead.
+  const showDemo = !platform && (process.env.NODE_ENV !== "production" || process.env.SHOW_DEMO_ACCOUNTS === "true");
+  // Operra's own sign-in (no tenant yet): people sign in by email and land in their workspace.
+  const operraRoot = platform && !brand.orgId;
   const Back = lang === "ar" ? ArrowRight : ArrowLeft;
 
   return (
@@ -103,6 +108,22 @@ export default async function LoginPage() {
                 </SubmitButton>
               </ActionForm>
             </div>
+
+            {operraRoot && (
+              <div className="mt-6 space-y-2 text-center text-sm text-zinc-400">
+                <p>
+                  {t.login.newHere}{" "}
+                  <Link href="/signup" className="font-medium text-white underline underline-offset-4">
+                    {t.login.startTrial}
+                  </Link>
+                </p>
+                <p>
+                  <Link href="/preview" className="underline underline-offset-4 hover:text-white">
+                    {t.login.preview}
+                  </Link>
+                </p>
+              </div>
+            )}
 
             {showDemo && (
               <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-4 text-xs text-zinc-400" dir="ltr">

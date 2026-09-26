@@ -1,4 +1,11 @@
-export type ActionState = { error?: string; ok?: boolean } | undefined;
+export type ActionState =
+  | {
+      error?: string;
+      ok?: boolean;
+      /** A link to show (and copy) after success, e.g. an invitation link. */
+      link?: string;
+    }
+  | undefined;
 
 /** Read a trimmed string from FormData; empty strings become null. */
 export function str(fd: FormData, key: string): string | null {

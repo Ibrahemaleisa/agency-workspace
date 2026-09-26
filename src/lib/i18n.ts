@@ -107,6 +107,10 @@ const ar = {
     back: "العودة للرئيسية",
     errorRequired: "أدخل البريد الإلكتروني وكلمة المرور.",
     errorInvalid: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    errorRateLimited: "محاولات كثيرة. انتظر بضع دقائق ثم حاول مجدداً.",
+    newHere: "جديد على Operra؟",
+    startTrial: "ابدأ تجربتك المجانية",
+    preview: "استكشف Operra دون حساب",
     highlights: [
       { title: "كل مشاريعك في مكان واحد", text: "تابع التقدّم والمهام والمواعيد لحظة بلحظة." },
       { title: "اعتماد بضغطة واحدة", text: "راجع التسليمات واعتمدها أو اطلب التعديل." },
@@ -218,6 +222,10 @@ const en: Dict = {
     back: "Back to home",
     errorRequired: "Enter your email and password.",
     errorInvalid: "Invalid email or password.",
+    errorRateLimited: "Too many attempts. Wait a few minutes and try again.",
+    newHere: "New to Operra?",
+    startTrial: "Start a free trial",
+    preview: "Explore Operra without an account",
     highlights: [
       { title: "All your projects in one place", text: "Follow progress, tasks and deadlines live." },
       { title: "One-tap approvals", text: "Review deliverables, approve or request changes." },

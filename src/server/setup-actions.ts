@@ -7,10 +7,12 @@ import { organizations, users } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
 import { getT } from "@/lib/lang";
+import { isPlatform } from "@/lib/platform";
 
 /** First-run setup: only works while the database has no users at all. */
 export async function createWorkspace(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { t, lang } = await getT();
+  if (isPlatform()) return { error: t.setup.errors.done };
   const [{ n }] = await db.select({ n: count() }).from(users);
   if (n > 0) return { error: t.setup.errors.done };
 

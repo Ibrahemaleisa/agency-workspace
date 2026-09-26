@@ -50,6 +50,13 @@
       "when": 1790222111525,
       "tag": "0006_white_label_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790460948377,
+      "tag": "0007_saas_platform",
+      "breakpoints": true
     }
   ]
 }

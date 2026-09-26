@@ -8,6 +8,24 @@ export default function ErrorPage({ error, reset }: { error: Error; reset: () =>
   // Client-only boundary: read the language from <html lang>.
   const lang = typeof document !== "undefined" && isLang(document.documentElement.lang) ? document.documentElement.lang : "ar";
   const t = APP_DICT[lang].errors;
+  // In the read-only preview, any change is refused on the server; explain that instead of a generic error.
+  const preview = typeof document !== "undefined" ? document.getElementById("preview-mode")?.dataset : undefined;
+  if (preview?.title) {
+    return (
+      <div className="mx-auto max-w-md rounded-xl border border-zinc-200/80 bg-white p-6 text-center" role="alert">
+        <h2 className="text-base font-semibold">{preview.title}</h2>
+        <p className="mt-2 text-sm text-zinc-500">{preview.body}</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Link href="/signup" className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white">
+            {preview.cta}
+          </Link>
+          <button onClick={reset} className="rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-zinc-300">
+            {t.tryAgain}
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="mx-auto max-w-md rounded-xl border border-zinc-200/80 bg-white p-6 text-center">
       <h2 className="text-base font-semibold">{t.title}</h2>
