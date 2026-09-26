@@ -6,6 +6,7 @@ import { submitContact, submitTrial, type FormState } from "@/app/actions";
 import { site } from "@/lib/site";
 import { buttonClass } from "./button";
 import { SelectField, SpamGuard, TextArea, TextField } from "./form-fields";
+import { TRIAL_ROLES as ROLES } from "@/content/roles";
 
 function Status({ state }: { state: FormState }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -14,7 +15,7 @@ function Status({ state }: { state: FormState }) {
   }, [state]);
   if (!state?.error) return null;
   return (
-    <div ref={ref} tabIndex={-1} role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+    <div ref={ref} tabIndex={-1} role="alert" className="rounded-md border border-danger/40 bg-surface px-3.5 py-2.5 text-[14px] leading-5 text-danger">
       {state.error}
       {!state.fieldErrors && site.contactEmail && (
         <>
@@ -34,17 +35,17 @@ function Success({ title, body }: { title: string; body: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => ref.current?.focus(), []);
   return (
-    <div ref={ref} tabIndex={-1} role="status" className="rounded-[var(--radius-frame)] border border-line bg-surface p-8 focus:outline-none">
-      <CheckCircle2 aria-hidden className="size-8 text-approve" strokeWidth={1.75} />
-      <h2 className="mt-4 text-xl font-semibold tracking-tight">{title}</h2>
-      <p className="mt-2 leading-relaxed text-muted">{body}</p>
+    <div ref={ref} tabIndex={-1} role="status" className="rounded-lg border border-line bg-surface p-8 focus:outline-none">
+      <CheckCircle2 aria-hidden className="size-7 text-ink" />
+      <h2 className="mt-4 text-[24px] leading-[30px] font-semibold tracking-[-0.015em]">{title}</h2>
+      <p className="mt-2 text-[15px] leading-[22px] text-muted">{body}</p>
     </div>
   );
 }
 
-function Submit({ pending, children }: { pending: boolean; children: string }) {
+function Submit({ pending, children, signal }: { pending: boolean; children: string; signal?: boolean }) {
   return (
-    <button type="submit" disabled={pending} className={buttonClass("primary", "lg", "w-full sm:w-auto")}>
+    <button type="submit" disabled={pending} className={buttonClass(signal ? "signal" : "primary", "lg", "w-full sm:w-auto")}>
       {pending && <Loader2 aria-hidden className="size-4 animate-spin" />}
       {pending ? "Sending…" : children}
     </button>
@@ -56,8 +57,8 @@ export function TrialForm() {
   if (state?.ok) {
     return (
       <Success
-        title="Thanks — your request is in."
-        body="We’ll set up your workspace and reply by email with its address and your admin sign-in. In the meantime, you can explore the live demo agency."
+        title="Request received"
+        body="We’ll set up your workspace and reply by email with its address and your admin sign-in. Until then, the live demo agency is open."
       />
     );
   }
@@ -74,6 +75,13 @@ export function TrialForm() {
         <TextField name="agency" label="Agency name" autoComplete="organization" required error={e.agency} defaultValue={v.agency} />
         <TextField name="website" label="Agency website" type="url" autoComplete="url" placeholder="https://" error={e.website} defaultValue={v.website} />
       </div>
+      <SelectField
+        name="role"
+        label="Your role"
+        options={ROLES}
+        error={e.role}
+        defaultValue={v.role}
+      />
       <div className="grid gap-5 sm:grid-cols-3">
         <SelectField name="teamSize" label="Team size" required options={["1-5", "6-15", "16-50", "51+"]} error={e.teamSize} defaultValue={v.teamSize} />
         <SelectField
@@ -88,8 +96,10 @@ export function TrialForm() {
       <TextArea name="message" label="Anything we should know?" rows={4} placeholder="How you run projects today, tools you’re replacing, timing…" error={e.message} defaultValue={v.message} />
       <SpamGuard startedAt={v.startedAt} />
       <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center">
-        <Submit pending={pending}>Request my workspace</Submit>
-        <p className="text-xs leading-relaxed text-subtle">We only use these details to set up your workspace and reply to you.</p>
+        <Submit pending={pending} signal>
+          Request my workspace
+        </Submit>
+        <p className="text-[13px] leading-[18px] text-muted">We only use these details to set up your workspace and reply to you.</p>
       </div>
     </form>
   );
@@ -98,7 +108,7 @@ export function TrialForm() {
 export function ContactForm() {
   const [state, action, pending] = useActionState(submitContact, undefined);
   if (state?.ok) {
-    return <Success title="Message sent." body="Thanks for getting in touch. We’ll reply to the email address you gave us." />;
+    return <Success title="Message sent" body="We’ll reply to the email address you gave us." />;
   }
   const e = state?.fieldErrors ?? {};
   const v = state?.values ?? {};

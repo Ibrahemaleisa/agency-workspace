@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { deliverInquiry, deliveryConfigured } from "@/lib/deliver";
+import { TRIAL_ROLES } from "@/content/roles";
 
 export type FormState =
   | {
@@ -26,6 +27,8 @@ const base = {
 const TrialSchema = z.object({
   ...base,
   agency: required("Agency name", 160),
+  // Optional select: untouched it submits "".
+  role: z.union([z.literal(""), z.enum(TRIAL_ROLES, "Choose your role.")]).default(""),
   teamSize: z.enum(["1-5", "6-15", "16-50", "51+"], "Choose your team size."),
   agencyType: text(80),
   language: z.enum(["English", "Arabic", "Both"], "Choose a language."),
@@ -93,6 +96,7 @@ export async function submitTrial(_prev: FormState, fd: FormData): Promise<FormS
       Name: d.name,
       Email: d.email,
       Agency: d.agency,
+      Role: d.role,
       "Team size": d.teamSize,
       "Agency type": d.agencyType,
       "Workspace language": d.language,

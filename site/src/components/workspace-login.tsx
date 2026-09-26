@@ -52,7 +52,7 @@ export function WorkspaceLogin() {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="text-[14px] leading-5 font-medium">
         Workspace address
       </label>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
@@ -68,14 +68,14 @@ export function WorkspaceLogin() {
           onChange={() => setError(null)}
           aria-invalid={!!error || undefined}
           aria-describedby={`${id}-help`}
-          className="block h-12 w-full min-w-0 rounded-full sm:flex-1 border border-line bg-surface px-5 text-[0.95rem] placeholder:text-subtle focus:outline-none focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-sand/60 aria-[invalid=true]:border-red-600"
+          className="block h-11 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 font-mono text-[14px] placeholder:text-muted/80 aria-[invalid=true]:border-danger sm:flex-1"
         />
         <button type="submit" className={buttonClass("primary", "lg")}>
           Continue
           <ArrowRight aria-hidden className="size-4" />
         </button>
       </div>
-      <p id={`${id}-help`} className={error ? "mt-2 text-sm text-red-700" : "mt-2 text-sm text-subtle"} role={error ? "alert" : undefined}>
+      <p id={`${id}-help`} className={error ? "mt-2 text-[13px] leading-[18px] text-danger" : "mt-2 text-[13px] leading-[18px] text-muted"} role={error ? "alert" : undefined}>
         {error ?? "It’s in your welcome email, and usually on your agency’s own domain."}
       </p>
     </form>

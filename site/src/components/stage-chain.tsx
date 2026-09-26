@@ -2,7 +2,7 @@ import { BadgeCheck } from "lucide-react";
 import type { Stage } from "@/content/solutions";
 import { cn } from "@/lib/cn";
 
-/** A module's workflow stages, with client-approval stages highlighted. */
+/** A module's workflow stages as chips; client-approval stages carry an ink outline and a check badge. */
 export function StageChain({ stages, size = "md" }: { stages: Stage[]; size?: "sm" | "md" }) {
   return (
     <ol className="flex flex-wrap gap-1.5" aria-label="Workflow stages">
@@ -10,12 +10,12 @@ export function StageChain({ stages, size = "md" }: { stages: Stage[]; size?: "s
         <li
           key={s.name}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border",
-            size === "sm" ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm",
-            s.clientApproval ? "border-wait/30 bg-amber-50 text-wait" : "border-line bg-surface text-ink",
+            "inline-flex items-center gap-1.5 rounded-xs border bg-surface",
+            size === "sm" ? "px-2 py-0.5 text-[12px] leading-[18px]" : "px-2.5 py-1 text-[13px] leading-[18px]",
+            s.clientApproval ? "border-ink text-ink" : "border-line text-ink",
           )}
         >
-          <span className="text-subtle tabular-nums">{i + 1}</span>
+          <span className="font-mono text-[11px] text-muted">{String(i + 1).padStart(2, "0")}</span>
           {s.name}
           {s.clientApproval && (
             <>

@@ -6,6 +6,9 @@ export const MAIN_NAV = [
   { href: "/demo", label: "Demo" },
 ] as const;
 
+/** Mobile menu: main navigation plus company pages. */
+export const MOBILE_NAV = [...MAIN_NAV, { href: "/about", label: "About" }, { href: "/contact", label: "Contact" }] as const;
+
 export const FOOTER_NAV = [
   {
     title: "Product",

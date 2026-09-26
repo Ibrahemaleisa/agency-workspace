@@ -3,8 +3,9 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+/* Controls: radius-md, line-strong border (3:1), 2px focus ring, danger for errors. */
 const control =
-  "mt-2 block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-[0.95rem] text-ink placeholder:text-subtle transition-colors focus:outline-none focus-visible:border-ink focus-visible:ring-4 focus-visible:ring-sand/60 aria-[invalid=true]:border-red-600";
+  "mt-1.5 block w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-[15px] leading-[22px] text-ink placeholder:text-muted/80 transition-colors aria-[invalid=true]:border-danger";
 
 type Base = {
   name: string;
@@ -19,18 +20,18 @@ type Base = {
 function Wrap({ id, label, error, hint, required, className, children }: Base & { id: string; children: ReactNode }) {
   return (
     <div className={className}>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="text-[14px] leading-5 font-medium">
         {label}
-        {!required && <span className="ms-1.5 font-normal text-subtle">(optional)</span>}
+        {!required && <span className="ms-1.5 font-normal text-muted">(optional)</span>}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="mt-1.5 text-xs text-subtle">
+        <p id={`${id}-hint`} className="mt-1.5 text-[13px] leading-[18px] text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} className="mt-1.5 text-sm text-red-700">
+        <p id={`${id}-error`} className="mt-1.5 text-[13px] leading-[18px] text-danger">
           {error}
         </p>
       )}
@@ -60,7 +61,7 @@ export function TextField({
         defaultValue={p.defaultValue}
         aria-invalid={!!p.error || undefined}
         aria-describedby={describedBy(id, p.error, p.hint)}
-        className={cn(control, "border-line")}
+        className={control}
       />
     </Wrap>
   );
@@ -79,13 +80,13 @@ export function TextArea({ rows = 4, placeholder, ...p }: Base & { rows?: number
         defaultValue={p.defaultValue}
         aria-invalid={!!p.error || undefined}
         aria-describedby={describedBy(id, p.error, p.hint)}
-        className={cn(control, "resize-y border-line")}
+        className={cn(control, "resize-y")}
       />
     </Wrap>
   );
 }
 
-export function SelectField({ options, placeholder = "Select…", ...p }: Base & { options: string[]; placeholder?: string }) {
+export function SelectField({ options, placeholder = "Select…", ...p }: Base & { options: readonly string[]; placeholder?: string }) {
   const id = useId();
   return (
     <Wrap id={id} {...p}>
@@ -96,10 +97,10 @@ export function SelectField({ options, placeholder = "Select…", ...p }: Base &
         defaultValue={p.defaultValue ?? ""}
         aria-invalid={!!p.error || undefined}
         aria-describedby={describedBy(id, p.error, p.hint)}
-        className={cn(control, "appearance-none border-line bg-[length:16px] bg-[right_0.9rem_center] bg-no-repeat pe-10")}
+        className={cn(control, "appearance-none bg-[length:16px] bg-[right_0.75rem_center] bg-no-repeat pe-10")}
         style={{
           backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b675f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a606b' stroke-width='1.5' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
         }}
       >
         <option value="" disabled={p.required}>

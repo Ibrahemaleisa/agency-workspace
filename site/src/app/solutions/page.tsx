@@ -19,29 +19,28 @@ export default function SolutionsPage() {
   return (
     <>
       <PageHero
-        eyebrow="Solutions"
-        title="Built for the way your kind of agency works."
+        marker="Solutions"
+        title="Built for the way your kind of agency works"
         lead="Every workspace starts with module templates for common agency disciplines. Use them as they are, edit them, or build your own."
       />
-      <Section tone="white">
+      <Section tone="surface">
         <Container>
-          <ul className="grid gap-6 lg:grid-cols-2">
-            {SOLUTIONS.map((s) => (
-              <li key={s.slug}>
-                <Link
-                  href={`/solutions/${s.slug}`}
-                  className="group flex h-full flex-col rounded-[var(--radius-frame)] border border-line bg-paper p-7 transition-colors hover:border-ink/20 sm:p-8"
-                >
-                  <Icon name={s.icon} className="size-6 text-sand-deep" />
-                  <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em]">{s.name}</h2>
-                  <p className="mt-3 leading-relaxed text-muted">{s.summary}</p>
+          <ul className="grid gap-px overflow-hidden rounded-lg border border-line bg-line lg:grid-cols-2">
+            {SOLUTIONS.map((s, i) => (
+              <li key={s.slug} className="bg-surface">
+                <Link href={`/solutions/${s.slug}`} className="group flex h-full flex-col p-6 transition-colors hover:bg-paper sm:p-8">
+                  <p className="flex items-center gap-2 font-mono text-[11px] leading-4 font-medium tracking-[0.08em] text-muted uppercase">
+                    <Icon name={s.icon} className="size-4 text-ink" />
+                    {String(i + 1).padStart(2, "0")} — {s.module.name} module
+                  </p>
+                  <h2 className="mt-4 text-[24px] leading-[30px] font-semibold tracking-[-0.015em]">{s.name}</h2>
+                  <p className="mt-2 text-[15px] leading-[22px] text-muted">{s.summary}</p>
                   <div className="mt-6 border-t border-line pt-6">
-                    <p className="mb-3 text-xs font-medium tracking-wide text-subtle uppercase">{s.module.name} module</p>
                     <StageChain stages={s.module.stages} size="sm" />
                   </div>
-                  <span className="mt-8 inline-flex items-center gap-1.5 text-sm font-medium">
+                  <span className="mt-8 inline-flex items-center gap-1.5 text-[14px] font-medium">
                     How it runs
-                    <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight aria-hidden className="size-4" />
                   </span>
                 </Link>
               </li>

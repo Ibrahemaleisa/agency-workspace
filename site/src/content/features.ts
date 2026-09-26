@@ -30,7 +30,7 @@ export const THEMES: FeatureTheme[] = [
     id: "workflows",
     icon: "workflow",
     eyebrow: "Reusable workflows",
-    title: "Define how you work once. Reuse it on every project.",
+    title: "Define a workflow once, run it on every project",
     body: "Module templates hold your stages and custom fields. Add a module to a project and Operra creates one task per stage, with client sign‑off stages already flagged.",
     bullets: [
       "Starter templates: Content, Production, Paid Media, Account Management",
@@ -69,7 +69,7 @@ export const THEMES: FeatureTheme[] = [
     id: "approvals",
     icon: "badge-check",
     eyebrow: "Approvals",
-    title: "Sign‑off that doesn’t live in email threads",
+    title: "Approvals, out of the thread",
     body: "Request approval from the task. The client reviews the deliverables and approves or requests changes with feedback — and the team hears about it immediately.",
     bullets: [
       "Approve marks the task completed",
@@ -82,7 +82,7 @@ export const THEMES: FeatureTheme[] = [
     id: "visibility",
     icon: "grid",
     eyebrow: "Project visibility",
-    title: "See which projects are slipping — before the client does",
+    title: "See which projects are slipping before the client does",
     body: "The project health matrix shows every open project by task status and compares progress with time used, then rates it On track, At risk or Off track.",
     bullets: [
       "At risk: progress trails time by more than 10%, or a task is overdue",

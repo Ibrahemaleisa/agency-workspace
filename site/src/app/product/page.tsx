@@ -1,160 +1,120 @@
 import { Check } from "lucide-react";
+import { ButtonLink } from "@/components/button";
 import { CtaBand } from "@/components/cta-band";
 import { PageHero } from "@/components/page-hero";
 import { PlatformGrid } from "@/components/platform-grid";
 import { ProductFrame } from "@/components/product-frame";
-import { ButtonLink } from "@/components/button";
-import { Reveal } from "@/components/reveal";
+import { Schematic } from "@/components/schematic";
 import { Container, Section, SectionHeader } from "@/components/section";
+import { AUDIENCES } from "@/content/roles";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata = pageMetadata({
   title: "Product overview",
   description:
-    "How Operra is structured: clients, projects, reusable modules and tasks, three roles with their own dashboards, and a dedicated branded workspace for every agency.",
+    "How Operra is structured: clients, projects, reusable modules and tasks; a role for everyone from founders to clients; and a dedicated branded workspace for every agency.",
   path: "/product",
 });
 
 const MODEL = [
-  { name: "Agency", body: "Your workspace: team, brand, templates and settings." },
-  { name: "Clients", body: "Profiles with contacts, internal notes, assigned team and portal logins." },
-  { name: "Projects", body: "Dates, status, owner and team. Progress comes from the tasks." },
-  { name: "Modules", body: "Reusable workflows — stages and fields — added to a project." },
-  { name: "Tasks", body: "One per stage to start, plus any you add. Assigned, dated, discussed." },
-];
-
-const ROLES = [
-  {
-    name: "Admin",
-    who: "Owners, managers, operations",
-    can: [
-      "Manage the team, clients, projects and templates",
-      "Assign work to anyone and filter tasks by person",
-      "See the whole agency: health matrix, workload, activity log",
-      "Handle leads and the brand settings",
-    ],
-  },
-  {
-    name: "Team member",
-    who: "Designers, writers, producers, media buyers",
-    can: [
-      "See the projects they’re on",
-      "Create tasks, update status, comment and upload files",
-      "Share work with the client and request approval",
-      "Use project chat and team chat",
-    ],
-  },
-  {
-    name: "Client",
-    who: "The people you do the work for",
-    can: [
-      "See only their own projects",
-      "See the tasks and files you share",
-      "Approve or request changes with feedback",
-      "Talk to your team in the client channel",
-    ],
-  },
+  { label: "Agency", note: "Your workspace: team, brand, templates.", state: "done" as const },
+  { label: "Clients", note: "Contacts, internal notes, team, portal logins.", state: "done" as const },
+  { label: "Projects", note: "Dates, status, owner, team. Progress from tasks.", state: "done" as const },
+  { label: "Modules", note: "Reusable workflows: stages and fields.", state: "done" as const },
+  { label: "Tasks", note: "One per stage to start. Assigned, dated, discussed.", state: "live" as const },
 ];
 
 const ONBOARDING = [
   { title: "We set up your workspace", body: "A dedicated deployment and database for your agency. You receive the admin sign-in." },
-  { title: "Make it yours", body: "Add your name, logo and colours in Settings → Brand, and optionally your own domain." },
+  { title: "Make it yours", body: "Name, logo and colours in Settings → Brand — and your own domain, if you want one." },
   { title: "Add your team and clients", body: "Invite staff in Team & Users, create client profiles and their portal accounts." },
   { title: "Tune your workflows", body: "Adjust the starter module templates so stages and fields match how you work." },
 ];
+
+const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
 
 export default function ProductPage() {
   return (
     <>
       <PageHero
-        eyebrow="Product overview"
-        title="One system for the way agencies actually work."
-        lead="Operra replaces the spreadsheet, the task app, the approval emails and the group chat with one workspace built around clients and projects."
+        marker="Product overview"
+        title="One system of record for the work itself"
+        lead="Generic tools know what a task is. Operra knows clients, projects, stages and sign‑off — so the agency stops bending tools into shape and drifting back to the thread."
       >
         <ProductFrame shot="projectOverview" eager sizes="(min-width: 1200px) 1140px, 100vw" />
       </PageHero>
 
-      <Section tone="white" labelledBy="model-title">
+      <Section tone="surface" labelledBy="model-title">
         <Container>
           <SectionHeader
             id="model-title"
-            eyebrow="The structure"
-            title="Everything hangs off the client."
-            lead="Five levels, each with a clear job. It’s the same structure for every client, so anyone on the team can find their way around any project."
+            marker="The model"
+            index={1}
+            title="Everything hangs off the client"
+            lead="Five levels, each with one job. Every client works the same way, so anyone can find their way around any project."
           />
-          <ol className="mt-12 grid gap-px overflow-hidden rounded-[var(--radius-frame)] border border-line bg-line md:grid-cols-5">
-            {MODEL.map((m, i) => (
-              <li key={m.name} className="relative bg-surface p-6">
-                <span className="font-mono text-xs text-subtle tabular-nums">0{i + 1}</span>
-                <h3 className="mt-3 text-lg font-semibold tracking-tight">{m.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{m.body}</p>
-              </li>
-            ))}
-          </ol>
-          <Reveal className="mt-12">
+          <div className="mt-10 rounded-lg border border-line bg-paper p-5 sm:p-6">
+            <Schematic nodes={MODEL} label="Operra’s structure, from agency to task" />
+          </div>
+          <figure className="mt-12">
             <ProductFrame shot="cropModuleStages" variant="card" sizes="(min-width: 1200px) 1140px, 100vw" />
-            <p className="mt-4 text-sm text-muted">
-              A Content module on a project: each stage is a task, the current stage is highlighted, and the orange dot
-              marks the stage that goes to the client for approval.
-            </p>
-          </Reveal>
+            <figcaption className="mt-3 text-[13px] leading-[18px] text-muted">
+              A Content module on a project. Each stage is a task; the current stage is highlighted, and the dot marks the
+              stage that goes to the client for approval.
+            </figcaption>
+          </figure>
         </Container>
       </Section>
 
-      <Section labelledBy="roles-title">
+      <Section labelledBy="roles-title" id="roles" className="scroll-mt-14">
         <Container>
           <SectionHeader
             id="roles-title"
-            eyebrow="Roles"
-            title="Three roles. Each sees exactly what it should."
-            lead="Permissions are enforced centrally. Buttons someone can’t use simply don’t appear — and clients never see anything internal."
+            marker="Roles"
+            index={2}
+            title="Every seat in the agency, one permission system"
+            lead="Three roles — Admin, Team member and Client — enforced centrally. Buttons someone can’t use don’t appear, and clients never see anything internal."
           />
-          <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {ROLES.map((r) => (
-              <article key={r.name} className="rounded-[var(--radius-frame)] border border-line bg-surface p-7">
-                <h3 className="text-xl font-semibold tracking-tight">{r.name}</h3>
-                <p className="mt-1 text-sm text-subtle">{r.who}</p>
-                <ul className="mt-6 space-y-3">
-                  {r.can.map((c) => (
-                    <li key={c} className="flex gap-3 text-[0.95rem]">
-                      <Check aria-hidden className="mt-1 size-4 shrink-0 text-sand-deep" strokeWidth={2.25} />
-                      {c}
+          <div className="mt-12 divide-y divide-line border-y border-line">
+            {AUDIENCES.map((a) => (
+              <article key={a.id} className="grid gap-6 py-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,4fr)_minmax(0,4fr)] lg:gap-10">
+                <div>
+                  <p className={`text-muted ${label}`}>{a.audience}</p>
+                  <h3 className="mt-2 text-[24px] leading-[30px] font-semibold tracking-[-0.015em]">{a.who}</h3>
+                  <p className="mt-2 text-[15px] leading-[22px] text-muted">{a.wants}</p>
+                  <p className="mt-4 inline-flex items-center gap-1.5 rounded-xs border border-line bg-surface px-2 py-0.5 text-[12px] leading-[18px]">
+                    <span className="text-muted">Role</span>
+                    <span className="font-medium">{a.productRole}</span>
+                  </p>
+                </div>
+                <ul className="divide-y divide-line self-start border-y border-line">
+                  {a.does.map((d) => (
+                    <li key={d} className="flex gap-3 py-2.5 text-[14px] leading-5">
+                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
+                      {d}
                     </li>
                   ))}
                 </ul>
+                <ProductFrame shot={a.shot} sizes="(min-width: 1024px) 370px, 100vw" />
               </article>
             ))}
-          </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-2">
-            <Reveal>
-              <p className="mb-3 text-sm font-medium text-muted">Admin dashboard</p>
-              <ProductFrame shot="dashboard" sizes="(min-width: 1024px) 570px, 100vw" />
-            </Reveal>
-            <Reveal delay={100}>
-              <p className="mb-3 text-sm font-medium text-muted">Client dashboard</p>
-              <ProductFrame shot="clientDashboard" sizes="(min-width: 1024px) 570px, 100vw" />
-            </Reveal>
           </div>
         </Container>
       </Section>
 
-      <Section tone="white" labelledBy="mobile-title" className="border-y border-line">
+      <Section tone="surface" labelledBy="mobile-title">
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <SectionHeader
               id="mobile-title"
-              eyebrow="On any screen"
-              title="The same workspace on your phone."
-              lead="Operra adapts to small screens with a bottom navigation bar, so approvals, status changes and chat don’t have to wait for a laptop."
+              marker="On any screen"
+              index={3}
+              title="The same workspace on your phone"
+              lead="A bottom navigation bar on small screens, so approvals, status changes and chat don’t wait for a laptop."
             />
             <div className="mx-auto grid max-w-md grid-cols-2 gap-4 sm:gap-6">
-              <ProductFrame shot="mobileDashboard" variant="card" className="rounded-[22px]" sizes="(min-width: 640px) 220px, 45vw" />
-              <ProductFrame
-                shot="mobileProject"
-                variant="card"
-                className="mt-10 rounded-[22px]"
-                sizes="(min-width: 640px) 220px, 45vw"
-              />
+              <ProductFrame shot="mobileDashboard" variant="card" className="rounded-xl" sizes="(min-width: 640px) 220px, 45vw" />
+              <ProductFrame shot="mobileProject" variant="card" className="mt-10 rounded-xl" sizes="(min-width: 640px) 220px, 45vw" />
             </div>
           </div>
         </Container>
@@ -164,25 +124,24 @@ export default function ProductPage() {
         <Container>
           <SectionHeader
             id="setup-title"
-            eyebrow="Getting started"
-            title="A workspace of your own, not a shared account."
+            marker="Getting started"
+            index={4}
+            title="A workspace of your own, not a shared account"
             lead="Operra isn’t one big app with every agency inside it. Each agency runs on its own deployment and database."
           />
-          <ol className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-12 grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-2 lg:grid-cols-4">
             {ONBOARDING.map((s, i) => (
-              <li key={s.title} className="rounded-[var(--radius-frame)] border border-line bg-surface p-6">
-                <span className="grid size-8 place-items-center rounded-full bg-ink text-sm font-medium text-sand tabular-nums">
-                  {i + 1}
-                </span>
-                <h3 className="mt-5 font-medium">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
+              <li key={s.title} className="bg-surface p-6">
+                <p className={`text-muted ${label}`}>{String(i + 1).padStart(2, "0")}</p>
+                <h3 className="mt-3 text-[15px] leading-[22px] font-semibold">{s.title}</h3>
+                <p className="mt-1.5 text-[14px] leading-5 text-muted">{s.body}</p>
               </li>
             ))}
           </ol>
-          <div className="mt-16">
+          <div className="mt-12">
             <PlatformGrid />
           </div>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8">
             <ButtonLink href="/features" variant="secondary" arrow>
               See every feature
             </ButtonLink>

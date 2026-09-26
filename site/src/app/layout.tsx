@@ -5,19 +5,47 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/site";
 
-/** DM Sans (SIL Open Font License, see src/fonts/DM-Sans-OFL.txt), self-hosted with a metric-matched fallback. */
-const dmSans = localFont({
-  src: "../fonts/dm-sans-latin-wght-normal.woff2",
-  weight: "100 1000",
+/*
+ * Brand type (all SIL Open Font License, see src/fonts/*-OFL.txt), self-hosted:
+ * Instrument Sans for display and UI, IBM Plex Mono for labels and data,
+ * IBM Plex Sans Arabic for Arabic.
+ */
+const instrument = localFont({
+  src: "../fonts/instrument-sans-latin-wght-normal.woff2",
+  weight: "400 700",
   style: "normal",
-  variable: "--font-dm-sans",
+  variable: "--font-instrument",
   display: "swap",
   adjustFontFallback: "Arial",
 });
 
+const plexMono = localFont({
+  src: [
+    { path: "../fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500", style: "normal" },
+  ],
+  variable: "--font-plex-mono",
+  display: "swap",
+  // Labels only — not worth competing with the headline font for early bandwidth.
+  preload: false,
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "SF Mono", "Consolas", "monospace"],
+});
+
+const plexArabic = localFont({
+  src: [
+    { path: "../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-plex-arabic",
+  display: "swap",
+  preload: false,
+  adjustFontFallback: false,
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: `${site.name} — ${site.tagline}`, template: `%s · ${site.name}` },
+  title: { default: `${site.name} — ${site.descriptor}`, template: `%s · ${site.name}` },
   description: site.description,
   applicationName: site.name,
   openGraph: {
@@ -34,17 +62,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b0c",
+  themeColor: "#f6f6f3",
   colorScheme: "light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" dir="ltr" className={`${dmSans.variable} antialiased`} suppressHydrationWarning>
-      <head>
-        {/* Enables scroll-reveal styles only when JS runs, so content is never hidden without it. */}
-        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
-      </head>
+    <html lang="en" dir="ltr" className={`${instrument.variable} ${plexMono.variable} ${plexArabic.variable} antialiased`}>
       <body className="min-h-dvh">
         <SiteHeader />
         <main id="main" tabIndex={-1} className="focus:outline-none">

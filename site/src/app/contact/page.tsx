@@ -11,38 +11,45 @@ export const metadata = pageMetadata({
   path: "/contact",
 });
 
+const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const link = "text-ink underline underline-offset-4";
+
 export default function ContactPage() {
   return (
     <>
-      <PageHero eyebrow="Contact" title="Talk to us." lead="Questions about pricing, a walkthrough for your team, or help with your workspace — send a message and we’ll reply by email." />
-      <Section tone="white" className="pt-14 sm:pt-16">
+      <PageHero
+        marker="Contact"
+        title="Talk to us"
+        lead="Pricing, a walkthrough for your team, or help with your workspace. Send a message and we’ll reply by email."
+      />
+      <Section tone="surface" className="pt-12 sm:pt-14">
         <Container className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-16">
           <ContactForm />
-          <aside className="space-y-8 text-[0.95rem] lg:border-s lg:border-line lg:ps-12">
+          <aside className="space-y-8 text-[15px] leading-[22px] lg:border-s lg:border-line lg:ps-12">
             {site.contactEmail && (
               <div>
-                <h2 className="font-medium">Email</h2>
-                <a href={`mailto:${site.contactEmail}`} className="mt-1 inline-block text-muted underline-offset-4 hover:text-ink hover:underline">
+                <h2 className={`text-muted ${label}`}>Email</h2>
+                <a href={`mailto:${site.contactEmail}`} className={`mt-2 inline-block ${link}`}>
                   {site.contactEmail}
                 </a>
               </div>
             )}
             <div>
-              <h2 className="font-medium">Want to look around first?</h2>
-              <p className="mt-1 leading-relaxed text-muted">
+              <h2 className={`text-muted ${label}`}>Looking around first</h2>
+              <p className="mt-2 text-muted">
                 The{" "}
-                <Link href="/demo" className="text-ink underline underline-offset-4">
+                <Link href="/demo" className={link}>
                   interactive demo
                 </Link>{" "}
-                walks through a real project, and the live demo lets you sign in as an admin, team member or client.
+                walks through a real project. The live demo lets you sign in as an admin, team member or client.
               </p>
             </div>
             <div>
-              <h2 className="font-medium">Already on Operra?</h2>
-              <p className="mt-1 leading-relaxed text-muted">
-                Your workspace has a built-in guide under Help. For access issues, your agency’s admin can reset passwords
-                in Team &amp; Users. To sign in, go to{" "}
-                <Link href="/login" className="text-ink underline underline-offset-4">
+              <h2 className={`text-muted ${label}`}>Already on Operra</h2>
+              <p className="mt-2 text-muted">
+                Your workspace has a built-in guide under Help. Your admin can reset passwords in Team &amp; Users. To sign in,
+                go to{" "}
+                <Link href="/login" className={link}>
                   your workspace
                 </Link>
                 .
