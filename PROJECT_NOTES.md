@@ -38,6 +38,14 @@ build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `
 
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
+## Marketing website (`site/`)
+
+The Operra marketing site is a **separate Next.js app in `site/`**, deployed as its own Vercel project
+(Root Directory `site`). It is excluded from the product's `tsconfig.json` and ESLint, so customer
+workspaces never build or ship it. Copy lives in `site/src/content/`; screenshots are real captures of
+the demo data (`site/scripts/capture-screenshots.mjs`). Pricing numbers are deliberately unset
+(`site/src/content/pricing.ts`) until agreed. See `site/README.md`.
+
 ## Architecture in one minute
 
 - Next.js 16 (App Router, `proxy.ts`, server actions) · React 19 · Tailwind CSS 4 · Drizzle ORM · Postgres.

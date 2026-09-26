@@ -106,4 +106,7 @@ src/
   content/guide.ts       built-in user guide
 ```
 
+The Operra marketing website is a separate app in `site/` with its own Vercel project — see
+`site/README.md`. It is not part of the workspace build.
+
 Stack: Next.js 16 · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL.
