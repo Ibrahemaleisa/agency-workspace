@@ -1,4 +1,6 @@
 import { ExternalLink } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { ButtonLink } from "@/components/button";
 import { LocalLink } from "@/components/local-link";
 import { LiveO } from "@/components/logo";
@@ -20,6 +22,8 @@ export default async function LoginPage() {
   const { PAGES, UI, locale } = await getContent();
   const t = PAGES.login;
   const links = appLinks(locale);
+  // Platform: customers sign in on the app with the email and password they signed up with.
+  if (links.login) redirect(links.login as Route);
   return (
     <div className="bg-paper py-16 sm:py-24">
       <Container>

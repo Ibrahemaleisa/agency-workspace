@@ -554,6 +554,15 @@ export const activityLog = pgTable(
 export const plans = pgTable("plans", {
   code: text("code").primaryKey(),
   name: text("name").notNull(),
+  nameAr: text("name_ar"),
+  /** One line under the name on the pricing page, sign-up and billing. */
+  description: text("description"),
+  descriptionAr: text("description_ar"),
+  /** What the plan includes, one item per entry. */
+  features: jsonb("features").$type<string[]>().notNull().default([]),
+  featuresAr: jsonb("features_ar").$type<string[]>().notNull().default([]),
+  /** Shown as the recommended plan. */
+  featured: boolean("featured").notNull().default(false),
   /** Display price in minor units; null = priced on request. The payment provider holds the real price. */
   priceCents: integer("price_cents"),
   currency: text("currency").notNull().default("USD"),

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { getSaasT } from "@/lib/i18n-saas";
+import { getLang } from "@/lib/lang";
 import { currentSignup, signupAccount } from "@/server/signup-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Field, Input } from "@/components/ui";
@@ -17,11 +18,19 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
   const s = t.signup;
   const existing = await currentSignup();
   const planCode = typeof sp.plan === "string" ? sp.plan : (existing?.planCode ?? "workspace");
-  const plan = (await db.query.plans.findFirst({ where: eq(plans.code, planCode) })) ?? (await db.query.plans.findFirst());
-  const price =
-    plan?.priceCents != null
-      ? new Intl.NumberFormat("en", { style: "currency", currency: plan.currency }).format(plan.priceCents / 100)
-      : null;
+  const lang = await getLang();
+  const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
+  const plan =
+    offered.find((p) => p.code === planCode) ??
+    offered[0] ??
+    (await db.query.plans.findFirst({ where: and(eq(plans.code, planCode)) })) ??
+    (await db.query.plans.findFirst());
+  const fmt = (p: NonNullable<typeof plan>) =>
+    p.priceCents != null
+      ? `${new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? s.account.perYear : s.account.perMonth}`
+      : s.account.onRequest;
+  const nameOf = (p: NonNullable<typeof plan>) => (lang === "ar" && p.nameAr) || p.name;
+  const price = plan?.priceCents != null ? fmt(plan) : null;
 
   return (
     <SignupShell
@@ -33,10 +42,10 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
         plan && (
           <div className="rounded-xl border border-[#E3E4E0] bg-white p-5 sm:p-6 lg:mt-[92px]">
             <p className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{s.account.plan}</p>
-            <p className="mt-2 text-lg font-semibold">{plan.name}</p>
+            <p className="mt-2 text-lg font-semibold">{nameOf(plan)}</p>
             <p className="mt-1 text-sm text-[#5A606B]">
               {s.start.trialTitle(plan.trialDays)}
-              {price && ` · ${price} / ${plan.interval}`}
+              {price && ` · ${price}`}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-[#5A606B]">{s.start.trialBody}</p>
             <p className="mt-6 border-t border-[#E3E4E0] pt-4 text-sm">
@@ -50,7 +59,30 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
     >
       {sp.expired && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{s.errors.expired}</p>}
       <ActionForm action={signupAccount} className="space-y-4">
-        <input type="hidden" name="plan" value={plan?.code ?? "workspace"} />
+        {offered.length > 1 ? (
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-sm font-medium">{s.account.choosePlan}</legend>
+            {offered.map((p) => (
+              <label
+                key={p.code}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#E3E4E0] bg-white p-3 has-[:checked]:border-zinc-900"
+              >
+                <input type="radio" name="plan" value={p.code} defaultChecked={p.code === plan?.code} className="mt-1" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-medium">{nameOf(p)}</span>
+                    <span className="text-sm text-[#5A606B]">{fmt(p)}</span>
+                  </span>
+                  {((lang === "ar" && p.descriptionAr) || p.description) && (
+                    <span className="block text-sm text-[#5A606B]">{(lang === "ar" && p.descriptionAr) || p.description}</span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        ) : (
+          <input type="hidden" name="plan" value={plan?.code ?? "workspace"} />
+        )}
         <Field label={s.account.name}>
           <Input name="name" required autoComplete="name" autoFocus defaultValue={existing?.name ?? ""} />
         </Field>

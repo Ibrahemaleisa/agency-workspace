@@ -9,6 +9,9 @@ import { tenantBaseUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { verify } from "@/lib/secret";
 import { logActivity } from "@/lib/events";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { subscriptions } from "@/db/schema";
 
 /** Admin: send the tenant to the provider's checkout for its plan. */
 export async function startCheckout() {
@@ -37,6 +40,23 @@ export async function startCheckout() {
   }
   await logActivity(user, { action: "billing.checkout", summary: "started checkout" });
   redirect(url);
+}
+
+/**
+ * Admin: move a trial (running or ended) to another plan on offer. Paid subscriptions change plan
+ * with the payment provider instead (Manage billing), so they're left alone here.
+ */
+export async function changePlan(fd: FormData) {
+  const user = await requireUser({ allowLocked: true });
+  assertCan(user, "billing.manage");
+  const code = String(fd.get("plan") ?? "");
+  const [sub, plan, org] = await Promise.all([getSubscription(user.orgId), getPlan(code), getOrgById(user.orgId)]);
+  if (!sub || !plan || !plan.active || !org || org.isDemo || sub.providerSubscriptionId || sub.planCode === code) {
+    redirect("/settings/billing");
+  }
+  await db.update(subscriptions).set({ planCode: code, updatedAt: new Date() }).where(eq(subscriptions.orgId, user.orgId));
+  await logActivity(user, { action: "billing.plan", summary: `changed plan to ${plan.name}` });
+  redirect("/settings/billing?plan=changed");
 }
 
 /** Admin: open the provider's self-service billing portal. */

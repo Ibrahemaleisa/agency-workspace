@@ -90,7 +90,7 @@ export function SiteHeader({ nav, mobileNav }: { nav: NavLink[]; mobileNav: NavL
 
         <div className="ms-auto hidden items-center gap-2 md:flex">
           <LanguageSwitch pathname={pathname} />
-          <ButtonLink href="/login" variant="ghost">
+          <ButtonLink href={links.login ?? "/login"} variant="ghost">
             {ui.logIn}
           </ButtonLink>
           <ButtonLink href={links.trial}>{ui.startTrial}</ButtonLink>
@@ -129,7 +129,7 @@ export function SiteHeader({ nav, mobileNav }: { nav: NavLink[]; mobileNav: NavL
             <ButtonLink href={links.trial} size="lg">
               {ui.startTrial}
             </ButtonLink>
-            <ButtonLink href="/login" size="lg" variant="secondary">
+            <ButtonLink href={links.login ?? "/login"} size="lg" variant="secondary">
               {ui.logIn}
             </ButtonLink>
             <LanguageSwitch pathname={pathname} className="mt-2 text-center text-[16px]" />

@@ -148,6 +148,13 @@ export const PAGES = {
     talk: "Talk to us",
     faqMarker: "Questions",
     faqTitle: "Pricing and setup, answered",
+    plansTitle: "Choose your plan",
+    plansLead: "Every plan starts with a free trial, no card needed. Your admin can change plan any time from Billing inside the workspace.",
+    recommended: "Recommended",
+    onRequest: "Priced on request",
+    perMonth: "/ month",
+    perYear: "/ year",
+    trialLine: "{days}-day free trial",
   },
   demo: {
     metaTitle: "Interactive demo",

@@ -11,6 +11,11 @@ export const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")
 
 const inApp = (locale: Locale, next: string) => `${appUrl}/lang?to=${locale}&next=${encodeURIComponent(next)}`;
 
+/** Sign-up for one plan (by its code); the trial request form without an app URL. */
+export function trialFor(locale: Locale, planCode: string) {
+  return appUrl ? inApp(locale, `/signup?plan=${encodeURIComponent(planCode)}`) : localePath(locale, "/start");
+}
+
 export function appLinks(locale: Locale) {
   return {
     /** Primary conversion: create a workspace (or request one). */

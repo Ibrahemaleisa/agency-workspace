@@ -85,6 +85,13 @@
       "when": 1790505506320,
       "tag": "0011_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790507755144,
+      "tag": "0012_plan_details",
+      "breakpoints": true
     }
   ]
 }

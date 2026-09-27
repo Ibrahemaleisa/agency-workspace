@@ -23,6 +23,7 @@ const PUBLIC = [
   /^\/api\/cron\//,
   /^\/api\/health$/,
   /^\/api\/t$/, // marketing-site page views
+  /^\/api\/plans$/, // public plan list
 ];
 
 /**

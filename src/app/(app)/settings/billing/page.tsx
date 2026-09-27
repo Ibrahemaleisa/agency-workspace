@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
@@ -9,7 +9,7 @@ import { getSaasT } from "@/lib/i18n-saas";
 import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
-import { openBillingPortal, startCheckout } from "@/server/billing-actions";
+import { changePlan, openBillingPortal, startCheckout } from "@/server/billing-actions";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
 import { AutoSubmitForm } from "@/components/auto-submit";
 
@@ -22,11 +22,12 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   if (!isPlatform()) notFound();
   const user = await requirePermission("billing.manage");
   const sp = await searchParams;
-  const [{ t: st }, { locale }] = await Promise.all([getSaasT(), getT()]);
+  const [{ t: st }, { locale, lang }] = await Promise.all([getSaasT(), getT()]);
   const b = st.billing;
   const org = (await getOrgById(user.orgId))!;
   const sub = await getSubscription(org.id);
   const plan = sub ? await db.query.plans.findFirst({ where: eq(plans.code, sub.planCode) }) : null;
+  const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
   const provider = billingProvider();
   const status = sub ? effectiveStatus(sub) : null;
   const paidTrial = !!sub && subscribedInTrial(sub);
@@ -34,8 +35,17 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const fmt = (d: Date) => format(d, "d MMM yyyy", { locale });
   const canPay = !!provider && !!sub && !org.isDemo && status !== "active" && status !== "past_due" && !paidTrial;
   const tone = status === "active" || paidTrial ? "green" : status === "trialing" ? "blue" : "amber";
+  const planName = (p: { name: string; nameAr: string | null }) => (lang === "ar" && p.nameAr) || p.name;
+  const priceOf = (p: { priceCents: number | null; currency: string; interval: string }) =>
+    p.priceCents == null
+      ? b.onRequest
+      : `${new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? b.perYear : b.perMonth}`;
+  // Trials (running or ended) switch here; paid subscriptions switch with the provider.
+  const canSwitch = !!sub && !org.isDemo && !sub.providerSubscriptionId;
   const notice =
-    sp.checkout === "success"
+    sp.plan === "changed"
+      ? { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", text: b.planChanged }
+      : sp.checkout === "success"
       ? sub?.status === "active"
         ? { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", text: b.success }
         : { cls: "border-zinc-200 bg-zinc-50 text-zinc-700", text: b.pending }
@@ -56,7 +66,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
             <dl className="divide-y divide-zinc-100 text-sm">
               <div className="flex justify-between gap-4 py-2.5">
                 <dt className="text-zinc-500">{b.plan}</dt>
-                <dd className="font-medium">{plan?.name ?? sub.planCode}</dd>
+                <dd className="font-medium">{plan ? planName(plan) : sub.planCode}</dd>
               </div>
               <div className="flex justify-between gap-4 py-2.5">
                 <dt className="text-zinc-500">{b.status}</dt>
@@ -91,9 +101,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
               <div className="flex justify-between gap-4 py-2.5">
                 <dt className="text-zinc-500">{b.price}</dt>
                 <dd>
-                  {plan?.priceCents != null
-                    ? new Intl.NumberFormat("en", { style: "currency", currency: plan.currency }).format(plan.priceCents / 100)
-                    : b.priceOnRequest}
+                  {plan ? priceOf(plan) : b.priceOnRequest}
                 </dd>
               </div>
             </dl>
@@ -133,6 +141,46 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
           </dl>
         </Card>
       </div>
+      {offered.length > 0 && (
+        <section aria-labelledby="plans-title" className="mt-8">
+          <h2 id="plans-title" className="text-lg font-semibold">{b.plansTitle}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{b.plansSub}</p>
+          <ul className={`mt-4 grid gap-4 ${offered.length >= 3 ? "lg:grid-cols-3" : "md:grid-cols-2"}`} data-testid="plan-list">
+            {offered.map((p) => {
+              const current = p.code === sub?.planCode;
+              const features = (lang === "ar" && p.featuresAr.length ? p.featuresAr : p.features) ?? [];
+              const description = (lang === "ar" && p.descriptionAr) || p.description;
+              return (
+                <li key={p.code} className={`flex flex-col rounded-xl border bg-white p-5 ${current ? "border-zinc-900" : "border-zinc-200"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold">{planName(p)}</p>
+                    {current && <Badge tone="blue">{b.currentPlan}</Badge>}
+                  </div>
+                  {description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}
+                  <p className="mt-3 text-sm font-medium">{priceOf(p)}</p>
+                  {features.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-sm text-zinc-600">
+                      {features.map((f) => (
+                        <li key={f} className="flex gap-2">
+                          <span aria-hidden>✓</span>
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {!current && canSwitch && (
+                    <form action={changePlan} className="mt-auto pt-4">
+                      <input type="hidden" name="plan" value={p.code} />
+                      <button className={buttonClass("secondary", "sm")}>{b.choosePlan}</button>
+                    </form>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {!canSwitch && sub?.providerSubscriptionId && <p className="mt-3 text-sm text-zinc-500">{b.paidPlanNote}</p>}
+        </section>
+      )}
     </>
   );
 }
