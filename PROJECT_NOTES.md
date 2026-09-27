@@ -31,10 +31,13 @@ Every push to `main` redeploys all customer projects connected to this repo.
 | Deployment | Vercel project | URL | Database |
 |---|---|---|---|
 | Demo for buyers | `workspace-demo` (team fada-team) | workspace-demo-sooty.vercel.app | Neon DB `workspace_demo` with its own restricted login `workspace_demo_app` |
-| Operra platform (production, being set up) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | not deployed yet | dedicated Neon project — **not created yet** (needs the owner) |
+| Operra platform (production) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | app.operra.com (also attached for now: operra.com, www, `*.operra.com`) | Neon `neon-coffee-feather` (Vercel Marketplace, connected to `operra` only) |
+| Operra marketing site | `operra-site` (team fada-team, `prj_3saJesxjb81s4uAlvfgF3wpRfGKr`, Root Directory `site`) | operra-site.vercel.app — operra.com + www should move here | none |
 
 The `operra` project has previews disabled, Vercel login only on previews, a private Blob store
-(`operra-uploads`) and Production-only `OPERRA_PLATFORM`, `APP_SECRET`, `CRON_SECRET`, `SEED_PREVIEW`.
+(`operra-uploads`) and Production-only `OPERRA_PLATFORM`, `APP_SECRET`, `CRON_SECRET`, `SEED_PREVIEW`, `APP_URL`,
+`MARKETING_URL`, `PLATFORM_ADMIN_*` (build creates the staff account; remove after first sign-in).
+Neither project is Git-connected: production deploys are made from the API/dashboard for a chosen branch or commit.
 Note: `workspace-demo`'s `DATABASE_URL` also targets **Preview**, so any branch preview build migrates the demo DB —
 which is why `claude/**` branches are excluded from deployments in `vercel.json`.
 
