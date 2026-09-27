@@ -31,8 +31,8 @@ Every push to `main` redeploys all customer projects connected to this repo.
 | Deployment | Vercel project | URL | Database |
 |---|---|---|---|
 | Demo for buyers | `workspace-demo` (team fada-team) | workspace-demo-sooty.vercel.app | Neon DB `workspace_demo` with its own restricted login `workspace_demo_app` |
-| Operra platform (production) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | app.operra.com (also attached for now: operra.com, www, `*.operra.com`) | Neon `neon-coffee-feather` (Vercel Marketplace, connected to `operra` only) |
-| Operra marketing site | `operra-site` (team fada-team, `prj_3saJesxjb81s4uAlvfgF3wpRfGKr`, Root Directory `site`) | operra-site.vercel.app — operra.com + www should move here | none |
+| Operra platform (production) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | operra-eight.vercel.app (operra.com is **not owned** — its DNS points to someone else's CloudFront; the operra.com entries on the project do nothing) | Neon `neon-coffee-feather` (Vercel Marketplace, connected to `operra` only) |
+| Operra marketing site | `operra-site` (team fada-team, `prj_3saJesxjb81s4uAlvfgF3wpRfGKr`, Root Directory `site`) | operra-site.vercel.app (English `/`, Arabic `/ar`) | none |
 
 The `operra` project has previews disabled, Vercel login only on previews, a private Blob store
 (`operra-uploads`) and Production-only `OPERRA_PLATFORM`, `APP_SECRET`, `CRON_SECRET`, `SEED_PREVIEW`, `APP_URL`,
