@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, provisionings, subscriptions, users } from "@/db/schema";
+import { organizations, plans, provisionings, subscriptions, users } from "@/db/schema";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { isUuid } from "@/lib/access";
 import { tenantEntryUrl } from "@/lib/platform";
@@ -12,6 +12,7 @@ import { extendTrial, setTenantStatus } from "@/server/platform-admin-actions";
 import { ControlHeader } from "@/components/platform/control-header";
 import { Badge } from "@/components/ui";
 import { ConfirmSubmit } from "@/components/forms";
+import { ActivatePlanForm } from "@/components/platform/activate-plan-form";
 
 export default async function ControlCustomer({ params }: PageProps<"/operra/customers/[id]">) {
   const admin = await requirePlatformAdmin();
@@ -34,6 +35,7 @@ export default async function ControlCustomer({ params }: PageProps<"/operra/cus
              (select count(*)::int from clients where org_id = ${id}) as clients`),
   ]);
   const c = counts as unknown as { projects: number; tasks: number; clients: number };
+  const activePlans = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort));
   const fmt = (d: Date | null | undefined) => (d ? format(d, "d MMM yyyy, HH:mm") : "—");
   const row = "flex justify-between gap-4 border-b border-[#E3E4E0] py-2.5 last:border-0";
 
@@ -77,6 +79,14 @@ export default async function ControlCustomer({ params }: PageProps<"/operra/cus
               </dl>
             ) : (
               <p className="mt-3 text-[#5A606B]">No subscription (single-agency or legacy tenant).</p>
+            )}
+            {sub && !org.isDemo && !sub.providerSubscriptionId && (
+              <div className="mt-4 border-t border-[#E3E4E0] pt-4">
+                <p className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">
+                  {sub.provider === "manual" && sub.status === "active" ? "Renew (adds to the paid period)" : "Activate after payment"}
+                </p>
+                <ActivatePlanForm orgId={org.id} plans={activePlans} defaultPlan={sub.planCode} compact />
+              </div>
             )}
             {sub && sub.status !== "active" && !org.isDemo && (
               <form action={extendTrial} className="mt-4 flex items-center gap-2">

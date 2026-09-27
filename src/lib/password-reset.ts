@@ -52,6 +52,19 @@ export async function requestPasswordReset(email: string, lang: "ar" | "en") {
 }
 
 /**
+ * Support: a one-time reset link that Operra staff hand to the person themselves (for example when
+ * email isn't set up). Valid 24 hours; any earlier unused link stops working.
+ */
+export async function issueResetLink(accountId: string) {
+  const token = newToken();
+  await db.transaction(async (tx) => {
+    await tx.update(passwordResets).set({ usedAt: new Date() }).where(and(eq(passwordResets.accountId, accountId), isNull(passwordResets.usedAt)));
+    await tx.insert(passwordResets).values({ accountId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 24 * 3600_000) });
+  });
+  return `${appUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+/**
  * Sets a new password from a reset link, once. The link came by email, so it also confirms the
  * address; every session of the person, in every agency, is signed out.
  */

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, provisionings, subscriptions, users } from "@/db/schema";
+import { organizations, planRequests, plans, provisionings, subscriptions, users } from "@/db/schema";
 import { effectiveStatus } from "@/lib/billing";
 import { configChecks } from "@/lib/config-check";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { ControlHeader } from "@/components/platform/control-header";
 import { Badge } from "@/components/ui";
+import { ActivatePlanForm } from "@/components/platform/activate-plan-form";
+import { dismissRequestAction } from "@/server/platform-admin-actions";
 
 const STATUS_TONE = { active: "green", provisioning: "blue", suspended: "amber", cancelled: "red" } as const;
 const SUB_TONE: Record<string, "green" | "blue" | "amber" | "red" | "slate"> = {
@@ -45,6 +47,8 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
       trialEndsAt: subscriptions.trialEndsAt,
       providerSubscriptionId: subscriptions.providerSubscriptionId,
       provisioning: provisionings.status,
+      provider: subscriptions.provider,
+      currentPeriodEnd: subscriptions.currentPeriodEnd,
       users: sql<number>`coalesce(${userCount.n}, 0)`.mapWith(Number),
     })
     .from(organizations)
@@ -69,6 +73,27 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
     })
     .from(subscriptions);
 
+  const [requests, activePlans] = await Promise.all([
+    db
+      .select({
+        id: planRequests.id,
+        orgId: organizations.id,
+        org: organizations.name,
+        serial: organizations.serial,
+        planCode: planRequests.planCode,
+        plan: plans.name,
+        createdAt: planRequests.createdAt,
+        by: users.email,
+      })
+      .from(planRequests)
+      .innerJoin(organizations, eq(organizations.id, planRequests.orgId))
+      .innerJoin(plans, eq(plans.code, planRequests.planCode))
+      .leftJoin(users, eq(users.id, planRequests.requestedById))
+      .where(eq(planRequests.status, "pending"))
+      .orderBy(asc(planRequests.createdAt)),
+    db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort)),
+  ]);
+
   const stats = [
     ["Customers", totals.tenants],
     ["Active", totals.active],
@@ -81,6 +106,39 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
     <>
       <ControlHeader name={admin.name} />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {requests.length > 0 && (
+          <section aria-labelledby="requests-title" className="mb-10 rounded-lg border-2 border-[#0B0D10] bg-white p-5" data-testid="plan-requests">
+            <h2 id="requests-title" className="text-lg font-semibold">
+              Waiting for activation · {requests.length}
+            </h2>
+            <p className="mt-1 text-sm text-[#5A606B]">
+              These agencies chose a plan. Once they’ve paid, activate it: their workspace opens for the months paid and they get an invoice.
+            </p>
+            <ul className="mt-4 divide-y divide-[#E3E4E0]">
+              {requests.map((r) => (
+                <li key={r.id} className="py-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span>
+                      <Link href={`/operra/customers/${r.orgId}`} className="font-medium underline-offset-4 hover:underline">{r.org}</Link>{" "}
+                      <span className="font-mono text-xs text-[#5A606B]">{r.serial}</span> · wants <strong>{r.plan}</strong>
+                    </span>
+                    <span className="text-xs text-[#5A606B]">
+                      {r.by ? `${r.by} · ` : ""}
+                      {format(r.createdAt, "d MMM yyyy, HH:mm")}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    <ActivatePlanForm orgId={r.orgId} plans={activePlans} defaultPlan={r.planCode} compact />
+                    <form action={dismissRequestAction}>
+                      <input type="hidden" name="requestId" value={r.id} />
+                      <button className="rounded-md px-3 py-1.5 text-sm text-[#5A606B] underline underline-offset-4">Dismiss</button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
         <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#E3E4E0] bg-[#E3E4E0] sm:grid-cols-5">
           {stats.map(([label, n]) => (
@@ -134,7 +192,7 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                   <td className="px-4 py-3">
                     {(() => {
                       if (!r.subStatus) return <span className="text-[#5A606B]">—</span>;
-                      const status = effectiveStatus({ status: r.subStatus, trialEndsAt: r.trialEndsAt, providerSubscriptionId: r.providerSubscriptionId });
+                      const status = effectiveStatus({ status: r.subStatus, trialEndsAt: r.trialEndsAt, providerSubscriptionId: r.providerSubscriptionId, provider: r.provider ?? undefined, currentPeriodEnd: r.currentPeriodEnd });
                       return (
                         <>
                           <Badge tone={SUB_TONE[status] ?? "slate"}>{status}</Badge>

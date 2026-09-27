@@ -10,6 +10,8 @@ import { idOf, str, type ActionState } from "@/lib/action-state";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { isUuid } from "@/lib/access";
+import { activatePlan, dismissRequest } from "@/lib/billing/manual";
+import { issueResetLink } from "@/lib/password-reset";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 
 export async function platformLogin(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -134,4 +136,44 @@ export async function createPlan(_prev: ActionState, fd: FormData): Promise<Acti
   console.info("[control-center] plan created", { admin: admin.email, code });
   revalidatePath("/operra/plans");
   return { ok: true };
+}
+
+/** Staff: activate a plan for N months after the agency paid (manual billing). */
+export async function activatePlanAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin();
+  const orgId = idOf(fd, "orgId");
+  if (!isUuid(orgId)) return { error: "Unknown workspace." };
+  const amountRaw = str(fd, "amount");
+  const amount = amountRaw ? Number(amountRaw) : null;
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000)) return { error: "Amount must be a positive number, or blank for the plan price." };
+  const r = await activatePlan({
+    orgId,
+    planCode: str(fd, "plan") ?? "",
+    months: Number(str(fd, "months") ?? 1) || 1,
+    amountCents: amount === null ? null : Math.round(amount * 100),
+    staffEmail: admin.email,
+  });
+  if ("error" in r) return { error: r.error };
+  console.info("[control-center] plan activated", { admin: admin.email, orgId, plan: str(fd, "plan"), until: r.until.toISOString() });
+  revalidatePath(`/operra/customers/${orgId}`);
+  revalidatePath("/operra");
+  return { ok: true };
+}
+
+export async function dismissRequestAction(fd: FormData) {
+  const admin = await requirePlatformAdmin();
+  const id = idOf(fd, "requestId");
+  if (!isUuid(id)) return;
+  await dismissRequest(id, admin.email);
+  revalidatePath("/operra");
+}
+
+/** Staff: a one-time password reset link to give the person directly (support, or no email set up). */
+export async function resetLinkAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin();
+  const accountId = idOf(fd, "accountId");
+  if (!isUuid(accountId)) return { error: "Unknown person." };
+  const link = await issueResetLink(accountId);
+  console.info("[control-center] reset link issued", { admin: admin.email, accountId });
+  return { ok: true, link };
 }

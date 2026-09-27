@@ -10,6 +10,8 @@ import { isUuid } from "@/lib/access";
 import { ControlHeader } from "@/components/platform/control-header";
 import { Ago, EVENT_LABEL, Table, Td, label, stoppedAt } from "@/components/platform/control-ui";
 import { Badge } from "@/components/ui";
+import { ActionForm, SubmitButton } from "@/components/forms";
+import { resetLinkAction } from "@/server/platform-admin-actions";
 
 export const metadata: Metadata = { title: "Person · Control center" };
 
@@ -75,6 +77,10 @@ export default async function ControlPerson({ params }: PageProps<"/operra/peopl
               <div className={row}><dt className="text-[#5A606B]">Last sign-in</dt><dd>{fmt(account.lastLoginAt)}</dd></div>
               <div className={row}><dt className="text-[#5A606B]">Sign-ins</dt><dd className="font-mono">{account.loginCount}</dd></div>
             </dl>
+            <ActionForm action={resetLinkAction} className="mt-4" linkLabels={{ note: "Give this link to the person yourself (valid 24 hours, works once):", copy: "Copy link", copied: "Copied" }}>
+              <input type="hidden" name="accountId" value={account.id} />
+              <SubmitButton size="sm" variant="secondary">Create password reset link</SubmitButton>
+            </ActionForm>
           </section>
           <section className="rounded-lg border border-[#E3E4E0] bg-white p-5 text-sm lg:col-span-2">
             <h2 className={label}>Agencies</h2>

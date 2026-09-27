@@ -90,7 +90,6 @@ export default async function SignupStartPage() {
                   type="submit"
                   name="mode"
                   value="subscribe"
-                  disabled={!payments}
                   className={`${buttonClass("primary")} w-full`}
                   data-testid={`pay-${p.code}`}
                 >
@@ -113,7 +112,7 @@ export default async function SignupStartPage() {
           );
         })}
       </div>
-      {!payments && <p className="mt-4 text-sm text-zinc-500">{s.start.billingOff}</p>}
+      {!payments && <p className="mt-4 text-sm text-zinc-500">{s.start.manualNote}</p>}
       <div className="mt-6">
         <a href="/signup/brand" className={buttonClass("ghost")}>
           {s.back}

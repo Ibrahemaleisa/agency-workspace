@@ -626,7 +626,7 @@ export const subscriptions = pgTable(
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
-    /** "none" (trial only), "stripe", or "test" (development only). */
+    /** "none" (trial only), "manual" (activated by Operra staff), "stripe", or "test" (development only). */
     provider: text("provider").notNull().default("none"),
     providerCustomerId: text("provider_customer_id"),
     providerSubscriptionId: text("provider_subscription_id").unique(),
@@ -634,6 +634,32 @@ export const subscriptions = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("subscriptions_status_idx").on(t.status)],
+);
+
+/**
+ * A request to subscribe while no online payment is connected (or by choice): the agency picks a
+ * plan, Operra staff activate it from the control center once paid (bank transfer, etc.).
+ */
+export const planRequests = pgTable(
+  "plan_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    planCode: text("plan_code")
+      .notNull()
+      .references(() => plans.code),
+    requestedById: uuid("requested_by_id").references(() => users.id, { onDelete: "set null" }),
+    /** pending → activated | dismissed */
+    status: text("status").notNull().default("pending"),
+    handledBy: text("handled_by"),
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+    /** When the agency's admin saw the "you're subscribed" welcome (shown once after activation). */
+    welcomedAt: timestamp("welcomed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("plan_requests_org_idx").on(t.orgId, t.createdAt), index("plan_requests_status_idx").on(t.status)],
 );
 
 /** Every webhook/billing event processed once (idempotency + audit trail). */
@@ -813,6 +839,7 @@ export type Organization = typeof organizations.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
+export type PlanRequest = typeof planRequests.$inferSelect;
 export type Signup = typeof signups.$inferSelect;
 
 export type User = typeof users.$inferSelect;

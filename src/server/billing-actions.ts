@@ -9,6 +9,7 @@ import { tenantBaseUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { verify } from "@/lib/secret";
 import { logActivity } from "@/lib/events";
+import { markWelcomed, requestPlan } from "@/lib/billing/manual";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
@@ -68,6 +69,24 @@ export async function changePlan(fd: FormData) {
   await db.update(subscriptions).set({ planCode: code, updatedAt: new Date() }).where(eq(subscriptions.orgId, user.orgId));
   await logActivity(user, { action: "billing.plan", summary: `changed plan to ${plan.name}` });
   redirect("/settings/billing?plan=changed");
+}
+
+/** Admin, without online payment: ask Operra to activate a plan (staff activate it once paid). */
+export async function requestPlanAction(fd: FormData) {
+  const user = await requireUser({ allowLocked: true });
+  assertCan(user, "billing.manage");
+  const code = String(fd.get("plan") ?? "");
+  const req = await requestPlan(user.orgId, code, user.id);
+  if (!req) redirect("/settings/billing");
+  await logActivity(user, { action: "billing.request", summary: `asked to subscribe to ${code}` });
+  redirect("/settings/billing?requested=1");
+}
+
+/** The agency's admin closed the "you're subscribed" welcome after a staff activation. */
+export async function dismissActivationWelcome() {
+  const user = await requireUser({ allowLocked: true });
+  assertCan(user, "billing.manage");
+  await markWelcomed(user.orgId);
 }
 
 /** Admin: open the provider's self-service billing portal. */

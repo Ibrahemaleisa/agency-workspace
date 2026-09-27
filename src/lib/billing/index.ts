@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, eq, isNull, lt } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { billingEvents, invoices, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
 import { appUrl, isPlatform } from "../platform";
@@ -51,7 +51,8 @@ export const getSubscription = cache((orgId: string) => db.query.subscriptions.f
 /** A plan by code (plans live in the database: trial length, display price, provider price ID). */
 export const getPlan = (code: string) => db.query.plans.findFirst({ where: eq(plans.code, code) });
 
-type SubState = Pick<Subscription, "status" | "trialEndsAt" | "providerSubscriptionId">;
+type SubState = Pick<Subscription, "status" | "trialEndsAt" | "providerSubscriptionId"> &
+  Partial<Pick<Subscription, "provider" | "currentPeriodEnd">>;
 
 /**
  * What a subscription means right now. A free trial whose end has passed is "expired" at once —
@@ -61,8 +62,14 @@ type SubState = Pick<Subscription, "status" | "trialEndsAt" | "providerSubscript
  */
 export function effectiveStatus(sub: SubState): Subscription["status"] {
   const ended = sub.status === "trialing" && !!sub.trialEndsAt && sub.trialEndsAt.getTime() <= Date.now();
-  return ended && !sub.providerSubscriptionId ? "expired" : sub.status;
+  if (ended && !sub.providerSubscriptionId) return "expired";
+  // A plan activated by Operra staff runs until its paid-until date, then locks like an ended trial.
+  if (sub.provider === "manual" && sub.status === "active" && sub.currentPeriodEnd && sub.currentPeriodEnd.getTime() <= Date.now()) return "expired";
+  return sub.status;
 }
+
+/** "online" when a payment provider is connected, otherwise "manual" (staff activate plans from the control center). */
+export const paymentMode = () => (providerName() ? "online" : "manual");
 
 /** Subscribed during the trial: paid plan chosen, billing starts when the trial ends. */
 export const subscribedInTrial = (sub: SubState) => sub.status === "trialing" && !!sub.providerSubscriptionId;
@@ -75,11 +82,16 @@ export function trialDaysLeft(sub: SubState) {
 
 /** Records trials that ended without a subscription (run daily by /api/cron/cleanup). */
 export async function expireTrials() {
+  const now = new Date();
   return db
     .update(subscriptions)
-    .set({ status: "expired", updatedAt: new Date() })
+    .set({ status: "expired", updatedAt: now })
     .where(
-      and(eq(subscriptions.status, "trialing"), lt(subscriptions.trialEndsAt, new Date()), isNull(subscriptions.providerSubscriptionId)),
+      or(
+        and(eq(subscriptions.status, "trialing"), lt(subscriptions.trialEndsAt, now), isNull(subscriptions.providerSubscriptionId)),
+        // Manually activated plans whose paid period is over.
+        and(eq(subscriptions.status, "active"), eq(subscriptions.provider, "manual"), lt(subscriptions.currentPeriodEnd, now)),
+      ),
     )
     .returning({ orgId: subscriptions.orgId });
 }

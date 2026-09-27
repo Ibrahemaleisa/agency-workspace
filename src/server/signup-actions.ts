@@ -19,6 +19,7 @@ import { enterWorkspace } from "@/lib/handoff";
 import { getOrgById } from "@/lib/tenant";
 import { sendVerification } from "@/lib/verification";
 import { requestCountry, track, trackLogin, visitorId } from "@/lib/analytics";
+import { requestPlan } from "@/lib/billing/manual";
 
 const SIGNUP_COOKIE = "operra_signup";
 const SIGNUP_HOURS = 24;
@@ -167,7 +168,8 @@ export async function signupBrand(_prev: ActionState, fd: FormData): Promise<Act
 export async function signupStart(_prev: ActionState, fd: FormData): Promise<ActionState> {
   platformOnly();
   const s = await requireSignup(3);
-  const mode = str(fd, "mode") === "subscribe" && providerName() ? "subscribe" : "trial";
+  // Subscribing: online checkout when a provider is connected, otherwise a request that Operra staff activate.
+  const mode = str(fd, "mode") === "subscribe" ? (providerName() ? "subscribe" : "request") : "trial";
   const chosen = str(fd, "plan");
   const plan = chosen ? await db.query.plans.findFirst({ where: and(eq(plans.code, chosen), eq(plans.active, true)) }) : null;
   const planCode = plan?.code ?? s.planCode;
@@ -219,5 +221,6 @@ export async function enterNewWorkspace() {
   // confirmed); it never blocks getting into the workspace.
   await sendVerification(admin.accountId, org, admin.lang === "ar" ? "ar" : "en");
   await trackLogin(admin.accountId, org.id);
+  if (s.startMode === "request") await requestPlan(org.id, s.planCode, admin.id);
   return enterWorkspace(admin, org, s.startMode === "subscribe" ? "/settings/billing?start=checkout" : "/");
 }

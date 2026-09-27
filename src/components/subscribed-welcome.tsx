@@ -14,9 +14,12 @@ import { buttonClass } from "./ui";
 export function SubscribedWelcome({
   state,
   labels,
+  onDone,
 }: {
   state: "pending" | "welcome";
   labels: { pending: string; title: string; body: string; cta: string };
+  /** Remember that the welcome was seen (plans activated by Operra staff). */
+  onDone?: () => Promise<void>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
@@ -43,6 +46,7 @@ export function SubscribedWelcome({
   if (!open) return null;
   const close = () => {
     setOpen(false);
+    void onDone?.();
     router.replace("/");
   };
   return (

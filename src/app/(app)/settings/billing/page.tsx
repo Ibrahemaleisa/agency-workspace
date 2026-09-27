@@ -9,7 +9,8 @@ import { getSaasT } from "@/lib/i18n-saas";
 import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
-import { changePlan, openBillingPortal, startCheckout } from "@/server/billing-actions";
+import { openBillingPortal, requestPlanAction, startCheckout } from "@/server/billing-actions";
+import { pendingRequest } from "@/lib/billing/manual";
 import { formatMoney } from "@/lib/billing/invoice-email";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
 import { AutoSubmitForm } from "@/components/auto-submit";
@@ -44,8 +45,15 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
       : `${new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? b.perYear : b.perMonth}`;
   // Trials (running or ended) switch here; paid subscriptions switch with the provider.
   const canSwitch = !!sub && !org.isDemo && !sub.providerSubscriptionId;
+  // Without online payment, subscribing is a request that Operra staff activate once paid.
+  const canRequest = !provider && canSwitch;
+  const manualActive = sub?.provider === "manual" && status === "active";
+  const pending = canRequest ? await pendingRequest(org.id) : null;
+  const pendingPlan = pending ? offered.find((p) => p.code === pending.planCode) : null;
   const notice =
-    sp.plan === "changed"
+    pending && pendingPlan
+      ? { cls: "border-sky-200 bg-sky-50 text-sky-900", text: b.requested(planName(pendingPlan), fmt(pending.createdAt)) }
+      : sp.plan === "changed"
       ? { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", text: b.planChanged }
       : sp.checkout === "success"
       ? sub?.status === "active"
@@ -96,7 +104,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
               )}
               {sub.currentPeriodEnd && sub.status !== "trialing" && (
                 <div className="flex justify-between gap-4 py-2.5">
-                  <dt className="text-zinc-500">{sub.cancelAtPeriodEnd ? b.cancels(fmt(sub.currentPeriodEnd)) : b.renews(fmt(sub.currentPeriodEnd))}</dt>
+                  <dt className="text-zinc-500">{sub.provider === "manual" ? b.paidUntil(fmt(sub.currentPeriodEnd)) : sub.cancelAtPeriodEnd ? b.cancels(fmt(sub.currentPeriodEnd)) : b.renews(fmt(sub.currentPeriodEnd))}</dt>
                   <dd />
                 </div>
               )}
@@ -118,7 +126,6 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
             )}
           </div>
           {canPay && status === "trialing" && <p className="mt-3 text-xs text-zinc-500">{b.trialNote}</p>}
-          {!provider && isPlatform() && <p className="mt-4 text-sm text-zinc-500">{b.notConfigured}</p>}
           {sp.start === "checkout" && canPay && (
             <AutoSubmitForm action={startCheckout}>
               <p className="mt-4 text-sm text-zinc-500" role="status">…</p>
@@ -166,23 +173,26 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
                     </ul>
                   )}
                   {canPay && p.priceCents != null ? (
-                    // Pay for this plan (a trial moves to it first).
+                    // Pay for this plan online (a trial moves to it first).
                     <form action={startCheckout} className="mt-auto pt-4">
                       <input type="hidden" name="plan" value={p.code} />
                       <button className={buttonClass(p.featured || current ? "primary" : "secondary")} data-testid={`subscribe-${p.code}`}>
                         {b.subscribeTo(planName(p))}
                       </button>
                     </form>
-                  ) : (
-                    !current &&
-                    canSwitch &&
-                    !provider && (
-                      <form action={changePlan} className="mt-auto pt-4">
-                        <input type="hidden" name="plan" value={p.code} />
-                        <button className={buttonClass("secondary", "sm")}>{b.choosePlan}</button>
-                      </form>
-                    )
-                  )}
+                  ) : canRequest && !(manualActive && current) ? (
+                    // No online payment: ask Operra to activate the plan (staff confirm payment).
+                    <form action={requestPlanAction} className="mt-auto pt-4">
+                      <input type="hidden" name="plan" value={p.code} />
+                      <button
+                        className={buttonClass(p.featured || current ? "primary" : "secondary")}
+                        disabled={pending?.planCode === p.code}
+                        data-testid={`subscribe-${p.code}`}
+                      >
+                        {pending?.planCode === p.code ? b.requestedShort : b.subscribeTo(planName(p))}
+                      </button>
+                    </form>
+                  ) : null}
                 </li>
               );
             })}

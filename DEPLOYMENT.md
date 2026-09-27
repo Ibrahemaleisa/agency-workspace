@@ -137,6 +137,13 @@ provider + event id), so Stripe's retries are safe. Failed renewals arrive as `p
 Subscribing during a free trial keeps the remaining days (Stripe `trial_end`; Stripe requires at least 48 hours
 left, otherwise billing starts at once).
 
+### 3.4b Without a payment provider (manual billing)
+
+With no `STRIPE_SECRET_KEY`, "Subscribe" sends a plan request instead of a checkout. Requests appear at the top of the
+control center; after the agency pays (bank transfer or otherwise), activate the plan there for the months paid. The
+workspace opens for that period, an invoice is recorded (and emailed if email is set up), and it locks again when the
+period ends unless renewed. Nothing needs configuring for this mode.
+
 ### 3.5 Plans, trial and prices
 
 - Plans live in the `plans` table and are edited in the control center (**Plans**): name, **free trial (days)**,
