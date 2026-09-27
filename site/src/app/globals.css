@@ -78,8 +78,34 @@ p {
   text-wrap: pretty;
 }
 
+/*
+ * Arabic: IBM Plex Sans Arabic leads, Instrument Sans picks up Latin words; mono labels fall back
+ * to Plex Arabic for Arabic glyphs. Tracking breaks Arabic letter joining, so it's always 0, and
+ * uppercase has no meaning there.
+ */
 :lang(ar) {
-  font-family: var(--font-arabic);
+  --font-sans: var(--font-plex-arabic), var(--font-instrument), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+/* Mono labels in Arabic: Plex Arabic leads (Plex Mono's wide space would gap the words); numbers stay tabular. */
+:lang(ar) .font-mono {
+  font-family: var(--font-plex-arabic), var(--font-plex-mono), ui-monospace, monospace;
+}
+/* Latin data (addresses, emails) marked ltr / lang="en" keeps the real mono face. */
+:lang(ar) .font-mono[dir="ltr"],
+:lang(ar) .font-mono:lang(en) {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+/* Latin runs marked lang="en" inside Arabic pages (the other-language tagline) keep the Latin face. */
+html[lang="ar"] [lang="en"]:not(.font-mono) {
+  font-family: var(--font-instrument), system-ui, sans-serif;
+}
+
+/* Arrows point along the reading direction. */
+[dir="rtl"] svg.lucide-arrow-right,
+[dir="rtl"] svg.lucide-arrow-left {
+  transform: scaleX(-1);
 }
 
 /* Icons: 1.5px stroke, square caps, mitred joins — the wordmark's butt terminals. */

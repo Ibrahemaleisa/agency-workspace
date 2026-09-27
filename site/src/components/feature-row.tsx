@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import type { FeatureTheme } from "@/content/features";
+import type { FeatureTheme } from "@/content/en/features";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 import { ProductFrame } from "./product-frame";

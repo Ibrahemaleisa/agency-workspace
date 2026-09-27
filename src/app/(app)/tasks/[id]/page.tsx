@@ -249,7 +249,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                         {f.fileName}
                       </a>
                       <div className="text-xs text-zinc-400">
-                        {formatBytes(f.size)} · {f.uploaderName} · {formatDistanceToNow(f.createdAt, { addSuffix: true, locale })}
+                        <bdi>{formatBytes(f.size)}</bdi> · <bdi>{f.uploaderName}</bdi> · {formatDistanceToNow(f.createdAt, { addSuffix: true, locale })}
                       </div>
                     </div>
                     {!isClient && (f.clientVisible ? <Badge tone="amber">{k.sharedWithClient}</Badge> : <Badge>{k.internal}</Badge>)}

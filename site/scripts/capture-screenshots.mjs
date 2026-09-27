@@ -7,19 +7,22 @@
  *   (site/)      node scripts/capture-screenshots.mjs               # needs Playwright: npx playwright install chromium
  *
  * Output: src/assets/product/*.png (2x). Run `node scripts/compress-screenshots.mjs` afterwards.
+ * Arabic set for /ar:  SHOT_LANG=ar node scripts/capture-screenshots.mjs  → src/assets/product/ar/*.png
+ * (the product in Arabic, right to left; crop rectangles are mirrored).
  * Records are found by name, so this works on any fresh demo seed.
  */
 import { chromium } from "playwright";
 
 const BASE = process.env.PRODUCT_URL ?? "http://localhost:3000";
-const OUT = new URL("../src/assets/product/", import.meta.url).pathname;
+const LANG = process.env.SHOT_LANG === "ar" ? "ar" : "en";
+const OUT = new URL(LANG === "ar" ? "../src/assets/product/ar/" : "../src/assets/product/", import.meta.url).pathname;
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 // Area to the right of the product sidebar, for cropped shots.
 const CONTENT_X = 280;
 const CONTENT_W = 1136;
 
-async function signIn(browser, email, { lang = "en", viewport = DESKTOP } = {}) {
+async function signIn(browser, email, { lang = LANG, viewport = DESKTOP } = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/lang?to=${lang}&next=/login`);
@@ -41,7 +44,9 @@ async function hrefOf(page, listPath, selector, text) {
   return href.split("?")[0];
 }
 
-const shot = (page, name, clip) => page.screenshot({ path: `${OUT}${name}.png`, ...(clip ? { clip } : {}) });
+// In Arabic the sidebar is on the right, so crops mirror horizontally.
+const mirror = (clip) => (LANG === "ar" ? { ...clip, x: DESKTOP.width - clip.x - clip.width } : clip);
+const shot = (page, name, clip) => page.screenshot({ path: `${OUT}${name}.png`, ...(clip ? { clip: mirror(clip) } : {}) });
 
 async function card(page, title, name) {
   await page
@@ -60,8 +65,8 @@ try {
 
   await open(admin, "/");
   await shot(admin, "dashboard");
-  await card(admin, "Project health matrix", "crop-matrix");
-  await card(admin, "Team workload", "crop-workload");
+  await card(admin, LANG === "ar" ? "مصفوفة صحة المشاريع" : "Project health matrix", "crop-matrix");
+  await card(admin, LANG === "ar" ? "ضغط العمل على الفريق" : "Team workload", "crop-workload");
   await shot(admin, "crop-stats", { x: CONTENT_X, y: 170, width: 1140, height: 145 });
   await open(admin, "/clients");
   await shot(admin, "clients");
@@ -81,9 +86,11 @@ try {
   await shot(admin, "task-request-approval");
   await shot(admin, "crop-request-approval", { x: 276, y: 190, width: 762, height: 212 });
 
-  const adminAr = await signIn(browser, "sara@northwind.agency", { lang: "ar" });
-  await open(adminAr, "/");
-  await shot(adminAr, "dashboard-ar");
+  if (LANG === "en") {
+    const adminAr = await signIn(browser, "sara@northwind.agency", { lang: "ar" });
+    await open(adminAr, "/");
+    await shot(adminAr, "dashboard-ar");
+  }
 
   const phone = await signIn(browser, "sara@northwind.agency", { viewport: PHONE });
   await open(phone, "/");

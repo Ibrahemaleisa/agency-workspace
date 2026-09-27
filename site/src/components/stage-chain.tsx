@@ -1,11 +1,13 @@
 import { BadgeCheck } from "lucide-react";
-import type { Stage } from "@/content/solutions";
+import type { Stage } from "@/content/en/solutions";
+import { getContent } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 
 /** A module's workflow stages as chips; client-approval stages carry an ink outline and a check badge. */
-export function StageChain({ stages, size = "md" }: { stages: Stage[]; size?: "sm" | "md" }) {
+export async function StageChain({ stages, size = "md" }: { stages: Stage[]; size?: "sm" | "md" }) {
+  const { UI } = await getContent();
   return (
-    <ol className="flex flex-wrap gap-1.5" aria-label="Workflow stages">
+    <ol className="flex flex-wrap gap-1.5" aria-label={UI.workflowStages}>
       {stages.map((s, i) => (
         <li
           key={s.name}
@@ -16,11 +18,12 @@ export function StageChain({ stages, size = "md" }: { stages: Stage[]; size?: "s
           )}
         >
           <span className="font-mono text-[11px] text-muted">{String(i + 1).padStart(2, "0")}</span>
-          {s.name}
+          {/* Starter stage names are English in both languages; isolate them in Arabic text. */}
+          <bdi>{s.name}</bdi>
           {s.clientApproval && (
             <>
               <BadgeCheck aria-hidden className="size-3.5" />
-              <span className="sr-only">(client approval)</span>
+              <span className="sr-only">{UI.clientApproval}</span>
             </>
           )}
         </li>

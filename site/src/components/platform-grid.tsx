@@ -1,9 +1,10 @@
-import { PLATFORM } from "@/content/features";
+import { getContent } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
 /** Hairline grid of platform foundations — hairlines instead of boxes. */
-export function PlatformGrid({ onPanel }: { onPanel?: boolean }) {
+export async function PlatformGrid({ onPanel }: { onPanel?: boolean }) {
+  const { PLATFORM } = await getContent();
   return (
     <ul
       className={cn(

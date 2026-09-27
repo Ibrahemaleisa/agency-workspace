@@ -5,10 +5,12 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
 
-const dir = new URL("../src/assets/product/", import.meta.url).pathname;
+const root = new URL("../src/assets/product/", import.meta.url).pathname;
 let before = 0;
 let after = 0;
-for (const file of readdirSync(dir).filter((f) => f.endsWith(".png"))) {
+const files = readdirSync(root, { recursive: true }).filter((f) => String(f).endsWith(".png"));
+for (const file of files) {
+  const dir = root;
   const input = readFileSync(dir + file);
   const output = await sharp(input).png({ palette: true, quality: 95, effort: 10, compressionLevel: 9, dither: 0.5 }).toBuffer();
   before += input.length;

@@ -57,8 +57,9 @@ export async function ModuleCard({
                   current ? "font-semibold text-zinc-900" : s.complete ? "text-zinc-500" : "text-zinc-400",
                 )}
               >
-                {s.complete ? <Check className="size-3 shrink-0 text-emerald-600" /> : <span className="tabular-nums">{i + 1}.</span>}
-                {s.name}
+                {s.complete ? <Check className="size-3 shrink-0 text-emerald-600" /> : <span dir="ltr" className="tabular-nums">{i + 1}.</span>}
+                {/* Stage names are the agency's own text: isolate them so mixed Arabic / English reads right. */}
+                <bdi className="truncate">{s.name}</bdi>
                 {s.clientApproval && <span className="text-amber-600">●</span>}
               </span>
             </li>

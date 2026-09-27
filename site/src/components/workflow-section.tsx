@@ -1,9 +1,10 @@
-import { WORKFLOW } from "@/content/workflow";
+import { getContent } from "@/i18n/server";
 import { ProductFrame } from "./product-frame";
 import { WorkflowTour } from "./workflow-tour";
 
 /** Server wrapper: renders each step's screenshot here so the client tour stays small. */
-export function WorkflowSection() {
+export async function WorkflowSection() {
+  const { WORKFLOW } = await getContent();
   const frames = WORKFLOW.map((s) => (
     <ProductFrame key={s.id} shot={s.shot} sizes="(min-width: 1200px) 820px, (min-width: 1024px) 65vw, 100vw" />
   ));

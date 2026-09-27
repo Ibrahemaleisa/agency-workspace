@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-import { SOLUTIONS } from "@/content/solutions";
+import { SOLUTIONS } from "@/content/en/solutions";
+import { localePath } from "@/i18n/config";
 import { absoluteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -16,5 +17,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/contact", priority: 0.5 },
     { path: "/login", priority: 0.3 },
   ];
-  return pages.map((p) => ({ url: absoluteUrl(p.path), changeFrequency: "monthly", priority: p.priority }));
+  // Every page in both languages, each entry listing its alternate.
+  return pages.flatMap((p) =>
+    (["en", "ar"] as const).map((l) => ({
+      url: absoluteUrl(localePath(l, p.path)),
+      changeFrequency: "monthly" as const,
+      priority: p.priority,
+      alternates: { languages: { en: absoluteUrl(localePath("en", p.path)), ar: absoluteUrl(localePath("ar", p.path)) } },
+    })),
+  );
 }

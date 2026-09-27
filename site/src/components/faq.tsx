@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import type { Faq } from "@/content/pricing";
+import type { Faq } from "@/content/en/pricing";
 
 export function FaqList({ items }: { items: Faq[] }) {
   return (

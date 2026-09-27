@@ -1,3 +1,4 @@
+import { getContent } from "@/i18n/server";
 import { cn } from "@/lib/cn";
 import { StatusDot, type DotState } from "./status-dot";
 
@@ -7,7 +8,8 @@ export type SchematicNode = { label: string; note?: string; state: DotState };
  * Schematics, not illustration: 1px hairlines, status-dot nodes, mono labels,
  * at most one signal (live) dot per drawing. Horizontal from `sm`, vertical on phones.
  */
-export function Schematic({ nodes, label, className }: { nodes: SchematicNode[]; label: string; className?: string }) {
+export async function Schematic({ nodes, label, className }: { nodes: SchematicNode[]; label: string; className?: string }) {
+  const { UI } = await getContent();
   return (
     <ol aria-label={label} className={cn("grid gap-0 sm:grid-flow-col sm:auto-cols-fr", className)}>
       {nodes.map((n, i) => {
@@ -23,7 +25,7 @@ export function Schematic({ nodes, label, className }: { nodes: SchematicNode[];
               <p className="font-mono text-[11px] leading-4 tracking-[0.08em] text-muted">{String(i + 1).padStart(2, "0")}</p>
               <p className="mt-0.5 text-[14px] leading-5 font-medium">
                 {n.label}
-                <span className="sr-only">{n.state === "live" ? " (in progress)" : n.state === "done" ? " (done)" : " (next)"}</span>
+                <span className="sr-only">{n.state === "live" ? UI.schematic.live : n.state === "done" ? UI.schematic.done : UI.schematic.next}</span>
               </p>
               {n.note && <p className="mt-0.5 text-[13px] leading-[18px] text-muted">{n.note}</p>}
             </div>

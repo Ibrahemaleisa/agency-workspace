@@ -3,12 +3,13 @@
 import { useActionState, useEffect, useRef } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { submitContact, submitTrial, type FormState } from "@/app/actions";
+import { useLocale } from "@/i18n/provider";
 import { site } from "@/lib/site";
 import { buttonClass } from "./button";
 import { SelectField, SpamGuard, TextArea, TextField } from "./form-fields";
-import { TRIAL_ROLES as ROLES } from "@/content/roles";
 
 function Status({ state }: { state: FormState }) {
+  const { ui } = useLocale();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (state?.error) ref.current?.focus();
@@ -20,7 +21,7 @@ function Status({ state }: { state: FormState }) {
       {!state.fieldErrors && site.contactEmail && (
         <>
           {" "}
-          You can also email{" "}
+          {ui.form.alsoEmail}{" "}
           <a className="underline" href={`mailto:${site.contactEmail}`}>
             {site.contactEmail}
           </a>
@@ -44,88 +45,73 @@ function Success({ title, body }: { title: string; body: string }) {
 }
 
 function Submit({ pending, children, signal }: { pending: boolean; children: string; signal?: boolean }) {
+  const { ui } = useLocale();
   return (
     <button type="submit" disabled={pending} className={buttonClass(signal ? "signal" : "primary", "lg", "w-full sm:w-auto")}>
       {pending && <Loader2 aria-hidden className="size-4 animate-spin" />}
-      {pending ? "Sending…" : children}
+      {pending ? ui.form.sending : children}
     </button>
   );
 }
 
 export function TrialForm() {
+  const { ui } = useLocale();
+  const f = ui.form;
+  const o = ui.options;
   const [state, action, pending] = useActionState(submitTrial, undefined);
-  if (state?.ok) {
-    return (
-      <Success
-        title="Request received"
-        body="We’ll set up your workspace and reply by email with its address and your admin sign-in. Until then, the live demo agency is open."
-      />
-    );
-  }
+  if (state?.ok) return <Success title={f.trialDoneTitle} body={f.trialDoneBody} />;
   const e = state?.fieldErrors ?? {};
   const v = state?.values ?? {};
   return (
     <form action={action} noValidate className="relative space-y-5" key={JSON.stringify(v)}>
       <Status state={state} />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="name" label="Your name" autoComplete="name" required error={e.name} defaultValue={v.name} />
-        <TextField name="email" type="email" label="Work email" autoComplete="email" required error={e.email} defaultValue={v.email} />
+        <TextField name="name" label={f.name} autoComplete="name" required error={e.name} defaultValue={v.name} />
+        <TextField name="email" type="email" label={f.workEmail} autoComplete="email" required error={e.email} defaultValue={v.email} />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="agency" label="Agency name" autoComplete="organization" required error={e.agency} defaultValue={v.agency} />
-        <TextField name="website" label="Agency website" type="url" autoComplete="url" placeholder="https://" error={e.website} defaultValue={v.website} />
+        <TextField name="agency" label={f.agencyName} autoComplete="organization" required error={e.agency} defaultValue={v.agency} />
+        <TextField name="website" label={f.website} type="url" autoComplete="url" placeholder="https://" error={e.website} defaultValue={v.website} />
       </div>
-      <SelectField
-        name="role"
-        label="Your role"
-        options={ROLES}
-        error={e.role}
-        defaultValue={v.role}
-      />
+      <SelectField name="role" label={f.yourRole} options={o.roles} error={e.role} defaultValue={v.role} />
       <div className="grid gap-5 sm:grid-cols-3">
-        <SelectField name="teamSize" label="Team size" required options={["1-5", "6-15", "16-50", "51+"]} error={e.teamSize} defaultValue={v.teamSize} />
-        <SelectField
-          name="agencyType"
-          label="What you do"
-          options={["Content & social", "Production", "Performance & paid media", "Full-service", "Other"]}
-          error={e.agencyType}
-          defaultValue={v.agencyType}
-        />
-        <SelectField name="language" label="Workspace language" required options={["English", "Arabic", "Both"]} error={e.language} defaultValue={v.language} />
+        <SelectField name="teamSize" label={f.teamSize} required options={o.teamSize} error={e.teamSize} defaultValue={v.teamSize} />
+        <SelectField name="agencyType" label={f.agencyType} options={o.agencyType} error={e.agencyType} defaultValue={v.agencyType} />
+        <SelectField name="language" label={f.workspaceLanguage} required options={o.language} error={e.language} defaultValue={v.language} />
       </div>
-      <TextArea name="message" label="Anything we should know?" rows={4} placeholder="How you run projects today, tools you’re replacing, timing…" error={e.message} defaultValue={v.message} />
+      <TextArea name="message" label={f.notes} rows={4} placeholder={f.notesPlaceholder} error={e.message} defaultValue={v.message} />
       <SpamGuard startedAt={v.startedAt} />
       <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center">
         <Submit pending={pending} signal>
-          Request my workspace
+          {f.requestWorkspace}
         </Submit>
-        <p className="text-[13px] leading-[18px] text-muted">We only use these details to set up your workspace and reply to you.</p>
+        <p className="text-[13px] leading-[18px] text-muted">{f.privacy}</p>
       </div>
     </form>
   );
 }
 
 export function ContactForm() {
+  const { ui } = useLocale();
+  const f = ui.form;
   const [state, action, pending] = useActionState(submitContact, undefined);
-  if (state?.ok) {
-    return <Success title="Message sent" body="We’ll reply to the email address you gave us." />;
-  }
+  if (state?.ok) return <Success title={f.contactDoneTitle} body={f.contactDoneBody} />;
   const e = state?.fieldErrors ?? {};
   const v = state?.values ?? {};
   return (
     <form action={action} noValidate className="relative space-y-5" key={JSON.stringify(v)}>
       <Status state={state} />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="name" label="Your name" autoComplete="name" required error={e.name} defaultValue={v.name} />
-        <TextField name="email" type="email" label="Email" autoComplete="email" required error={e.email} defaultValue={v.email} />
+        <TextField name="name" label={f.name} autoComplete="name" required error={e.name} defaultValue={v.name} />
+        <TextField name="email" type="email" label={f.email} autoComplete="email" required error={e.email} defaultValue={v.email} />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField name="agency" label="Agency" autoComplete="organization" error={e.agency} defaultValue={v.agency} />
-        <SelectField name="topic" label="Topic" required options={["Sales", "Demo", "Existing workspace", "Other"]} error={e.topic} defaultValue={v.topic} />
+        <TextField name="agency" label={f.agency} autoComplete="organization" error={e.agency} defaultValue={v.agency} />
+        <SelectField name="topic" label={f.topic} required options={ui.options.topic} error={e.topic} defaultValue={v.topic} />
       </div>
-      <TextArea name="message" label="Message" rows={6} required error={e.message} defaultValue={v.message} />
+      <TextArea name="message" label={f.message} rows={6} required error={e.message} defaultValue={v.message} />
       <SpamGuard startedAt={v.startedAt} />
-      <Submit pending={pending}>Send message</Submit>
+      <Submit pending={pending}>{f.sendMessage}</Submit>
     </form>
   );
 }

@@ -55,21 +55,21 @@ async function TemplateForm({ template }: { template?: ModuleTemplate }) {
       {template && <input type="hidden" name="templateId" value={template.id} />}
       <div className="grid grid-cols-3 gap-3">
         <Field label={m.name} className="col-span-2">
-          <Input name="name" defaultValue={template?.name} required />
+          <Input name="name" dir="auto" defaultValue={template?.name} required />
         </Field>
         <Field label={m.color}>
           <Select name="color" defaultValue={template?.color ?? "slate"} options={TONES.map((t) => ({ value: t, label: t }))} />
         </Field>
       </div>
       <Field label={m.description}>
-        <Input name="description" defaultValue={template?.description ?? ""} />
+        <Input name="description" dir="auto" defaultValue={template?.description ?? ""} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={m.stages} hint={m.stagesHint}>
-          <Textarea name="stages" rows={8} defaultValue={stages} className="font-mono text-xs" />
+          <Textarea name="stages" dir="auto" rows={8} defaultValue={stages} className="font-mono text-xs" />
         </Field>
         <Field label={m.fields} hint={m.fieldsHint}>
-          <Textarea name="fields" rows={8} defaultValue={fields} className="font-mono text-xs" />
+          <Textarea name="fields" dir="auto" rows={8} defaultValue={fields} className="font-mono text-xs" />
         </Field>
       </div>
       <div className="flex justify-end">

@@ -19,8 +19,10 @@ export const site = {
   descriptorAr: "نظام تشغيل الوكالات",
   description:
     "Operra runs the whole agency in one place: clients, projects, reusable workflows, tasks, client approvals, chat and dashboards — in a workspace that carries your agency’s brand.",
+  descriptionAr:
+    "أوبيرّا يدير وكالتك كلها من مكان واحد: العملاء والمشاريع وسير العمل القابل لإعادة الاستخدام والمهام وموافقات العميل والمحادثات واللوحات — في مساحة عمل تحمل هوية وكالتك.",
   url: siteUrl(),
-  /** Public demo workspace (sample agency "Northwind Studio"). */
+  /** Legacy shared demo deployment (sample agency "Northwind Studio"), used when NEXT_PUBLIC_APP_URL is unset. */
   demoUrl: process.env.NEXT_PUBLIC_DEMO_URL ?? "https://workspace-demo-sooty.vercel.app",
   /** The demo lists its sign-in accounts on its own login page; these are the ones we point to. */
   demoAccounts: [

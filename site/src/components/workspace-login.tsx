@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ArrowRight } from "lucide-react";
+import { useLocale } from "@/i18n/provider";
 import { buttonClass } from "./button";
 
 const KEY = "operra:last-workspace";
@@ -25,6 +26,8 @@ export function WorkspaceLogin() {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const { ui } = useLocale();
+  const w = ui.workspace;
 
   useEffect(() => {
     try {
@@ -39,7 +42,7 @@ export function WorkspaceLogin() {
     e.preventDefault();
     const host = normalizeWorkspace(input.current?.value ?? "");
     if (!host) {
-      setError("Enter your workspace address, for example app.youragency.com");
+      setError(w.invalid);
       return;
     }
     try {
@@ -53,7 +56,7 @@ export function WorkspaceLogin() {
   return (
     <form onSubmit={onSubmit} noValidate>
       <label htmlFor={id} className="text-[14px] leading-5 font-medium">
-        Workspace address
+        {w.label}
       </label>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
         <input
@@ -64,6 +67,7 @@ export function WorkspaceLogin() {
           autoCapitalize="none"
           spellCheck={false}
           placeholder="app.youragency.com"
+          dir="ltr"
           ref={input}
           onChange={() => setError(null)}
           aria-invalid={!!error || undefined}
@@ -71,12 +75,12 @@ export function WorkspaceLogin() {
           className="block h-11 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 font-mono text-[14px] placeholder:text-muted/80 aria-[invalid=true]:border-danger sm:flex-1"
         />
         <button type="submit" className={buttonClass("primary", "lg")}>
-          Continue
+          {w.continue}
           <ArrowRight aria-hidden className="size-4" />
         </button>
       </div>
       <p id={`${id}-help`} className={error ? "mt-2 text-[13px] leading-[18px] text-danger" : "mt-2 text-[13px] leading-[18px] text-muted"} role={error ? "alert" : undefined}>
-        {error ?? "It’s in your welcome email, and usually on your agency’s own domain."}
+        {error ?? w.help}
       </p>
     </form>
   );

@@ -1,13 +1,15 @@
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { shots, type Shot, type ShotKey } from "@/content/shots";
+import { getLocale } from "@/i18n/server";
 
 /**
  * A real product screenshot, shown 1:1 — no floating devices, no tilted mockups.
  * `browser` adds a quiet address bar (workspaces run on the agency's own domain);
  * `card` shows a cropped piece of UI on its own. Hairlines, not shadows.
  */
-export function ProductFrame({
+/** On /ar the Arabic capture is used: the product in Arabic, right to left. */
+export async function ProductFrame({
   shot,
   variant = "browser",
   className,
@@ -21,10 +23,11 @@ export function ProductFrame({
   eager?: boolean;
 }) {
   const s: Shot = shots[shot];
+  const ar = (await getLocale()) === "ar";
   const img = (
     <Image
-      src={s.src}
-      alt={s.alt}
+      src={ar ? s.srcAr : s.src}
+      alt={ar ? s.altAr : s.alt}
       sizes={sizes}
       placeholder="blur"
       loading={eager ? "eager" : "lazy"}
@@ -53,7 +56,7 @@ export function BrowserBar({ path, className }: { path?: string; className?: str
           <span key={i} className="size-2 rounded-full bg-line" />
         ))}
       </div>
-      <div className="mx-auto hidden max-w-sm flex-1 truncate rounded-xs border border-line bg-surface px-3 py-0.5 text-center font-mono text-[11px] text-muted sm:block">
+      <div dir="ltr" className="mx-auto hidden max-w-sm flex-1 truncate rounded-xs border border-line bg-surface px-3 py-0.5 text-center font-mono text-[11px] text-muted sm:block">
         app.youragency.com{path && path !== "/" ? path : ""}
       </div>
       <div className="w-8" />

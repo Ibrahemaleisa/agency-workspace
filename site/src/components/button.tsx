@@ -1,7 +1,7 @@
-import Link, { type LinkProps } from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { LocalLink } from "./local-link";
 
 /*
  * Buttons (brand system → Button). Primary actions are ink, not orange.
@@ -27,7 +27,8 @@ export function buttonClass(variant: Variant = "primary", size: keyof typeof siz
   return cn(base, variants[variant], sizes[size], className);
 }
 
-export function ButtonLink<T extends string>({
+/** A link styled as a button. Relative paths stay in the visitor's language; absolute URLs pass through. */
+export function ButtonLink({
   href,
   children,
   variant = "primary",
@@ -35,15 +36,18 @@ export function ButtonLink<T extends string>({
   arrow,
   className,
   external,
+  newTabLabel = "(opens in a new tab)",
   ...rest
 }: {
-  href: LinkProps<T>["href"] | string;
+  href: string;
   children: ReactNode;
   variant?: Variant;
   size?: keyof typeof sizes;
   arrow?: boolean;
   className?: string;
   external?: boolean;
+  /** Label for the "(opens in a new tab)" hint on external links. */
+  newTabLabel?: string;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const content = (
     <>
@@ -53,15 +57,15 @@ export function ButtonLink<T extends string>({
   );
   if (external) {
     return (
-      <a href={href as string} target="_blank" rel="noopener noreferrer" className={buttonClass(variant, size, className)} {...rest}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={buttonClass(variant, size, className)} {...rest}>
         {content}
-        <span className="sr-only"> (opens in a new tab)</span>
+        <span className="sr-only"> {newTabLabel}</span>
       </a>
     );
   }
   return (
-    <Link href={href as LinkProps<T>["href"]} className={buttonClass(variant, size, className)} {...rest}>
+    <LocalLink href={href} className={buttonClass(variant, size, className)} {...rest}>
       {content}
-    </Link>
+    </LocalLink>
   );
 }
