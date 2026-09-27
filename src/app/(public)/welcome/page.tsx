@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDict } from "@/lib/lang";
+import { isPlatform } from "@/lib/platform";
 import { BrandLogo, BrandMark } from "@/components/site/brand";
 import { Reveal } from "@/components/site/reveal";
 import { LeadForm } from "@/components/site/lead-form";
@@ -34,7 +35,11 @@ const SERVICE_ICONS = { content: PenTool, production: Clapperboard, paid: Megaph
 export default async function LandingPage() {
   const [{ lang, t, brand }, user] = await Promise.all([getDict(), getCurrentUser()]);
   // The agency can switch the public landing page off; visitors then go straight to sign-in.
-  if (!brand.showLanding) redirect(user ? "/" : "/login");
+  // On the platform's own host (no agency), visitors belong on the Operra marketing site.
+  if (!brand.showLanding) {
+    if (user) redirect("/");
+    redirect((isPlatform() && !brand.orgId && process.env.MARKETING_URL) || "/login");
+  }
   if (!brand.orgId) redirect("/setup");
   const brandName = brand.name[lang];
   const social = Object.entries(brand.social).filter(([, url]) => url);
