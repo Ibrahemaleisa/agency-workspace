@@ -8,6 +8,13 @@ This edition carries **no built-in brand**. Each customer agency sets its own na
 default language and public page from **Settings → Brand**, and everything — sidebar, sign-in,
 landing page, browser icon, emails, guide — follows it.
 
+It runs in two modes:
+
+- **Single-agency mode** (default) — one agency per deployment and database, described below.
+- **Operra platform mode** (`OPERRA_PLATFORM=true`) — the multi-tenant Operra SaaS: self-serve sign-up
+  with provisioning (serials `OPR-000001`…), subscriptions (Stripe), invitations, role-specific guided
+  tours, a read-only demo preview and the Operra control center. See **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ## How white-labelling works
 
 **One repository, one deployment per customer.**
@@ -86,18 +93,26 @@ projects, tasks and users — every demo account uses the password `password`.
 | `SHOW_DEMO_ACCOUNTS` | optional | `true` lists demo logins on the sign-in page (demo sites only) |
 | `SEED_DEMO` | optional | `true` loads the demo agency on the first build of an **empty** database (demo sites only) |
 
+Platform mode adds `OPERRA_PLATFORM`, `APP_SECRET`, `APP_ROOT_DOMAIN`, `CRON_SECRET`, `SEED_PREVIEW`,
+`BILLING_PROVIDER`, `STRIPE_*` and more — all in [DEPLOYMENT.md](DEPLOYMENT.md) and `.env.example`.
+
 ## Fonts
 
-English uses **DM Sans** and Arabic uses **IBM Plex Sans Arabic** — both open-source (SIL OFL), so
-the edition can be redistributed to any customer. Don't add a commercially licensed font here unless
+English uses **DM Sans** and Arabic uses **IBM Plex Sans Arabic**; Operra's own screens (sign-up,
+preview, control center) use **Instrument Sans** — all open-source (SIL OFL), so the edition can be
+redistributed to any customer. Don't add a commercially licensed font here unless
 its licence covers every customer deployment.
 
 ## How it's organized
 
 ```
 src/
-  app/(public)/          landing (/welcome), sign-in, first-run setup
-  app/(app)/             the workspace (dashboard, projects, tasks, chat, settings/brand, guide…)
+  app/(public)/          landing (/welcome), sign-in, first-run setup, invitations
+  app/(app)/             the workspace (dashboard, projects, tasks, chat, settings/brand, billing, guide…)
+  app/(platform)/        platform mode: sign-up wizard, provisioning, /preview, test checkout
+  app/operra/            platform mode: Operra control center (staff only)
+  lib/tenant.ts          which tenant a request is for (subdomain, custom domain, /w/{slug})
+  lib/provisioning.ts    idempotent tenant provisioning · lib/billing/  provider abstraction
   lib/brand.ts           brand settings + colour theming
   lib/permissions.ts     central role → permission policy
   lib/i18n.ts, i18n-app.ts   Arabic + English copy ("{brand}" is replaced with the agency name)
@@ -106,7 +121,7 @@ src/
   content/guide.ts       built-in user guide
 ```
 
-The Operra marketing website is a separate app in `site/` with its own Vercel project — see
-`site/README.md`. It is not part of the workspace build.
+The Operra marketing website (English at `/`, Arabic at `/ar`) is a separate app in `site/` with
+its own Vercel project — see `site/README.md`. It is not part of the workspace build.
 
 Stack: Next.js 16 · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL.

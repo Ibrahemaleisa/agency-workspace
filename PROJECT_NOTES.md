@@ -16,8 +16,8 @@ Talk to the owner in **English** (they write in Arabic or English); the product 
 - **Never touch Fada's own project.** Do not modify, push to, deploy or change settings of:
   the GitHub repo `Ibrahemaleisa/agency-pm`, the Vercel project `agency-pm`
   (`agency-pm-gilt.vercel.app`), or its Neon database `neondb`. All work happens here.
-- **No commercially licensed fonts.** Only open-source fonts (currently DM Sans + IBM Plex Sans
-  Arabic). Fada's Thmanyah font is licensed to Fada only and must never be added here.
+- **No commercially licensed fonts.** Only open-source fonts (currently DM Sans, IBM Plex Sans
+  Arabic, and — for Operra's own screens and the marketing site — Instrument Sans and IBM Plex Mono). Fada's Thmanyah font is licensed to Fada only and must never be added here.
 - **No Fada branding** in code, copy, seed data or defaults. Brand text uses the `{brand}`
   placeholder (see `lib/brand.ts` → `withBrand`).
 - **Never run the demo seed (`npm run demo` / `db:seed`) against a customer's database** — it wipes it.
@@ -38,11 +38,24 @@ build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `
 
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
+## Operra platform mode
+
+`OPERRA_PLATFORM=true` turns this repo into the multi-tenant Operra SaaS (sign-up, provisioning, billing,
+invitations, tours, `/preview`, control center at `/operra`). It must run on its **own** Vercel project and
+database — never on a single-agency customer's. Everything about it: `DEPLOYMENT.md`.
+Without the flag, single-agency deployments behave exactly as before (billing, sign-up and preview are off).
+
+- Isolation check (read-only): `npm run verify:isolation`.
+- Preview tenant (safe, only touches slug `demo`): `npm run db:seed-preview`.
+- Trial length is a DB default of **14 days** (`plans.trial_days`) — not yet confirmed by the owner.
+
 ## Marketing website (`site/`)
 
 The Operra marketing site is a **separate Next.js app in `site/`**, deployed as its own Vercel project
 (Root Directory `site`). It is excluded from the product's `tsconfig.json` and ESLint, so customer
-workspaces never build or ship it. Copy lives in `site/src/content/`; screenshots are real captures of
+workspaces never build or ship it. English at `/`, Arabic at `/ar` (`app/[lang]`); copy lives in
+`site/src/content/en` and `site/src/content/ar` (same shapes). `NEXT_PUBLIC_APP_URL` points its calls to
+action at the platform's sign-up, preview and sign-in; screenshots are real captures of
 the demo data (`site/scripts/capture-screenshots.mjs`). Pricing numbers are deliberately unset
 (`site/src/content/pricing.ts`) until agreed. See `site/README.md`.
 

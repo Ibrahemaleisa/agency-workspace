@@ -24,7 +24,11 @@ Before pushing: `npx tsc --noEmit && npx eslint src && npm run build`.
 3. Environment variables — see `.env.example`. In production configure at least one delivery
    channel for the forms (`INQUIRY_TO` + `RESEND_API_KEY` or SMTP, and/or `INQUIRY_WEBHOOK_URL`);
    without one, the forms show an error instead of silently dropping requests.
-4. `vercel.json` skips builds when nothing under `site/` changed.
+4. `NEXT_PUBLIC_APP_URL` — the Operra app (platform mode, e.g. `https://app.operra.com`). With it,
+   "Start free trial" goes to the app's self-serve sign-up, the demo to its read-only `/preview` and
+   "Log in" to its sign-in, all in the visitor's language. Without it, the site falls back to the trial
+   request form and the legacy demo (`NEXT_PUBLIC_DEMO_URL`).
+5. `vercel.json` skips builds when nothing under `site/` changed.
 
 The customer workspaces (repo root) ignore this folder: `site` is excluded from the root
 `tsconfig.json` and ESLint config.
@@ -32,25 +36,33 @@ The customer workspaces (repo root) ignore this folder: `site` is excluded from 
 ## Where things live
 
 ```
-src/app/                 routes (all statically prerendered), sitemap.ts, robots.ts, opengraph-image.tsx
+src/app/[lang]/          every page, once, for both languages (all statically prerendered)
+src/proxy.ts             English at / (rewritten to /en), Arabic at /ar; /en/* redirects to /*
+src/i18n/                locales, getContent() (next/root-params), client LocaleProvider
+src/app/                 sitemap.ts (both languages + hreflang), robots.ts, opengraph-image.tsx
 src/app/actions.ts       server actions for the trial and contact forms (zod validation, spam guard)
-src/lib/site.ts          site name, URLs, demo workspace + demo sign-ins, contact email
+src/lib/site.ts          site name, tagline / descriptor (EN + AR), URLs, legacy demo, contact email
+src/lib/app-links.ts     trial / demo / sign-in links into the Operra app
 src/lib/deliver.ts       form delivery: Resend / SMTP / webhook
-src/content/             ALL copy: workflow steps, features, solutions, pricing + FAQ, navigation
-src/content/shots.ts     screenshot registry with alt text
+src/content/en/          ALL English copy: pages, UI strings, workflow, features, solutions, pricing + FAQ, nav
+src/content/ar/          the same modules in Arabic, typed against the English ones (shapes can't drift)
+src/content/shots.ts     screenshot registry: English and Arabic capture + alt text per shot
 src/components/          UI building blocks (ProductFrame, WorkflowTour, FeatureRow, forms, header…)
-src/assets/product/      real product screenshots
+src/assets/product/      real product screenshots (ar/: the product in Arabic, for /ar)
 scripts/                 screenshot capture + compression
 ```
 
-Copy changes are content edits in `src/content/` — components don't hold marketing text.
+Copy changes are content edits in `src/content/{en,ar}/` — components don't hold marketing text.
+Change both languages together; TypeScript fails the build if the Arabic shape differs.
 
 ### Rules for copy
 
 - Describe only what the product does today. Every feature claim maps to shipped behaviour.
 - No invented numbers, customer logos, testimonials or statistics.
-- **Pricing:** `src/content/pricing.ts` has `price: null` and `trialDays: null` until they are
-  agreed; the page then says "Priced per agency". Set real values there and nowhere else.
+- **Pricing:** `src/content/en/pricing.ts` has `price: null` and `trialDays: null` until they are
+  agreed; the page then says "Priced per agency". Set real values there and nowhere else (Arabic reads them).
+- Arabic is written for Arabic readers, using the product's own Arabic terms (مدير، موظف، عميل، وحدة…).
+  Starter template stage and field names are English in the product, so they stay English on /ar.
 
 ## Brand
 
@@ -93,7 +105,8 @@ npm run demo && npm run build && npm start               # http://localhost:3000
 # site/
 npx playwright install chromium   # once
 npm i --no-save playwright        # once, or use a global install
-node scripts/capture-screenshots.mjs
+node scripts/capture-screenshots.mjs                 # English set
+SHOT_LANG=ar node scripts/capture-screenshots.mjs    # Arabic set → src/assets/product/ar/
 node scripts/compress-screenshots.mjs
 ```
 
