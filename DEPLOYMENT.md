@@ -185,6 +185,7 @@ left, otherwise billing starts at once).
 | `APP_SECRET` | **yes** | 32+ random characters (`openssl rand -base64 48`). Signs the agency chooser and test-checkout tokens. The app refuses to sign without it in production. |
 | `CRON_SECRET` | **yes** | Random string; Vercel Cron sends it to `/api/cron/cleanup`. |
 | `APP_ROOT_DOMAIN` | recommended | `operra.com` → agencies at `{slug}.operra.com` (needs wildcard DNS). |
+| `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` (+ `PLATFORM_ADMIN_NAME`) | first deploy | The build creates (or resets) that control-center staff account. Password 12+ characters, sensitive. Remove both after the first sign-in. |
 | `SEED_PREVIEW` | recommended | `true` → create the `/preview` demo tenant on build. |
 | `MARKETING_URL` | recommended | `https://operra.com` (where the Operra logo on sign-up / preview links). |
 | `STRIPE_SECRET_KEY` | for payments | `sk_live_…`. With it, the provider defaults to Stripe. |
