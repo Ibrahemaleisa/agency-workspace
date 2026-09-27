@@ -59,6 +59,13 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
 - Free trial: **14 days** (confirmed by the owner, 27 Sep 2026). Live value per plan in `plans.trial_days`,
   edited in the control center → Plans; code default `DEFAULT_TRIAL_DAYS` in `src/lib/billing/defaults.ts`.
 - **No prices are published** until the owner agrees them (plans.price_cents stays null; site pricing stays unset).
+- Control center analytics (`src/lib/analytics.ts`, table `platform_events`): site page views (beacon from `site/` to
+  `/api/t`, anonymous `operra_vid` visitor id carried into sign-up as `?vid=`), sign-up steps shown/completed,
+  workspace creation, sign-ins/failed attempts, daily activity; `accounts.last_login_at/login_count`,
+  `users.last_seen_at`. Pages: `/operra/signups` (funnel + who didn't finish) and `/operra/people` (+ timeline).
+  No raw IPs; abandoned sign-ups kept 180 days without password; events pruned after ~13 months (cron).
+- Customer workspaces are hosted by Operra (path `/w/{slug}` on the app host, or `{slug}.<root domain>` once a
+  real domain is set). Customers can't set a custom domain or touch the backend; only staff can (control center).
 - People vs agencies: `accounts` = a person (email, password, verified email); `users` = their **membership** in one
   agency (role, client link). One person can belong to several agencies and switch between them; sessions and
   every tenant query work on a membership.
