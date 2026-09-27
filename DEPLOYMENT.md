@@ -12,6 +12,9 @@ This repository is two things:
 > memberships, password resets, two indexes) are additive and keep all data — every existing user becomes an
 > account with the same password — but **take a backup or a Neon branch of each customer database first.**
 >
+> Work branches named `claude/**` never deploy (`git.deploymentEnabled` in both `vercel.json` files), so pushing
+> them can't run migrations against a connected project's database. `main` deploys as usual.
+>
 > **Never** run `npm run demo` / `db:seed` against a database with real data — it wipes it.
 > `npm run db:seed-preview` is safe: it only ever touches the `demo` tenant.
 
