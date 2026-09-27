@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSaasT } from "@/lib/i18n-saas";
+import { appUrl } from "@/lib/platform";
 import { currentSignup, enterNewWorkspace, runProvisioning } from "@/server/signup-actions";
 import { SignupShell } from "@/components/platform/signup-shell";
 import { ProvisioningRunner } from "@/components/platform/provisioning-runner";
@@ -18,7 +19,7 @@ export default async function ProvisioningPage() {
       <ProvisioningRunner
         run={runProvisioning}
         enter={enterNewWorkspace}
-        labels={{ ...p, restart: t.signup.back }}
+        labels={{ ...p, signInLater: p.signInLater.replace("{url}", `${appUrl().replace(/^https?:\/\//, "")}/login`), restart: t.signup.back }}
       />
     </SignupShell>
   );

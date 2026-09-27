@@ -11,6 +11,8 @@ type Labels = {
   instance: string;
   address: string;
   enter: string;
+  /** Already filled in with the sign-in address. */
+  signInLater: string;
   failed: string;
   retry: string;
   restart: string;
@@ -91,6 +93,7 @@ export function ProvisioningRunner({
               {labels.enter}
             </button>
           </form>
+          <p className="mt-4 text-sm text-[#5A606B]" dir="auto">{labels.signInLater}</p>
         </div>
       )}
 

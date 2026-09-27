@@ -139,6 +139,8 @@ export const accounts = pgTable("accounts", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  loginCount: integer("login_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -208,6 +210,8 @@ export const users = pgTable(
     focus: text("focus"),
     /** Last time the user opened the team chat (drives the unread badge). */
     teamChatSeenAt: timestamp("team_chat_seen_at", { withTimezone: true }),
+    /** Last request from a session of this membership (updated at most every few minutes). */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -631,8 +635,36 @@ export const signups = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Anonymous visitor id (links the sign-up to site visits) and country, for the funnel. */
+    visitorId: text("visitor_id"),
+    country: text("country"),
   },
-  (t) => [index("signups_email_idx").on(t.email)],
+  (t) => [index("signups_email_idx").on(t.email), index("signups_created_idx").on(t.createdAt)],
+);
+
+/**
+ * First-party product analytics for the Operra control center: site visits, sign-up steps,
+ * sign-ins and daily activity. No raw IPs; visitors are a random id in a first-party cookie.
+ */
+export const platformEvents = pgTable(
+  "platform_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    visitorId: text("visitor_id"),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    signupId: uuid("signup_id").references(() => signups.id, { onDelete: "set null" }),
+    path: text("path"),
+    country: text("country"),
+    meta: jsonb("meta").$type<Record<string, string | number>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("platform_events_type_idx").on(t.type, t.createdAt),
+    index("platform_events_visitor_idx").on(t.visitorId),
+    index("platform_events_account_idx").on(t.accountId, t.createdAt),
+  ],
 );
 
 /** Provisioning record per signup. Unique on signup, so retries never create a second tenant. */

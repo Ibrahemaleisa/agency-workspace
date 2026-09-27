@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { emailVerifications, invitations, passwordResets, loginTokens, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
+import { emailVerifications, invitations, passwordResets, loginTokens, platformEvents, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
 import { expireTrials } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,8 @@ export async function GET(req: Request) {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const halfYearAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+  const yearAgo = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
 
   const counts = await db.transaction(async (tx) => {
     const n = (rows: unknown[]) => rows.length;
@@ -34,21 +36,24 @@ export async function GET(req: Request) {
       ),
       loginTokens: n(await tx.delete(loginTokens).where(lt(loginTokens.expiresAt, now)).returning({ id: loginTokens.tokenHash })),
       rateLimits: n(await tx.delete(rateLimits).where(lt(rateLimits.windowStart, dayAgo)).returning({ key: rateLimits.key })),
-      // Abandoned sign-ups that never became a workspace.
+      // Abandoned sign-ups that never became a workspace: kept 180 days for the control center's
+      // drop-off report (without the password, see below), then deleted.
       signups: n(
         await tx
           .delete(signups)
-          .where(and(isNull(signups.orgId), lt(signups.expiresAt, now)))
+          .where(and(isNull(signups.orgId), lt(signups.expiresAt, halfYearAgo)))
           .returning({ id: signups.id }),
       ),
-      // Provisioned sign-ups keep their record (serial audit trail) but not the password hash.
+      // Expired sign-ups (finished or not) keep their record but never the password hash or logo.
       scrubbed: n(
         await tx
           .update(signups)
-          .set({ passwordHash: "" })
-          .where(and(isNotNull(signups.orgId), lt(signups.expiresAt, now), sql`${signups.passwordHash} <> ''`))
+          .set({ passwordHash: "", logo: null })
+          .where(and(lt(signups.expiresAt, now), sql`${signups.passwordHash} <> ''`))
           .returning({ id: signups.id }),
       ),
+      // Analytics events older than about 13 months.
+      platformEvents: n(await tx.delete(platformEvents).where(lt(platformEvents.createdAt, yearAgo)).returning({ id: platformEvents.id })),
       // Used or expired email-verification links.
       emailVerifications: n(
         await tx

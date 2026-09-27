@@ -11,6 +11,7 @@ import { can, type Permission } from "./permissions";
 import { getHostTenant, getOrgById } from "./tenant";
 import { getSubscription, hasAccess } from "./billing";
 import { isPlatform } from "./platform";
+import { touchLastSeen } from "./analytics";
 
 export const SESSION_COOKIE = "apm_session";
 const SESSION_DAYS = 30;
@@ -167,6 +168,7 @@ export async function requireUser(opts: { allowLocked?: boolean } = {}): Promise
   if (!user) redirect("/login");
   await assertWritableRequest(user);
   if (!opts.allowLocked) await assertWorkspaceOpen(user);
+  await touchLastSeen(user);
   return user;
 }
 

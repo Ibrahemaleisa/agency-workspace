@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import "../globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { VisitTracker } from "@/components/visit-tracker";
 import { CONTENT } from "@/content";
 import { LOCALES, dirOf, isLocale } from "@/i18n/config";
 import { LocaleProvider } from "@/i18n/provider";
@@ -99,6 +100,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
             {children}
           </main>
           <SiteFooter />
+          <VisitTracker lang={lang} />
         </LocaleProvider>
       </body>
     </html>

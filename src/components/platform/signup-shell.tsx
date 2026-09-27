@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
 import { Dot } from "./operra-mark";
+import { track } from "@/lib/analytics";
+import { currentSignup } from "@/server/signup-actions";
+
+/** Records that a sign-up step was shown (drop-off per step in the control center). Renders nothing. */
+async function StepView({ step }: { step: number }) {
+  const s = await currentSignup().catch(() => null);
+  await track("signup_view", { signupId: s?.id, meta: { step } });
+  return null;
+}
 
 /** Wizard frame: step track (drawn as status dots), title, and the step's card. */
 export function SignupShell({
@@ -22,6 +31,7 @@ export function SignupShell({
 }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <StepView step={current} />
       <ol className="flex flex-wrap items-center gap-x-3 gap-y-2" aria-label="Sign-up progress">
         {steps.map((s, i) => (
           <li key={s} className="flex items-center gap-2 text-[13px]" aria-current={i === current ? "step" : undefined}>

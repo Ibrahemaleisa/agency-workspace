@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { accounts, users } from "@/db/schema";
 import { destroySession, membershipsOf, requireUser, verifyAccount } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
 import { getDict } from "@/lib/lang";
@@ -12,6 +12,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { chooserAccount, endChooser, enterWorkspace, startChooser } from "@/lib/handoff";
 import { cookies } from "next/headers";
+import { track, trackLogin } from "@/lib/analytics";
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { t, lang } = await getDict();
@@ -26,7 +27,12 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
   if (limited) return { error: t.login.errorRateLimited };
 
   const account = await verifyAccount(email, password);
-  if (!account) return { error: t.login.errorInvalid };
+  if (!account) {
+    // Attach the attempt to the person when the address exists (the control center shows it).
+    const known = await db.query.accounts.findFirst({ where: eq(accounts.email, email), columns: { id: true } });
+    await track("login_failed", { accountId: known?.id, meta: { reason: known ? "password" : "unknown_email" } });
+    return { error: t.login.errorInvalid };
+  }
 
   // On a tenant's own host only that tenant counts; elsewhere every agency the person belongs to.
   const host = await getHostTenant();
@@ -39,7 +45,10 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
   // One agency, or the one whose branded sign-in page (/w/{slug}) this is: straight in.
   const hint = (await cookies()).get(TENANT_HINT_COOKIE)?.value;
   const chosen = memberships.length === 1 ? memberships[0] : memberships.find((m) => m.org.slug === hint);
-  if (chosen) return enterWorkspace(chosen.user, chosen.org);
+  if (chosen) {
+    await trackLogin(account.id, chosen.org.id);
+    return enterWorkspace(chosen.user, chosen.org);
+  }
   return startChooser(account.id);
 }
 
@@ -51,6 +60,7 @@ export async function chooseWorkspace(fd: FormData) {
   const chosen = memberships.find((m) => m.user.id === str(fd, "membershipId"));
   if (!chosen) redirect("/login/choose");
   await endChooser();
+  await trackLogin(accountId, chosen.org.id);
   return enterWorkspace(chosen.user, chosen.org);
 }
 

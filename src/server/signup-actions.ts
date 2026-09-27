@@ -18,6 +18,7 @@ import { providerName } from "@/lib/billing";
 import { enterWorkspace } from "@/lib/handoff";
 import { getOrgById } from "@/lib/tenant";
 import { sendVerification } from "@/lib/verification";
+import { requestCountry, track, trackLogin, visitorId } from "@/lib/analytics";
 
 const SIGNUP_COOKIE = "operra_signup";
 const SIGNUP_HOURS = 24;
@@ -87,11 +88,17 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
     expiresAt: new Date(Date.now() + SIGNUP_HOURS * 3600_000),
   };
   const existing = await currentSignup();
+  let signupId: string;
   if (existing && !existing.orgId) {
     await db.update(signups).set(values).where(eq(signups.id, existing.id));
+    signupId = existing.id;
   } else {
     const token = newToken();
-    await db.insert(signups).values({ ...values, tokenHash: hashToken(token) });
+    const [row] = await db
+      .insert(signups)
+      .values({ ...values, tokenHash: hashToken(token), visitorId: await visitorId(), country: await requestCountry() })
+      .returning({ id: signups.id });
+    signupId = row.id;
     (await cookies()).set(SIGNUP_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -100,6 +107,7 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
       maxAge: SIGNUP_HOURS * 3600,
     });
   }
+  await track("signup_step", { signupId, accountId: account?.id, meta: { step: 1 } });
   redirect("/signup/company");
 }
 
@@ -126,6 +134,7 @@ export async function signupCompany(_prev: ActionState, fd: FormData): Promise<A
       updatedAt: new Date(),
     })
     .where(eq(signups.id, s.id));
+  await track("signup_step", { signupId: s.id, meta: { step: 2 } });
   redirect("/signup/brand");
 }
 
@@ -150,6 +159,7 @@ export async function signupBrand(_prev: ActionState, fd: FormData): Promise<Act
     .update(signups)
     .set({ primaryColor, accentColor, logo, step: Math.max(s.step, 3), updatedAt: new Date() })
     .where(eq(signups.id, s.id));
+  await track("signup_step", { signupId: s.id, meta: { step: 3 } });
   redirect("/signup/start");
 }
 
@@ -161,6 +171,7 @@ export async function signupStart(_prev: ActionState, fd: FormData): Promise<Act
   // Re-check the address: someone may have taken it since step 2.
   if (!(await slugAvailable(s.slug ?? ""))) return { error: (await getSaasT()).t.signup.errors.slugTaken };
   await db.update(signups).set({ startMode: mode, step: 4, updatedAt: new Date() }).where(eq(signups.id, s.id));
+  await track("signup_step", { signupId: s.id, meta: { step: 4, mode } });
   redirect("/signup/provisioning");
 }
 
@@ -177,6 +188,11 @@ export async function runProvisioning(): Promise<ProvisionState> {
   try {
     const r = await provisionSignup(s.id);
     const org = await getOrgById(r.orgId);
+    // Once per signup (provisioning is idempotent and this page can be reloaded).
+    if (!s.orgId) {
+      const account = await db.query.accounts.findFirst({ where: eq(accounts.email, s.email) });
+      await track("workspace_created", { signupId: s.id, orgId: r.orgId, accountId: account?.id, meta: { serial: r.serial } });
+    }
     return { status: "completed", serial: r.serial, entry: org ? tenantEntryUrl(org).replace(/^https?:\/\//, "") : r.slug };
   } catch (err) {
     if (err instanceof ProvisioningError && err.code !== "incomplete") {
@@ -199,5 +215,6 @@ export async function enterNewWorkspace() {
   // Ask the new admin to confirm their address. Sent only when email is configured (and not already
   // confirmed); it never blocks getting into the workspace.
   await sendVerification(admin.accountId, org, admin.lang === "ar" ? "ar" : "en");
+  await trackLogin(admin.accountId, org.id);
   return enterWorkspace(admin, org, s.startMode === "subscribe" ? "/settings/billing?start=checkout" : "/");
 }
