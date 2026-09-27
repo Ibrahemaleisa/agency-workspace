@@ -31,6 +31,12 @@ Every push to `main` redeploys all customer projects connected to this repo.
 | Deployment | Vercel project | URL | Database |
 |---|---|---|---|
 | Demo for buyers | `workspace-demo` (team fada-team) | workspace-demo-sooty.vercel.app | Neon DB `workspace_demo` with its own restricted login `workspace_demo_app` |
+| Operra platform (production, being set up) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | not deployed yet | dedicated Neon project — **not created yet** (needs the owner) |
+
+The `operra` project has previews disabled, Vercel login only on previews, a private Blob store
+(`operra-uploads`) and Production-only `OPERRA_PLATFORM`, `APP_SECRET`, `CRON_SECRET`, `SEED_PREVIEW`.
+Note: `workspace-demo`'s `DATABASE_URL` also targets **Preview**, so any branch preview build migrates the demo DB —
+which is why `claude/**` branches are excluded from deployments in `vercel.json`.
 
 Demo env vars: `DATABASE_URL`, `SEED_DEMO=true` (loads "Northwind Studio" sample data on the first
 build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `password`
