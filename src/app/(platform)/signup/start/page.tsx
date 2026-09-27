@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { getSaasT } from "@/lib/i18n-saas";
 import { getLang } from "@/lib/lang";
-import { PlanOptions } from "@/components/platform/plan-options";
+import { planPrice, planText } from "@/components/platform/plan-options";
 import { addressTemplate } from "@/lib/signup-view";
 import { providerName } from "@/lib/billing";
 import { currentSignup, signupStart } from "@/server/signup-actions";
-import { ActionForm, SubmitButton } from "@/components/forms";
+import { ActionForm } from "@/components/forms";
 import { buttonClass } from "@/components/ui";
 import { SignupShell } from "@/components/platform/signup-shell";
 
@@ -25,7 +24,6 @@ export default async function SignupStartPage() {
   const s = t.signup;
   const lang = await getLang();
   const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
-  const plan = offered.find((p) => p.code === signup.planCode) ?? offered.find((p) => p.featured) ?? offered[0];
   const payments = !!providerName();
   const row = "flex items-baseline justify-between gap-4 border-b border-[#E3E4E0] py-2.5 text-sm last:border-0";
 
@@ -59,39 +57,68 @@ export default async function SignupStartPage() {
         </div>
       }
     >
-      <ActionForm action={signupStart} className="space-y-4">
-        {offered.length > 0 && (
-          <fieldset>
-            <legend className="mb-3 font-semibold">{s.start.planTitle}</legend>
-            <PlanOptions plans={offered} lang={lang} labels={s.start} defaultCode={plan?.code} />
-          </fieldset>
-        )}
-        <p className="pt-2 font-semibold">{s.start.howTitle}</p>
-        <label className="flex cursor-pointer gap-3 rounded-lg border border-zinc-300 p-4 has-checked:border-zinc-900 has-checked:ring-1 has-checked:ring-zinc-900">
-          <input type="radio" name="mode" value="trial" defaultChecked className="mt-1" />
-          <span>
-            <span className="block font-semibold">{s.start.trialTitle(plan?.trialDays ?? DEFAULT_TRIAL_DAYS)}</span>
-            <span className="mt-1 block text-sm text-zinc-600">{s.start.trialBody}</span>
-          </span>
-        </label>
-        {payments ? (
-          <label className="flex cursor-pointer gap-3 rounded-lg border border-zinc-300 p-4 has-checked:border-zinc-900 has-checked:ring-1 has-checked:ring-zinc-900">
-            <input type="radio" name="mode" value="subscribe" className="mt-1" />
-            <span>
-              <span className="block font-semibold">{s.start.payTitle}</span>
-              <span className="mt-1 block text-sm text-zinc-600">{s.start.payBody}</span>
-            </span>
-          </label>
-        ) : (
-          <p className="text-sm text-zinc-500">{s.start.billingOff}</p>
-        )}
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <a href="/signup/brand" className={buttonClass("ghost")}>
-            {s.back}
-          </a>
-          <SubmitButton>{s.continue}</SubmitButton>
-        </div>
-      </ActionForm>
+      {/* One card per plan: paying is the main action, the free trial a link inside the same card. */}
+      <p className="mb-3 font-semibold">{s.start.planTitle}</p>
+      <div className={`grid gap-4 ${offered.length > 1 ? "sm:grid-cols-2" : ""}`} data-testid="plan-cards">
+        {offered.map((p) => {
+          const text = planText(p, lang);
+          return (
+            <ActionForm
+              key={p.code}
+              action={signupStart}
+              className={`flex flex-col rounded-xl border bg-white p-5 ${p.featured ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-300"}`}
+            >
+              <input type="hidden" name="plan" value={p.code} />
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold">{text.name}</h2>
+                {p.featured && <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[11px] font-medium text-white">{s.start.recommended}</span>}
+              </div>
+              {text.description && <p className="mt-0.5 text-sm text-zinc-500">{text.description}</p>}
+              <p className="mt-3 text-lg font-semibold whitespace-nowrap">{planPrice(p, lang, s.start)}</p>
+              {text.features.length > 0 && (
+                <ul className="mt-3 space-y-1.5 text-sm text-zinc-700">
+                  {text.features.map((f) => (
+                    <li key={f} className="flex gap-2">
+                      <span aria-hidden>✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-auto pt-5">
+                <button
+                  type="submit"
+                  name="mode"
+                  value="subscribe"
+                  disabled={!payments}
+                  className={`${buttonClass("primary")} w-full`}
+                  data-testid={`pay-${p.code}`}
+                >
+                  {s.start.subscribe}
+                </button>
+                {p.trialDays > 0 && (
+                  <button
+                    type="submit"
+                    name="mode"
+                    value="trial"
+                    className="mt-3 block w-full text-center text-sm font-medium text-zinc-900 underline underline-offset-4 hover:text-zinc-600"
+                    data-testid={`trial-${p.code}`}
+                  >
+                    {s.start.startTrial}
+                  </button>
+                )}
+                {p.trialDays > 0 && <p className="mt-1 text-center text-xs text-zinc-500">{s.start.trialNote(p.trialDays)}</p>}
+              </div>
+            </ActionForm>
+          );
+        })}
+      </div>
+      {!payments && <p className="mt-4 text-sm text-zinc-500">{s.start.billingOff}</p>}
+      <div className="mt-6">
+        <a href="/signup/brand" className={buttonClass("ghost")}>
+          {s.back}
+        </a>
+      </div>
     </SignupShell>
   );
 }

@@ -60,9 +60,18 @@ function PlanCards({ plans, t, locale, cta }: { plans: LivePlan[]; t: PricingCop
               </ul>
             )}
             <div className="mt-auto pt-8">
-              <ButtonLink href={trialFor(locale, p.code)} size="lg" variant={dark ? "on-panel" : "secondary"} arrow={dark} className="w-full">
-                {cta}
+              {/* Subscribing is the main action; the free trial is a link in the same card. */}
+              <ButtonLink href={trialFor(locale, p.code)} size="lg" variant={dark ? "on-panel" : "primary"} arrow className="w-full">
+                {t.subscribe}
               </ButtonLink>
+              {p.trialDays > 0 && (
+                <a
+                  href={trialFor(locale, p.code)}
+                  className={`mt-4 block text-center text-[15px] font-medium underline underline-offset-4 ${dark ? "text-on-panel" : "text-ink"}`}
+                >
+                  {cta.replace("{days}", String(p.trialDays))}
+                </a>
+              )}
             </div>
           </article>
         );
@@ -82,7 +91,7 @@ export default async function PricingPage() {
         <PageHero marker={t.marker} title={t.plansTitle} lead={t.plansLead} />
         <Section tone="surface" className="pt-14 sm:pt-16">
           <Container>
-            <PlanCards plans={live} t={t} locale={locale} cta={UI.startTrial} />
+            <PlanCards plans={live} t={t} locale={locale} cta={t.startTrialLink} />
           </Container>
         </Section>
         <Section labelledBy="faq-title">

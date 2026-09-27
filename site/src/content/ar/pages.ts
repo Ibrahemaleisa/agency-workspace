@@ -149,6 +149,8 @@ export const PAGES: Pages = {
     perMonth: "/ شهرياً",
     perYear: "/ سنوياً",
     trialLine: "تجربة مجانية {days} يوماً",
+    subscribe: "اشترك الآن",
+    startTrialLink: "ابدأ تجربتك المجانية ({days} يوماً)",
   },
   demo: {
     metaTitle: "العرض التفاعلي",

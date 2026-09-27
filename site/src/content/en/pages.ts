@@ -155,6 +155,8 @@ export const PAGES = {
     perMonth: "/ month",
     perYear: "/ year",
     trialLine: "{days}-day free trial",
+    subscribe: "Subscribe",
+    startTrialLink: "Start your free trial ({days} days)",
   },
   demo: {
     metaTitle: "Interactive demo",
