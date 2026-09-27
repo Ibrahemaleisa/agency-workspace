@@ -222,5 +222,8 @@ export async function enterNewWorkspace() {
   await sendVerification(admin.accountId, org, admin.lang === "ar" ? "ar" : "en");
   await trackLogin(admin.accountId, org.id);
   if (s.startMode === "request") await requestPlan(org.id, s.planCode, admin.id);
-  return enterWorkspace(admin, org, s.startMode === "subscribe" ? "/settings/billing?start=checkout" : "/");
+  // Subscribing: online checkout, or (no provider) the bank transfer page for the chosen plan.
+  const next =
+    s.startMode === "subscribe" ? "/settings/billing?start=checkout" : s.startMode === "request" ? `/settings/billing/pay?plan=${encodeURIComponent(s.planCode)}` : "/";
+  return enterWorkspace(admin, org, next);
 }

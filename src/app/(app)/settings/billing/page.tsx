@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
@@ -9,7 +10,7 @@ import { getSaasT } from "@/lib/i18n-saas";
 import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
-import { openBillingPortal, requestPlanAction, startCheckout } from "@/server/billing-actions";
+import { openBillingPortal, startCheckout } from "@/server/billing-actions";
 import { pendingRequest } from "@/lib/billing/manual";
 import { formatMoney } from "@/lib/billing/invoice-email";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
@@ -52,7 +53,12 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const pendingPlan = pending ? offered.find((p) => p.code === pending.planCode) : null;
   const notice =
     pending && pendingPlan
-      ? { cls: "border-sky-200 bg-sky-50 text-sky-900", text: b.requested(planName(pendingPlan), fmt(pending.createdAt)) }
+      ? {
+          cls: "border-sky-200 bg-sky-50 text-sky-900",
+          text: pending.transferredAt
+            ? b.transferReceived(planName(pendingPlan), fmt(pending.transferredAt))
+            : b.requested(planName(pendingPlan), fmt(pending.createdAt)),
+        }
       : sp.plan === "changed"
       ? { cls: "border-emerald-200 bg-emerald-50 text-emerald-800", text: b.planChanged }
       : sp.checkout === "success"
@@ -61,7 +67,9 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
         : { cls: "border-zinc-200 bg-zinc-50 text-zinc-700", text: b.pending }
       : sp.checkout === "cancelled"
         ? { cls: "border-zinc-200 bg-zinc-50 text-zinc-700", text: b.cancelled }
-        : null;
+        : sp.checkout === "error" || sp.checkout === "unavailable"
+          ? { cls: "border-red-200 bg-red-50 text-red-800", text: b.checkoutError }
+          : null;
 
   return (
     <>
@@ -119,7 +127,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
             <p className="text-sm text-zinc-500">—</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
-            {provider && sub?.providerCustomerId && provider.name === "stripe" && (
+            {provider && sub?.providerCustomerId && provider.name !== "test" && (
               <form action={openBillingPortal}>
                 <button className={buttonClass("secondary")}>{b.manage}</button>
               </form>
@@ -180,18 +188,17 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
                         {b.subscribeTo(planName(p))}
                       </button>
                     </form>
-                  ) : canRequest && !(manualActive && current) ? (
-                    // No online payment: ask Operra to activate the plan (staff confirm payment).
-                    <form action={requestPlanAction} className="mt-auto pt-4">
-                      <input type="hidden" name="plan" value={p.code} />
-                      <button
+                  ) : canRequest && !(manualActive && current) && p.priceCents != null ? (
+                    // No online payment: pay by bank transfer (Operra activates the plan once confirmed).
+                    <div className="mt-auto pt-4">
+                      <Link
+                        href={`/settings/billing/pay?plan=${p.code}`}
                         className={buttonClass(p.featured || current ? "primary" : "secondary")}
-                        disabled={pending?.planCode === p.code}
                         data-testid={`subscribe-${p.code}`}
                       >
-                        {pending?.planCode === p.code ? b.requestedShort : b.subscribeTo(planName(p))}
-                      </button>
-                    </form>
+                        {pending?.planCode === p.code && pending.transferredAt ? b.requestedShort : b.subscribeTo(planName(p))}
+                      </Link>
+                    </div>
                   ) : null}
                 </li>
               );

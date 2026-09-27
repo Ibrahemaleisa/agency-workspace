@@ -69,6 +69,12 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
   "Waiting for activation", or the customer page) for 1–12 months → subscription `provider = manual`, invoice recorded
   and emailed, congratulations shown once; it locks again at its paid-until date (renew from the customer page).
   `src/lib/billing/manual.ts`. Connecting a gateway later switches Subscribe to online checkout automatically.
+- **Card payments: Lemon Squeezy** (merchant of record — no company needed; cards, Apple Pay, Google Pay, PayPal; no
+  mada). `src/lib/billing/lemonsqueezy.ts`; env `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`,
+  `LEMONSQUEEZY_WEBHOOK_SECRET` (+ `LEMONSQUEEZY_TEST_MODE=true` to try); each plan's "Payment provider ID" = its
+  variant id. Webhook `/api/billing/webhook` (shared with Stripe; told apart by `X-Signature`). Set-up steps in the
+  control center → Payments. Until it's connected: bank transfer (if an IBAN is set there, with receipt upload) or a
+  plan confirmation that staff activate. Moyasar (mada) once there's a freelance document / company.
 - Support: control center → People → person → "Create password reset link" (24 h, one use) for when email isn't set up.
 - Product (27 Sep 2026): `/settings` (everyone: profile, language, email notifications, own password; admins: links to
   brand, team, templates, billing), task board (`/tasks?layout=board`, drag-and-drop + "Move to" menu, same server

@@ -10,6 +10,9 @@ import { getOrgById } from "@/lib/tenant";
 import { verify } from "@/lib/secret";
 import { logActivity } from "@/lib/events";
 import { markWelcomed, requestPlan } from "@/lib/billing/manual";
+import { MAX_UPLOAD_BYTES, saveFile } from "@/lib/uploads";
+import { getSaasT } from "@/lib/i18n-saas";
+import type { ActionState } from "@/lib/action-state";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
@@ -82,6 +85,37 @@ export async function requestPlanAction(fd: FormData) {
   redirect("/settings/billing?requested=1");
 }
 
+const RECEIPT_TYPES = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
+
+/**
+ * Admin: "I've made the transfer" — the plan, months paid for and the receipt. The workspace keeps
+ * working (grace if needed) while Operra checks the transfer and activates the plan.
+ */
+export async function submitTransfer(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const user = await requireUser({ allowLocked: true });
+  assertCan(user, "billing.manage");
+  const e = (await getSaasT()).t.pay.errors;
+  const plan = await getPlan(String(fd.get("plan") ?? ""));
+  if (!plan?.active || plan.priceCents == null) return { error: e.plan };
+  const months = [1, 3, 6, 12].includes(Number(fd.get("months"))) ? Number(fd.get("months")) : 1;
+  const file = fd.get("receipt");
+  if (!(file instanceof File) || file.size === 0) return { error: e.receipt };
+  if (!RECEIPT_TYPES.includes(file.type)) return { error: e.receiptType };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: e.receiptSize };
+  const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(-80) || "receipt";
+  const key = `receipts/${user.orgId}/${randomUUID()}-${safe}`;
+  await saveFile(key, Buffer.from(await file.arrayBuffer()), file.type);
+  const req = await requestPlan(user.orgId, plan.code, user.id, {
+    months,
+    amountCents: plan.priceCents * months,
+    currency: plan.currency,
+    receipt: { key, name: file.name.slice(0, 120), type: file.type },
+  });
+  if (!req) return { error: e.plan };
+  await logActivity(user, { action: "billing.transfer", summary: `sent a bank transfer receipt for ${plan.name}` });
+  redirect("/settings/billing?requested=1");
+}
+
 /** The agency's admin closed the "you're subscribed" welcome after a staff activation. */
 export async function dismissActivationWelcome() {
   const user = await requireUser({ allowLocked: true });
@@ -97,7 +131,11 @@ export async function openBillingPortal() {
   const org = await getOrgById(user.orgId);
   const sub = await getSubscription(user.orgId);
   if (!provider || !org || !sub?.providerCustomerId) redirect("/settings/billing");
-  const url = await provider.portalUrl({ customerId: sub.providerCustomerId, returnUrl: `${tenantBaseUrl(org)}/settings/billing` });
+  const url = await provider.portalUrl({
+    customerId: sub.providerCustomerId,
+    subscriptionId: sub.providerSubscriptionId,
+    returnUrl: `${tenantBaseUrl(org)}/settings/billing`,
+  });
   redirect(url ?? "/settings/billing");
 }
 

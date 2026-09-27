@@ -1,6 +1,6 @@
 import type { Organization, Plan } from "@/db/schema";
 
-export type ProviderName = "stripe" | "test";
+export type ProviderName = "stripe" | "lemonsqueezy" | "test";
 
 /** A billing change, normalised from any provider. Applied idempotently by applyBillingEvent. */
 export type BillingEvent = {
@@ -39,5 +39,5 @@ export interface BillingProvider {
     trialEndsAt?: Date | null;
   }): Promise<string>;
   /** Self-service billing (payment method, invoices, cancel). Null when the provider has none. */
-  portalUrl(input: { customerId: string; returnUrl: string }): Promise<string | null>;
+  portalUrl(input: { customerId: string; subscriptionId?: string | null; returnUrl: string }): Promise<string | null>;
 }

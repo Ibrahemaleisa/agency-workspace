@@ -84,6 +84,11 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
         plan: plans.name,
         createdAt: planRequests.createdAt,
         by: users.email,
+        months: planRequests.months,
+        amountCents: planRequests.amountCents,
+        currency: planRequests.currency,
+        transferredAt: planRequests.transferredAt,
+        hasReceipt: sql<boolean>`${planRequests.receiptKey} is not null`,
       })
       .from(planRequests)
       .innerJoin(organizations, eq(organizations.id, planRequests.orgId))
@@ -127,8 +132,31 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                       {format(r.createdAt, "d MMM yyyy, HH:mm")}
                     </span>
                   </div>
+                  {r.transferredAt && (
+                    <p className="mt-1 text-sm">
+                      Bank transfer declared {format(r.transferredAt, "d MMM, HH:mm")} ·{" "}
+                      <strong>
+                        {r.amountCents != null ? `${r.amountCents / 100} ${r.currency}` : "—"} for {r.months} month{r.months === 1 ? "" : "s"}
+                      </strong>
+                      {r.hasReceipt && (
+                        <>
+                          {" "}·{" "}
+                          <a href={`/operra/receipts/${r.id}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                            View receipt
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-end gap-3">
-                    <ActivatePlanForm orgId={r.orgId} plans={activePlans} defaultPlan={r.planCode} compact />
+                    <ActivatePlanForm
+                      orgId={r.orgId}
+                      plans={activePlans}
+                      defaultPlan={r.planCode}
+                      defaultMonths={r.months}
+                      defaultAmount={r.amountCents != null ? r.amountCents / 100 : undefined}
+                      compact
+                    />
                     <form action={dismissRequestAction}>
                       <input type="hidden" name="requestId" value={r.id} />
                       <button className="rounded-md px-3 py-1.5 text-sm text-[#5A606B] underline underline-offset-4">Dismiss</button>

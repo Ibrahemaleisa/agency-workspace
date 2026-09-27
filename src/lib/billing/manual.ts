@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { invoices, organizations, planRequests, platformAdmins, plans, subscriptions } from "@/db/schema";
+import { invoices, organizations, planRequests, platformAdmins, platformSettings, plans, subscriptions } from "@/db/schema";
 import { OPERRA_BRAND } from "../brand";
 import { emailEnabled, notificationEmail, sendEmail } from "../email";
 import { appUrl } from "../platform";
@@ -26,8 +26,30 @@ export async function pendingRequest(orgId: string) {
   });
 }
 
-/** The agency asks for a plan. Idempotent: a second request just changes the plan asked for. */
-export async function requestPlan(orgId: string, planCode: string, requestedById: string | null) {
+export type BankDetails = { bankName: string; accountName: string; iban: string; instructionsEn: string; instructionsAr: string };
+
+/** The bank account agencies transfer to (control center → Payments). Null until it's filled in. */
+export async function getBankDetails(): Promise<BankDetails | null> {
+  const row = await db.query.platformSettings.findFirst({ where: eq(platformSettings.key, "bank") });
+  const v = row?.value;
+  if (!v?.iban || !v.accountName) return null;
+  return { bankName: v.bankName ?? "", accountName: v.accountName, iban: v.iban, instructionsEn: v.instructionsEn ?? "", instructionsAr: v.instructionsAr ?? "" };
+}
+
+export async function saveBankDetails(value: BankDetails, staffEmail: string) {
+  await db
+    .insert(platformSettings)
+    .values({ key: "bank", value, updatedBy: staffEmail })
+    .onConflictDoUpdate({ target: platformSettings.key, set: { value, updatedBy: staffEmail, updatedAt: new Date() } });
+}
+
+export type Transfer = { months: number; amountCents: number; currency: string; receipt?: { key: string; name: string; type: string } | null };
+
+/**
+ * The agency asks for a plan — optionally declaring a bank transfer (months, amount, receipt).
+ * Idempotent: a second request updates the pending one.
+ */
+export async function requestPlan(orgId: string, planCode: string, requestedById: string | null, transfer?: Transfer) {
   const plan = await db.query.plans.findFirst({ where: and(eq(plans.code, planCode), eq(plans.active, true)) });
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) });
   if (!plan || !org || org.isDemo) return null;
@@ -35,10 +57,19 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
   const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) });
 
   await db.transaction(async (tx) => {
+    const paid = transfer
+      ? {
+          months: transfer.months,
+          amountCents: transfer.amountCents,
+          currency: transfer.currency,
+          transferredAt: new Date(),
+          ...(transfer.receipt ? { receiptKey: transfer.receipt.key, receiptName: transfer.receipt.name, receiptType: transfer.receipt.type } : {}),
+        }
+      : {};
     if (existing) {
-      await tx.update(planRequests).set({ planCode, requestedById }).where(eq(planRequests.id, existing.id));
+      await tx.update(planRequests).set({ planCode, requestedById, ...paid }).where(eq(planRequests.id, existing.id));
     } else {
-      await tx.insert(planRequests).values({ orgId, planCode, requestedById });
+      await tx.insert(planRequests).values({ orgId, planCode, requestedById, ...paid });
     }
     if (sub && !sub.providerSubscriptionId && sub.status !== "active") {
       // The trial continues on the chosen plan; a trial that has ended (or ends within the grace
@@ -57,12 +88,12 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
     }
   });
   await track("signup_step", { orgId, meta: { step: "plan_request", plan: planCode } });
-  if (!existing) await notifyStaff(org.name, org.serial, plan.name);
+  if (!existing || transfer) await notifyStaff(org.name, org.serial, plan.name, !!transfer);
   return pendingRequest(orgId);
 }
 
 /** Emails Operra staff that an agency wants to subscribe (when email is configured). */
-async function notifyStaff(orgName: string, serial: string, planName: string) {
+async function notifyStaff(orgName: string, serial: string, planName: string, transferred = false) {
   if (!emailEnabled()) return;
   const staff = await db.query.platformAdmins.findMany({ where: eq(platformAdmins.active, true), columns: { email: true } });
   for (const s of staff) {
@@ -71,8 +102,10 @@ async function notifyStaff(orgName: string, serial: string, planName: string) {
         to: s.email,
         ...notificationEmail({
           lang: "en",
-          title: `${orgName} wants the ${planName} plan`,
-          body: `Workspace ${serial} asked to subscribe to ${planName}. Activate it from the control center once paid.`,
+          title: transferred ? `${orgName} paid for ${planName} by bank transfer` : `${orgName} wants the ${planName} plan`,
+          body: transferred
+            ? `Workspace ${serial} declared a bank transfer for ${planName}. Check the receipt and your account, then activate it in the control center.`
+            : `Workspace ${serial} asked to subscribe to ${planName}. Activate it from the control center once paid.`,
           link: "/operra",
           brand: OPERRA_BRAND,
           baseUrl: appUrl(),

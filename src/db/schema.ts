@@ -657,10 +657,26 @@ export const planRequests = pgTable(
     handledAt: timestamp("handled_at", { withTimezone: true }),
     /** When the agency's admin saw the "you're subscribed" welcome (shown once after activation). */
     welcomedAt: timestamp("welcomed_at", { withTimezone: true }),
+    /** Bank transfer declared by the agency: months paid for, amount, and the receipt they uploaded. */
+    months: integer("months").notNull().default(1),
+    amountCents: integer("amount_cents"),
+    currency: text("currency"),
+    transferredAt: timestamp("transferred_at", { withTimezone: true }),
+    receiptKey: text("receipt_key"),
+    receiptName: text("receipt_name"),
+    receiptType: text("receipt_type"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("plan_requests_org_idx").on(t.orgId, t.createdAt), index("plan_requests_status_idx").on(t.status)],
 );
+
+/** Operra-wide settings edited in the control center (e.g. "bank": the bank transfer details shown to agencies). */
+export const platformSettings = pgTable("platform_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, string>>().notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** Every webhook/billing event processed once (idempotency + audit trail). */
 export const billingEvents = pgTable(

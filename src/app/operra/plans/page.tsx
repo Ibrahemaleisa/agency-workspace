@@ -62,8 +62,8 @@ function PlanFields({ p }: { p?: Plan }) {
         </select>
       </label>
       <label className={label}>
-        Stripe price ID
-        <input name="stripePriceId" defaultValue={p?.stripePriceId ?? ""} placeholder="price_…" className={`${field} font-mono`} />
+        Payment provider ID (Lemon Squeezy variant or Stripe price)
+        <input name="stripePriceId" defaultValue={p?.stripePriceId ?? ""} placeholder="123456 or price_…" className={`${field} font-mono`} />
       </label>
       <div className="flex flex-col justify-end gap-2 text-sm">
         <label className="flex items-center gap-2">

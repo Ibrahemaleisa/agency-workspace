@@ -8,7 +8,22 @@ const field = "rounded-md border border-[#8C919A] bg-white px-2 py-1.5 text-sm";
  * Staff: activate (or renew) a plan after the agency paid. Months add to a running manual plan.
  * Amount blank = the plan's price × months; it becomes the invoice amount.
  */
-export function ActivatePlanForm({ orgId, plans, defaultPlan, compact }: { orgId: string; plans: Plan[]; defaultPlan?: string; compact?: boolean }) {
+export function ActivatePlanForm({
+  orgId,
+  plans,
+  defaultPlan,
+  defaultMonths = 1,
+  defaultAmount,
+  compact,
+}: {
+  orgId: string;
+  plans: Plan[];
+  defaultPlan?: string;
+  defaultMonths?: number;
+  /** Pre-filled from a declared transfer (major units). */
+  defaultAmount?: number;
+  compact?: boolean;
+}) {
   return (
     <ActionForm action={activatePlanAction} successMessage="Activated — invoice recorded." className={`flex flex-wrap items-end gap-2 ${compact ? "" : "mt-4"}`}>
       <input type="hidden" name="orgId" value={orgId} />
@@ -25,7 +40,7 @@ export function ActivatePlanForm({ orgId, plans, defaultPlan, compact }: { orgId
       </label>
       <label className="text-xs text-[#5A606B]">
         Months paid
-        <select name="months" defaultValue="1" className={`${field} mt-1 block`}>
+        <select name="months" defaultValue={String(defaultMonths)} className={`${field} mt-1 block`}>
           {[1, 3, 6, 12].map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
@@ -33,7 +48,7 @@ export function ActivatePlanForm({ orgId, plans, defaultPlan, compact }: { orgId
       </label>
       <label className="text-xs text-[#5A606B]">
         Amount received (blank = plan price)
-        <input name="amount" type="number" min={0} step="0.01" className={`${field} mt-1 block w-36`} />
+        <input name="amount" type="number" min={0} step="0.01" defaultValue={defaultAmount} className={`${field} mt-1 block w-36`} />
       </label>
       <SubmitButton size="sm">Activate plan</SubmitButton>
     </ActionForm>

@@ -27,7 +27,7 @@ async function stripe<T>(path: string, method: "GET" | "POST", params?: Record<s
 
 /** The Stripe Price for a plan: the plan's own `stripe_price_id`, else STRIPE_PRICE_<CODE>. */
 export const priceFor = (plan: Pick<Plan, "code" | "stripePriceId">) =>
-  plan.stripePriceId || process.env[`STRIPE_PRICE_${plan.code.toUpperCase()}`] || null;
+  (plan.stripePriceId?.startsWith("price_") ? plan.stripePriceId : null) || process.env[`STRIPE_PRICE_${plan.code.toUpperCase()}`] || null;
 
 /** Stripe Checkout requires a trial end at least 48 hours ahead; shorter remainders start billing now. */
 const MIN_TRIAL_END_MS = 48 * 3600_000 + 5 * 60_000;

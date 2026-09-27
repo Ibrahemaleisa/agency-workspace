@@ -10,7 +10,7 @@ import { idOf, str, type ActionState } from "@/lib/action-state";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { isUuid } from "@/lib/access";
-import { activatePlan, dismissRequest } from "@/lib/billing/manual";
+import { activatePlan, dismissRequest, saveBankDetails } from "@/lib/billing/manual";
 import { issueResetLink } from "@/lib/password-reset";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 
@@ -89,7 +89,7 @@ function planFields(fd: FormData): { error: string } | { values: Omit<typeof pla
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "Currency must be a 3-letter code, e.g. USD or SAR." };
   const interval = str(fd, "interval") === "year" ? "year" : "month";
   const stripePriceId = str(fd, "stripePriceId") ?? null;
-  if (stripePriceId && !/^price_[A-Za-z0-9]+$/.test(stripePriceId)) return { error: "Stripe price IDs look like price_…" };
+  if (stripePriceId && !/^(price_[A-Za-z0-9]+|\d{1,12})$/.test(stripePriceId)) return { error: "Use a Lemon Squeezy variant ID (digits) or a Stripe price ID (price_…)." };
   const sort = Number(str(fd, "sort") ?? 0);
   return {
     values: {
@@ -176,4 +176,23 @@ export async function resetLinkAction(_prev: ActionState, fd: FormData): Promise
   const link = await issueResetLink(accountId);
   console.info("[control-center] reset link issued", { admin: admin.email, accountId });
   return { ok: true, link };
+}
+
+/** Staff: the bank account agencies can transfer to (optional backup to card payment). Empty IBAN = off. */
+export async function saveBankAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin();
+  const iban = (str(fd, "iban") ?? "").replace(/\s+/g, "").toUpperCase();
+  if (iban && !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) return { error: "That doesn’t look like an IBAN (e.g. SA03 8000 0000 6080 1016 7519)." };
+  await saveBankDetails(
+    {
+      bankName: str(fd, "bankName")?.slice(0, 80) ?? "",
+      accountName: str(fd, "accountName")?.slice(0, 120) ?? "",
+      iban: iban.replace(/(.{4})/g, "$1 ").trim(),
+      instructionsEn: str(fd, "instructionsEn")?.slice(0, 500) ?? "",
+      instructionsAr: str(fd, "instructionsAr")?.slice(0, 500) ?? "",
+    },
+    admin.email,
+  );
+  revalidatePath("/operra/payments");
+  return { ok: true };
 }

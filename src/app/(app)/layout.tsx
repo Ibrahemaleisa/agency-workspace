@@ -107,7 +107,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       {unverifiedEmail && (
         <VerifyBanner title={st.verify.bannerTitle} body={st.verify.bannerBody(unverifiedEmail)} resend={st.verify.resend} sent={st.verify.sent} />
       )}
-      {tourSteps && (
+      {/* The tutorial waits while the admin is paying or managing billing. */}
+      {tourSteps && !pathname.startsWith("/settings/billing") && (
         <Tour
           steps={tourSteps}
           initialStep={onboarding?.step ?? 0}

@@ -6,6 +6,7 @@ import { billingEvents, invoices, plans, subscriptions, type Organization, type 
 import { appUrl, isPlatform } from "../platform";
 import { sign } from "../secret";
 import { stripeProvider } from "./stripe";
+import { lemonSqueezyProvider } from "./lemonsqueezy";
 import { sendInvoiceEmail } from "./invoice-email";
 import type { BillingEvent, BillingProvider, ProviderName } from "./types";
 
@@ -13,6 +14,7 @@ export type { BillingEvent };
 
 /**
  * The active payment provider:
+ * - "lemonsqueezy" when LEMONSQUEEZY_API_KEY (+ store) is set (or BILLING_PROVIDER=lemonsqueezy);
  * - "stripe" when STRIPE_SECRET_KEY is set (or BILLING_PROVIDER=stripe);
  * - "test" only when BILLING_PROVIDER=test, and never in production unless ALLOW_TEST_BILLING=true;
  * - null: no online payment — workspaces run on their trial and are billed manually.
@@ -25,6 +27,8 @@ export function providerName(): ProviderName | null {
     const allowed = process.env.NODE_ENV !== "production" || process.env.ALLOW_TEST_BILLING === "true";
     return allowed ? "test" : null;
   }
+  const lsReady = !!process.env.LEMONSQUEEZY_API_KEY && !!process.env.LEMONSQUEEZY_STORE_ID;
+  if (chosen === "lemonsqueezy" || (!chosen && process.env.LEMONSQUEEZY_API_KEY)) return lsReady ? "lemonsqueezy" : null;
   if (chosen === "stripe" || (!chosen && process.env.STRIPE_SECRET_KEY)) return process.env.STRIPE_SECRET_KEY ? "stripe" : null;
   return null;
 }
@@ -43,7 +47,7 @@ const testProvider: BillingProvider = {
 
 export function billingProvider(): BillingProvider | null {
   const name = providerName();
-  return name === "stripe" ? stripeProvider : name === "test" ? testProvider : null;
+  return name === "stripe" ? stripeProvider : name === "lemonsqueezy" ? lemonSqueezyProvider : name === "test" ? testProvider : null;
 }
 
 export const getSubscription = cache((orgId: string) => db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) }));

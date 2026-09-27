@@ -13,6 +13,7 @@ export function configChecks(): ConfigCheck[] {
   const prod = process.env.NODE_ENV === "production";
   const billing = providerName();
   const stripeReady = !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_WEBHOOK_SECRET;
+  const lsReady = !!process.env.LEMONSQUEEZY_API_KEY && !!process.env.LEMONSQUEEZY_STORE_ID && !!process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
   return [
     { key: "OPERRA_PLATFORM", ok: isPlatform(), note: isPlatform() ? "Platform mode" : "Single-agency mode" },
     {
@@ -34,15 +35,19 @@ export function configChecks(): ConfigCheck[] {
     },
     {
       key: "Billing provider",
-      ok: billing === "stripe" ? stripeReady : billing === "test" ? !prod || process.env.ALLOW_TEST_BILLING === "true" : null,
+      ok: billing === "stripe" ? stripeReady : billing === "lemonsqueezy" ? lsReady : billing === "test" ? !prod || process.env.ALLOW_TEST_BILLING === "true" : null,
       note:
-        billing === "stripe"
+        billing === "lemonsqueezy"
+          ? lsReady
+            ? `Lemon Squeezy — cards, Apple Pay, Google Pay, PayPal${process.env.LEMONSQUEEZY_TEST_MODE === "true" ? " (TEST MODE)" : ""}`
+            : "Lemon Squeezy selected but LEMONSQUEEZY_WEBHOOK_SECRET missing"
+          : billing === "stripe"
           ? stripeReady
             ? "Stripe (secret key and webhook secret set)"
             : "Stripe selected but STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET missing"
           : billing === "test"
             ? "TEST provider — never use for real customers"
-            : "None — workspaces run on their trial; subscribing is unavailable",
+            : "None — no card payment yet: subscribing uses plan requests (and bank transfer if set in Payments)",
     },
     {
       key: "Storage (BLOB_READ_WRITE_TOKEN)",
