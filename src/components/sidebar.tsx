@@ -23,6 +23,8 @@ import {
   Users,
   X,
   ArrowLeftRight,
+  CalendarDays,
+  Settings,
 } from "lucide-react";
 import { cn } from "./ui";
 import { BrandMark } from "./site/brand";
@@ -46,6 +48,8 @@ const ICONS = {
   guide: BookOpen,
   brand: Palette,
   billing: CreditCard,
+  settings: Settings,
+  calendar: CalendarDays,
 };
 
 export type NavItem = {
@@ -88,7 +92,8 @@ export function Sidebar({
   const [moreOpen, setMoreOpen] = useState(false);
   const unread = useUnread(initialUnread);
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // "/" and "/settings" only match themselves (their sub-pages have their own entries).
+  const isActive = (href: string) => (href === "/" || href === "/settings" ? pathname === href : pathname.startsWith(href));
   const badgeFor = (item: NavItem) =>
     item.icon === "notifications" ? unread : item.icon === "teamChat" && isActive(item.href) ? 0 : item.badge;
 

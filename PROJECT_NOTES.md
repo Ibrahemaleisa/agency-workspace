@@ -70,7 +70,9 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
   and emailed, congratulations shown once; it locks again at its paid-until date (renew from the customer page).
   `src/lib/billing/manual.ts`. Connecting a gateway later switches Subscribe to online checkout automatically.
 - Support: control center → People → person → "Create password reset link" (24 h, one use) for when email isn't set up.
-- **Next (owner):** a per-workspace Settings section — to be planned with the owner.
+- Product (27 Sep 2026): `/settings` (everyone: profile, language, email notifications, own password; admins: links to
+  brand, team, templates, billing), task board (`/tasks?layout=board`, drag-and-drop + "Move to" menu, same server
+  action as the list), and `/calendar` (month view of task deadlines, weeks start Sunday).
 - Control center analytics (`src/lib/analytics.ts`, table `platform_events`): site page views (beacon from `site/` to
   `/api/t`, anonymous `operra_vid` visitor id carried into sign-up as `?vid=`), sign-up steps shown/completed,
   workspace creation, sign-ins/failed attempts, daily activity; `accounts.last_login_at/login_count`,

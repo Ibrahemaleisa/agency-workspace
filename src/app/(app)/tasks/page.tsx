@@ -1,7 +1,11 @@
 import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { TASK_STATUSES } from "@/lib/constants";
-import { listInternalUsers, listTasks, type TaskFilter } from "@/server/queries";
+import { listInternalUsers, listTasks, todayISO, type TaskFilter } from "@/server/queries";
+import { updateTaskStatus } from "@/server/task-actions";
+import { TaskBoard } from "@/components/task-board";
+import Link from "next/link";
+import { LayoutList, Columns3 } from "lucide-react";
 import { TaskTable } from "@/components/lists";
 import { FilterTabs, SearchBox } from "@/components/filters";
 import { AutoSubmitSelect } from "@/components/forms";
@@ -15,6 +19,12 @@ export async function generateMetadata() {
 }
 
 const VIEWS = ["mine", "all", "today", "overdue", "blocked", "unassigned"] as const;
+
+/** On the board, completed work stays visible for two weeks. */
+function withoutOldCompleted<T extends { status: string; updatedAt: Date }>(list: T[]) {
+  const cutoff = Date.now() - 14 * 86_400_000;
+  return list.filter((x) => x.status !== "completed" || x.updatedAt.getTime() > cutoff);
+}
 
 export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   const user = await requirePermission("tasks.updateStatus");
@@ -33,11 +43,21 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   if (view === "overdue") filter.overdue = true;
   if (view === "blocked") filter.status = "waiting_client";
   if (view === "unassigned") filter.assigneeId = null;
+  const board = get("layout") === "board";
   if (status && TASK_STATUSES.some((s) => s.value === status)) filter.status = status;
-  else if (!filter.status && view !== "overdue" && view !== "today") filter.status = "open";
+  // The board shows every status (completed as its own column); the list shows open work by default.
+  else if (!filter.status && view !== "overdue" && view !== "today" && !board) filter.status = "open";
   if (assignee) filter.assigneeId = assignee === "none" ? null : assignee;
 
-  const [tasks, people] = await Promise.all([listTasks(user, filter), listInternalUsers(user.orgId)]);
+  const [allTasks, people] = await Promise.all([listTasks(user, filter), listInternalUsers(user.orgId)]);
+  const tasks = board ? withoutOldCompleted(allTasks) : allTasks;
+  const layoutHref = (l: "list" | "board") => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries({ view: get("view"), status, assignee, q })) if (v) p.set(k, v);
+    if (l === "board") p.set("layout", "board");
+    const qs = p.toString();
+    return `/tasks${qs ? `?${qs}` : ""}`;
+  };
   const assigneeName = assignee === "none" ? t.taskFilter.unassigned : assignee ? people.find((p) => p.id === assignee)?.name : undefined;
   const canFilterAssignee = can(user, "tasks.assign");
 
@@ -57,7 +77,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
         <FilterTabs
           current={assignee || status ? "" : view}
           options={VIEWS.filter((v) => v !== "unassigned" || can(user, "tasks.assign")).map((v) => ({ value: v, label: t.tasks.views[v] }))}
-          hrefFor={(v) => `/tasks?view=${v}`}
+          hrefFor={(v) => `/tasks?view=${v}${board ? "&layout=board" : ""}`}
         />
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {canFilterAssignee && (
@@ -78,12 +98,51 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
               />
             </form>
           )}
-          <SearchBox defaultValue={q} placeholder={t.tasks.searchPlaceholder} hidden={{ view, status, assignee }} />
+          <SearchBox defaultValue={q} placeholder={t.tasks.searchPlaceholder} hidden={{ view, status, assignee, layout: board ? "board" : undefined }} />
+          <nav aria-label={t.tasks.layoutLabel} className="flex rounded-full border border-zinc-200 bg-white p-0.5 text-sm">
+            {(["list", "board"] as const).map((l) => {
+              const Icon = l === "list" ? LayoutList : Columns3;
+              const active = (l === "board") === board;
+              return (
+                <Link
+                  key={l}
+                  href={layoutHref(l)}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${active ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900"}`}
+                  data-testid={`layout-${l}`}
+                >
+                  <Icon aria-hidden className="size-4" />
+                  {t.tasks.layouts[l]}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </div>
-      <Card padded={false}>
-        <TaskTable tasks={tasks} editableStatus showAssignee={view !== "mine"} empty={t.tasks.empty} />
-      </Card>
+      {board ? (
+        <TaskBoard
+          columns={TASK_STATUSES.map((c) => ({ value: c.value, label: t.taskStatus[c.value], tone: c.tone }))}
+          tasks={tasks.map((x) => ({
+            id: x.id,
+            title: x.title,
+            status: x.status,
+            priority: x.priority,
+            dueDate: x.dueDate,
+            projectName: x.projectName,
+            clientName: x.clientName,
+            assigneeName: x.assigneeName,
+            moduleColor: x.moduleColor,
+          }))}
+          move={updateTaskStatus}
+          canMove={!user.readOnly}
+          today={todayISO()}
+          labels={{ moveTo: t.tasks.moveTo, empty: t.tasks.columnEmpty, overdue: t.tasks.views.overdue, unassigned: t.taskFilter.unassigned }}
+        />
+      ) : (
+        <Card padded={false}>
+          <TaskTable tasks={tasks} editableStatus showAssignee={view !== "mine"} empty={t.tasks.empty} />
+        </Card>
+      )}
     </>
   );
 }

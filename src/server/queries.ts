@@ -9,7 +9,9 @@ import {
   inArray,
   isNull,
   gt,
+  gte,
   lt,
+  lte,
   ne,
   or,
   sql,
@@ -63,6 +65,9 @@ export type TaskFilter = {
   approvalPending?: boolean;
   approvalDecided?: boolean;
   q?: string;
+  /** Due between these dates, inclusive (yyyy-MM-dd). */
+  dueFrom?: string;
+  dueTo?: string;
   limit?: number;
   orderBy?: "due" | "updated";
 };
@@ -80,6 +85,8 @@ export async function listTasks(user: SessionUser, f: TaskFilter = {}) {
   else if (f.status) conds.push(eq(tasks.status, f.status));
   if (f.overdue) conds.push(and(lt(tasks.dueDate, today), ne(tasks.status, "completed")));
   if (f.dueToday) conds.push(and(eq(tasks.dueDate, today), ne(tasks.status, "completed")));
+  if (f.dueFrom) conds.push(gte(tasks.dueDate, f.dueFrom));
+  if (f.dueTo) conds.push(lte(tasks.dueDate, f.dueTo));
   if (f.approvalPending) conds.push(eq(tasks.approvalStatus, "pending"));
   if (f.approvalDecided) conds.push(inArray(tasks.approvalStatus, ["approved", "rejected"]));
   conds.push(

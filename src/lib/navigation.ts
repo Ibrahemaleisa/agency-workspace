@@ -15,6 +15,7 @@ const NAV: Entry[] = [
   { href: "/", key: "dashboard", icon: "dashboard" },
   { href: "/projects", key: "projects", icon: "projects" },
   { href: "/tasks", key: "tasks", icon: "tasks", permission: "tasks.updateStatus" },
+  { href: "/calendar", key: "calendar", icon: "calendar", permission: "tasks.updateStatus" },
   { href: "/approvals", key: "approvals", icon: "approvals" },
   { href: "/notifications", key: "notifications", icon: "notifications" },
   { href: "/chat", key: "teamChat", icon: "teamChat", permission: "chat.internal" },
@@ -25,6 +26,7 @@ const NAV: Entry[] = [
   { href: "/templates", key: "templates", icon: "templates", permission: "templates.manage", section: "sectionSettings" },
   { href: "/settings/brand", key: "brand", icon: "brand", permission: "brand.manage", section: "sectionSettings" },
   { href: "/settings/billing", key: "billing", icon: "billing", permission: "billing.manage", section: "sectionSettings" },
+  { href: "/settings", key: "settings", icon: "settings", section: "sectionSettings" },
   { href: "/guide", key: "guide", icon: "guide", section: "sectionHelp" },
 ];
 
