@@ -3,6 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { getT } from "@/lib/lang";
 import { AlertTriangle, CalendarDays, ChevronRight, Clock, Inbox } from "lucide-react";
 import type { ActivityRow, ProjectRow, TaskRow } from "@/server/queries";
+import { activityText } from "@/lib/activity-text";
 import { updateTaskStatus } from "@/server/task-actions";
 import { TASK_STATUSES } from "@/lib/constants";
 import { AutoSubmitSelect } from "./forms";
@@ -327,7 +328,7 @@ export async function ActivityFeed({
   showProject?: boolean;
   empty?: string;
 }) {
-  const { t: tr, locale } = await getT();
+  const { t: tr, locale, lang } = await getT();
   if (items.length === 0) return <EmptyState>{empty ?? tr.common.noActivity}</EmptyState>;
   return (
     <div className="relative px-4 py-2 md:px-5">
@@ -339,16 +340,27 @@ export async function ActivityFeed({
             <Avatar name={a.actorName} size="xs" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-zinc-600">
-              <span className="font-medium text-zinc-900">{a.actorName ?? tr.common.system}</span>{" "}
-              {a.taskId ? (
+            {(() => {
+              const text = activityText(a, lang, tr);
+              const body = a.taskId ? (
                 <Link href={`/tasks/${a.taskId}`} className="hover:text-indigo-600">
-                  {a.summary}
+                  {text}
                 </Link>
               ) : (
-                a.summary
-              )}
-            </p>
+                text
+              );
+              const who = <span className="font-medium text-zinc-900">{a.actorName ?? tr.common.system}</span>;
+              // Arabic: the action, then who did it (a neutral phrasing); English: who, then what.
+              return lang === "ar" && a.params ? (
+                <p className="text-zinc-600">
+                  {body} · {who}
+                </p>
+              ) : (
+                <p className="text-zinc-600">
+                  {who} {body}
+                </p>
+              );
+            })()}
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
               <span className={cn("size-1.5 rounded-full", activityDot(a.action))} />
               {formatDistanceToNow(a.createdAt, { addSuffix: true, locale })}

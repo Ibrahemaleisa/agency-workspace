@@ -120,6 +120,20 @@
       "when": 1790513503285,
       "tag": "0016_bank_transfer",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790513504285,
+      "tag": "0017_latin_digits",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790514510998,
+      "tag": "0018_activity_params",
+      "breakpoints": true
     }
   ]
 }

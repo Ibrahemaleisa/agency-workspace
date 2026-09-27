@@ -21,6 +21,8 @@ function LanguageSwitch({ pathname, className }: { pathname: string; className?:
   return (
     <Link
       href={switchLocalePath(pathname, other) as Route}
+      // A full page load: the other language is a different root layout (and its preload 404s through the rewrite).
+      prefetch={false}
       hrefLang={other}
       lang={other}
       className={cn("rounded-md px-2.5 py-1.5 text-[14px] text-muted transition-colors hover:text-ink", className)}

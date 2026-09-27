@@ -97,7 +97,7 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
       console.error("[invite email failed]", err);
     }
   }
-  await logActivity(admin, { action: "user.invited", summary: `invited ${email} (${role})` });
+  await logActivity(admin, { action: "user.invited", summary: `invited ${email} (${role})`, params: { email, role } });
   revalidatePath("/team");
   return { ok: true, link: emailed ? undefined : link };
 }
@@ -203,6 +203,6 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
   if (!user) return { error: e.invalid };
 
   await startOnboarding(user);
-  await logActivity({ ...user, readOnly: false }, { action: "user.joined", summary: `${name} joined the workspace` });
+  await logActivity({ ...user, readOnly: false }, { action: "user.joined", summary: `${name} joined the workspace`, params: {} });
   return enterWorkspace(user, org);
 }

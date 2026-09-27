@@ -12,7 +12,7 @@ export function planText(p: Plan, lang: string) {
 
 export function planPrice(p: Pick<Plan, "priceCents" | "currency" | "interval">, lang: string, l: { perMonth: string; perYear: string; onRequest: string }) {
   if (p.priceCents == null) return l.onRequest;
-  const amount = new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", {
+  const amount = new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-latn" : "en", {
     style: "currency",
     currency: p.currency,
     maximumFractionDigits: p.priceCents % 100 ? 2 : 0,

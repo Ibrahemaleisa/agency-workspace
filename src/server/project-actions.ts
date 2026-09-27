@@ -103,6 +103,7 @@ export async function createProject(_prev: ActionState, fd: FormData): Promise<A
   await logActivity(user, {
     action: "project.created",
     summary: `created project "${name}" for ${client.name}`,
+    params: { name, client: client.name },
     projectId: project.id,
     clientVisible: true,
   });
@@ -156,6 +157,7 @@ export async function updateProject(_prev: ActionState, fd: FormData): Promise<A
   await logActivity(user, {
     action: "project.updated",
     summary: changes.length ? `updated project "${name}": ${changes.join(", ")}` : `edited project "${name}"`,
+    params: { name },
     projectId: project.id,
     clientVisible: status !== project.status,
   });
@@ -192,6 +194,7 @@ export async function addModule(fd: FormData) {
   await logActivity(user, {
     action: "module.added",
     summary: `added ${template.name} module to "${project.name}"`,
+    params: { module: template.name, name: project.name },
     projectId: project.id,
     clientVisible: true,
   });
@@ -212,6 +215,7 @@ export async function removeModule(fd: FormData) {
   await logActivity(user, {
     action: "module.removed",
     summary: `removed ${mod.name} module from "${project.name}"`,
+    params: { module: mod.name, name: project.name },
     projectId: project.id,
   });
   refresh();
@@ -234,6 +238,7 @@ export async function updateModuleFields(_prev: ActionState, fd: FormData): Prom
   await logActivity(user, {
     action: "module.updated",
     summary: `updated ${mod.name} details on "${project.name}"`,
+    params: { module: mod.name, name: project.name },
     projectId: project.id,
   });
   refresh();

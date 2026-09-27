@@ -49,7 +49,7 @@ export function CompanySlugFields({
           required
           dir="ltr"
           value={slug}
-          pattern="[a-z0-9][a-z0-9-]{1,38}[a-z0-9]"
+          pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]"
           aria-describedby="slug-hint"
           onChange={(e) => {
             setTouched(true);

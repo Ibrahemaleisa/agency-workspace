@@ -43,7 +43,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const priceOf = (p: { priceCents: number | null; currency: string; interval: string }) =>
     p.priceCents == null
       ? b.onRequest
-      : `${new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? b.perYear : b.perMonth}`;
+      : `${new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-latn" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? b.perYear : b.perMonth}`;
   // Trials (running or ended) switch here; paid subscriptions switch with the provider.
   const canSwitch = !!sub && !org.isDemo && !sub.providerSubscriptionId;
   // Without online payment, subscribing is a request that Operra staff activate once paid.

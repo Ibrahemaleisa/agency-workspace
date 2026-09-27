@@ -162,3 +162,11 @@ body {
 @media (max-width: 767px) {
   .guide .features, .guide .roles { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Small uppercase mono labels are for Latin text: in Arabic they'd break letters apart. */
+[dir="rtl"] .font-mono.uppercase,
+:lang(ar) .font-mono.uppercase {
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}

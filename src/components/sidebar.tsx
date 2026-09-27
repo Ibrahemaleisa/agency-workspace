@@ -312,7 +312,7 @@ export function PlanBadge({ badge, className = "" }: { badge: PlanBadgeInfo; cla
     <span
       data-testid="plan-badge"
       data-plan={badge.kind}
-      className={`inline-flex cursor-default items-center rounded-md border px-2 py-0.5 text-[11px] leading-4 font-bold tracking-wide shadow-sm select-none ${b.className} ${className}`}
+      className={`inline-flex cursor-default items-center rounded-md border px-2 py-0.5 text-[11px] leading-4 font-bold tracking-wide whitespace-nowrap shadow-sm select-none ${b.className} ${className}`}
       style={b.style}
     >
       {badge.label}

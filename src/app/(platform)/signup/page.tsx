@@ -27,7 +27,7 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
     (await db.query.plans.findFirst());
   const fmt = (p: NonNullable<typeof plan>) =>
     p.priceCents != null
-      ? `${new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? s.account.perYear : s.account.perMonth}`
+      ? `${new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-latn" : "en", { style: "currency", currency: p.currency, maximumFractionDigits: p.priceCents % 100 ? 2 : 0 }).format(p.priceCents / 100)} / ${p.interval === "year" ? s.account.perYear : s.account.perMonth}`
       : s.account.onRequest;
   const nameOf = (p: NonNullable<typeof plan>) => (lang === "ar" && p.nameAr) || p.name;
   const price = plan?.priceCents != null ? fmt(plan) : null;

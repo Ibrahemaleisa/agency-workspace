@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { submitTransfer } from "@/server/billing-actions";
 import { ActionForm, SubmitButton } from "./forms";
-import { FILE_INPUT } from "./ui";
 
 type Labels = {
   period: string;
@@ -20,6 +19,8 @@ type Labels = {
   copied: string;
   step2: string;
   receipt: string;
+  chooseFile: string;
+  noFile: string;
   submit: string;
   after: string;
 };
@@ -67,8 +68,9 @@ export function PayForm({
 }) {
   const options = [1, 3, 6, 12];
   const [months, setMonths] = useState(1);
+  const [fileName, setFileName] = useState<string | null>(null);
   const money = (cents: number) =>
-    new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", { style: "currency", currency, maximumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
+    new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-latn" : "en", { style: "currency", currency, maximumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
   const row = "border-b border-zinc-100 py-3 last:border-0";
 
   return (
@@ -135,7 +137,21 @@ export function PayForm({
         <h2 className="font-semibold">{labels.step2}</h2>
         <label className="mt-2 block text-sm">
           <span className="mb-1 block text-zinc-600">{labels.receipt}</span>
-          <input type="file" name="receipt" required accept="image/png,image/jpeg,image/webp,application/pdf" className={FILE_INPUT} />
+          {/* The native control's text follows the browser's language; this one follows the page's. */}
+          <span className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-zinc-300 bg-white p-3 hover:border-zinc-500">
+            <span className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white">{labels.chooseFile}</span>
+            <span className="min-w-0 truncate text-zinc-500" dir="auto">
+              {fileName ?? labels.noFile}
+            </span>
+            <input
+              type="file"
+              name="receipt"
+              required
+              accept="image/png,image/jpeg,image/webp,application/pdf"
+              className="sr-only"
+              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            />
+          </span>
         </label>
       </section>
 

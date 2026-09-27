@@ -53,7 +53,7 @@ export async function startCheckout(fd?: FormData) {
     console.error("[checkout failed]", err);
     redirect("/settings/billing?checkout=error");
   }
-  await logActivity(user, { action: "billing.checkout", summary: "started checkout" });
+  await logActivity(user, { action: "billing.checkout", summary: "started checkout", params: {} });
   redirect(url);
 }
 
@@ -70,7 +70,7 @@ export async function changePlan(fd: FormData) {
     redirect("/settings/billing");
   }
   await db.update(subscriptions).set({ planCode: code, updatedAt: new Date() }).where(eq(subscriptions.orgId, user.orgId));
-  await logActivity(user, { action: "billing.plan", summary: `changed plan to ${plan.name}` });
+  await logActivity(user, { action: "billing.plan", summary: `changed plan to ${plan.name}`, params: { plan: plan.name, planAr: plan.nameAr ?? "" } });
   redirect("/settings/billing?plan=changed");
 }
 
@@ -81,7 +81,8 @@ export async function requestPlanAction(fd: FormData) {
   const code = String(fd.get("plan") ?? "");
   const req = await requestPlan(user.orgId, code, user.id);
   if (!req) redirect("/settings/billing");
-  await logActivity(user, { action: "billing.request", summary: `asked to subscribe to ${code}` });
+  const requested = await getPlan(code);
+  await logActivity(user, { action: "billing.request", summary: `chose the ${requested?.name ?? code} plan`, params: { plan: requested?.name ?? code, planAr: requested?.nameAr ?? "" } });
   redirect("/settings/billing?requested=1");
 }
 
@@ -112,7 +113,7 @@ export async function submitTransfer(_prev: ActionState, fd: FormData): Promise<
     receipt: { key, name: file.name.slice(0, 120), type: file.type },
   });
   if (!req) return { error: e.plan };
-  await logActivity(user, { action: "billing.transfer", summary: `sent a bank transfer receipt for ${plan.name}` });
+  await logActivity(user, { action: "billing.transfer", summary: `sent a bank transfer receipt for ${plan.name}`, params: { plan: plan.name, planAr: plan.nameAr ?? "" } });
   redirect("/settings/billing?requested=1");
 }
 

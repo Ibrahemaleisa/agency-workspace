@@ -26,7 +26,7 @@ export async function getLivePlans(): Promise<LivePlan[] | null> {
 }
 
 export function formatPrice(price: NonNullable<LivePlan["price"]>, locale: string) {
-  return new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en", {
+  return new Intl.NumberFormat(locale === "ar" ? "ar-SA-u-nu-latn" : "en", {
     style: "currency",
     currency: price.currency,
     maximumFractionDigits: Number.isInteger(price.amount) ? 0 : 2,

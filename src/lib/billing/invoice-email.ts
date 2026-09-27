@@ -8,7 +8,7 @@ import { emailEnabled, notificationEmail, sendEmail } from "../email";
 import { tenantBaseUrl } from "../platform";
 
 export function formatMoney(amountCents: number, currency: string, lang: string) {
-  return new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en", {
+  return new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-latn" : "en", {
     style: "currency",
     currency,
     maximumFractionDigits: amountCents % 100 ? 2 : 0,

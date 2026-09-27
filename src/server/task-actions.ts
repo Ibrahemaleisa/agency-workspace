@@ -108,6 +108,7 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
   await logActivity(user, {
     action: "task.created",
     summary: `created task "${title}"`,
+    params: { title },
     projectId: project.id,
     taskId: task.id,
   });
@@ -159,6 +160,7 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
   await logActivity(user, {
     action: "task.updated",
     summary: diffs.length ? `updated "${title}": ${diffs.join(", ")}` : `edited "${title}"`,
+    params: { title },
     projectId: task.projectId,
     taskId: task.id,
   });
@@ -181,6 +183,7 @@ export async function assignTask(fd: FormData) {
   await logActivity(user, {
     action: "task.assigned",
     summary: assigneeName ? `assigned "${task.title}" to ${assigneeName}` : `unassigned "${task.title}"`,
+    params: { title: task.title, name: assigneeName ?? "" },
     projectId: task.projectId,
     taskId: task.id,
   });
@@ -203,6 +206,7 @@ export async function deleteTask(fd: FormData) {
   await logActivity(user, {
     action: "task.deleted",
     summary: `deleted task "${task.title}"`,
+    params: { title: task.title },
     projectId: task.projectId,
   });
   refresh();
@@ -243,6 +247,7 @@ export async function updateTaskStatus(fd: FormData) {
   await logActivity(user, {
     action: "task.status",
     summary: `moved "${task.title}" from ${taskStatusLabel(task.status)} to ${taskStatusLabel(status)}`,
+    params: { title: task.title, from: task.status, to: status },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible,
@@ -290,6 +295,7 @@ export async function requestClientApproval(_prev: ActionState, fd: FormData): P
   await logActivity(user, {
     action: "approval.requested",
     summary: `requested client approval on "${task.title}"`,
+    params: { title: task.title },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible: true,
@@ -348,6 +354,7 @@ export async function decideApproval(_prev: ActionState, fd: FormData): Promise<
   await logActivity(user, {
     action: approved ? "approval.approved" : "approval.rejected",
     summary: `${approved ? "approved" : "requested changes on"} "${task.title}"`,
+    params: { title: task.title },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible: true,
@@ -381,6 +388,7 @@ export async function addComment(_prev: ActionState, fd: FormData): Promise<Acti
   await logActivity(user, {
     action: "comment.added",
     summary: `commented on "${task.title}"`,
+    params: { title: task.title },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible: !internal,
@@ -441,6 +449,7 @@ export async function toggleAttachmentVisibility(fd: FormData) {
   await logActivity(user, {
     action: "file.shared",
     summary: `${clientVisible ? "shared" : "unshared"} ${att.fileName} ${clientVisible ? "with" : "from"} client`,
+    params: { file: att.fileName, shared: clientVisible ? "1" : "" },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible,
@@ -461,6 +470,7 @@ export async function deleteAttachment(fd: FormData) {
   await logActivity(user, {
     action: "file.deleted",
     summary: `removed ${att.fileName} from "${task.title}"`,
+    params: { file: att.fileName, title: task.title },
     projectId: task.projectId,
     taskId: task.id,
   });
@@ -502,6 +512,7 @@ async function storeAttachments(
   await logActivity(user, {
     action: "file.uploaded",
     summary: `uploaded ${files.map((f) => f.name).join(", ")} to "${task.title}"`,
+    params: { file: files.map((f) => f.name).join("، "), title: task.title },
     projectId: task.projectId,
     taskId: task.id,
     clientVisible,

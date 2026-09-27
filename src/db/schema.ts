@@ -536,6 +536,8 @@ export const activityLog = pgTable(
     taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
     action: text("action").notNull(), // task.created, task.status, comment.added, ...
     summary: text("summary").notNull(),
+    /** Details for writing the entry in the reader's language (title, from/to status, names…). */
+    params: jsonb("params").$type<Record<string, string>>(),
     /** Whether this entry may be shown to the client on their portal. */
     clientVisible: boolean("client_visible").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

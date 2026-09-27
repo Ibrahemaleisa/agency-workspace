@@ -57,7 +57,7 @@ export async function updateBrand(_prev: ActionState, fd: FormData): Promise<Act
   }
 
   await db.update(organizations).set(changes).where(eq(organizations.id, user.orgId));
-  await logActivity(user, { action: "brand.updated", summary: "updated the brand settings" });
+  await logActivity(user, { action: "brand.updated", summary: "updated the brand settings", params: {} });
   revalidatePath("/", "layout");
   return { ok: true };
 }

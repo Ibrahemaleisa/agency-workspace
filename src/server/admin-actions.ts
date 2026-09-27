@@ -74,7 +74,7 @@ export async function createClient(_prev: ActionState, fd: FormData): Promise<Ac
     .values({ ...values, name: values.name, orgId: user.orgId })
     .returning();
   await setClientTeam(user.orgId, client.id, fd.getAll("teamIds").map(String));
-  await logActivity(user, { action: "client.created", summary: `added client ${client.name}` });
+  await logActivity(user, { action: "client.created", summary: `added client ${client.name}`, params: { name: client.name } });
   refresh();
   redirect(`/clients/${client.id}`);
 }
@@ -92,7 +92,7 @@ export async function updateClient(_prev: ActionState, fd: FormData): Promise<Ac
     .returning();
   if (!client) return { error: (await msg()).clientNotFound };
   await setClientTeam(user.orgId, client.id, fd.getAll("teamIds").map(String));
-  await logActivity(user, { action: "client.updated", summary: `updated client ${client.name}` });
+  await logActivity(user, { action: "client.updated", summary: `updated client ${client.name}`, params: { name: client.name } });
   refresh();
   return { ok: true };
 }
@@ -152,7 +152,7 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
   });
   // Their first sign-in opens the tutorial for their role.
   await startOnboarding(created);
-  await logActivity(admin, { action: "user.created", summary: `added user ${name} (${role})` });
+  await logActivity(admin, { action: "user.created", summary: `added user ${name} (${role})`, params: { name, role } });
   refresh();
   return { ok: true };
 }
@@ -226,7 +226,7 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
       .where(eq(users.id, target.id));
   });
   if (!active || password) await db.delete(sessions).where(eq(sessions.userId, target.id));
-  await logActivity(admin, { action: "user.updated", summary: `updated user ${name}` });
+  await logActivity(admin, { action: "user.updated", summary: `updated user ${name}`, params: { name } });
   refresh();
   return { ok: true };
 }
@@ -287,6 +287,7 @@ export async function saveTemplate(_prev: ActionState, fd: FormData): Promise<Ac
   await logActivity(user, {
     action: "template.saved",
     summary: `${id ? "updated" : "created"} module template ${values.name}`,
+    params: { name: values.name },
   });
   refresh();
   if (!id) redirect("/templates");

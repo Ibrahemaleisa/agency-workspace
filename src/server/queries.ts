@@ -265,6 +265,7 @@ export async function listActivity(
       id: activityLog.id,
       action: activityLog.action,
       summary: activityLog.summary,
+      params: activityLog.params,
       createdAt: activityLog.createdAt,
       actorName: actor.name,
       projectId: activityLog.projectId,

@@ -16,7 +16,9 @@ export async function logActivity(
   actor: SessionUser,
   entry: {
     action: string;
+    /** English fallback; entries with params are written in each reader's language (lib/activity-text). */
     summary: string;
+    params?: Record<string, string>;
     projectId?: string | null;
     taskId?: string | null;
     clientVisible?: boolean;
@@ -27,6 +29,7 @@ export async function logActivity(
     actorId: actor.id,
     action: entry.action,
     summary: entry.summary,
+    params: entry.params ?? null,
     projectId: entry.projectId ?? null,
     taskId: entry.taskId ?? null,
     clientVisible: entry.clientVisible ?? false,
