@@ -69,6 +69,7 @@ export function Sidebar({
   labels,
   bellLabels,
   workspaces = [],
+  plan = null,
 }: {
   items: NavItem[];
   user: { name: string; roleLabel: string };
@@ -80,6 +81,8 @@ export function Sidebar({
   bellLabels: { title: string; viewAll: string; empty: string; markAll: string };
   /** The person's other agencies (same sign-in); empty for most people. */
   workspaces?: { id: string; name: string; switchLabel: string }[];
+  /** The agency's plan badge under its logo (platform mode). */
+  plan?: PlanBadgeInfo | null;
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -102,7 +105,7 @@ export function Sidebar({
     <>
       {/* ---------------- Desktop sidebar ---------------- */}
       <aside className="fixed inset-y-0 start-0 z-20 hidden w-64 flex-col bg-ink text-zinc-300 md:flex">
-        <Brand orgName={orgName} logo={logo} workspace={labels.workspace} />
+        <Brand orgName={orgName} logo={logo} workspace={labels.workspace} plan={plan} />
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2">
           {items.map((item, i) => {
             const Icon = ICONS[item.icon];
@@ -162,6 +165,7 @@ export function Sidebar({
         <div className="flex items-center gap-2">
           <BrandMark logo={logo} name={orgName} className="h-8" variant="light" />
           <span className="text-[15px] font-semibold">{orgName}</span>
+          {plan && <PlanBadge badge={plan} />}
         </div>
         <div className="flex items-center gap-2">
           <LangSwitch lang={lang} next={pathname} tone="light" />
@@ -282,13 +286,42 @@ export function Sidebar({
   );
 }
 
-function Brand({ orgName, logo, workspace }: { orgName: string; logo: string | null; workspace: string }) {
+export type PlanBadgeInfo = { kind: "trial" | "standard" | "full"; label: string };
+
+const BADGE_STYLE: Record<PlanBadgeInfo["kind"], { className: string; style?: React.CSSProperties }> = {
+  // Free trial: white with black text.
+  trial: { className: "border-zinc-300 bg-white text-black" },
+  // Standard: light grey with black text.
+  standard: { className: "border-zinc-300 bg-zinc-200 text-black" },
+  // Full package: gold, with white lettering outlined in black.
+  full: {
+    className: "border-[#8a6a12] bg-gradient-to-b from-[#f3d27a] via-[#d4a82f] to-[#b8871b] text-white",
+    style: { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 0 0 #000, -1px 0 0 #000" },
+  },
+};
+
+/** The agency's plan, shaped like a button but not clickable (information only). */
+export function PlanBadge({ badge, className = "" }: { badge: PlanBadgeInfo; className?: string }) {
+  const b = BADGE_STYLE[badge.kind];
   return (
-    <div className="flex h-16 items-center gap-3 px-5">
+    <span
+      data-testid="plan-badge"
+      data-plan={badge.kind}
+      className={`inline-flex cursor-default items-center rounded-md border px-2 py-0.5 text-[11px] leading-4 font-bold tracking-wide shadow-sm select-none ${b.className} ${className}`}
+      style={b.style}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
+function Brand({ orgName, logo, workspace, plan }: { orgName: string; logo: string | null; workspace: string; plan?: PlanBadgeInfo | null }) {
+  return (
+    <div className={`flex items-center gap-3 px-5 ${plan ? "min-h-16 py-3" : "h-16"}`}>
       <BrandMark logo={logo} name={orgName} className="h-8" variant="dark" />
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-white">{orgName}</div>
-        <div className="text-[11px] text-zinc-400">{workspace}</div>
+        {plan ? <PlanBadge badge={plan} className="mt-1" /> : <div className="text-[11px] text-zinc-400">{workspace}</div>}
       </div>
     </div>
   );

@@ -2,10 +2,11 @@ import "server-only";
 import { cache } from "react";
 import { and, eq, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { billingEvents, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
+import { billingEvents, invoices, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
 import { appUrl, isPlatform } from "../platform";
 import { sign } from "../secret";
 import { stripeProvider } from "./stripe";
+import { sendInvoiceEmail } from "./invoice-email";
 import type { BillingEvent, BillingProvider, ProviderName } from "./types";
 
 export type { BillingEvent };
@@ -99,20 +100,20 @@ export function hasAccess(org: Pick<Organization, "isDemo">, sub: Subscription |
  * Returns false when the event was already processed.
  */
 export async function applyBillingEvent(evt: BillingEvent): Promise<boolean> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [recorded] = await tx
       .insert(billingEvents)
       .values({ provider: evt.provider, eventId: evt.eventId, type: evt.type, orgId: evt.orgId, payload: evt.raw as object })
       .onConflictDoNothing()
       .returning({ id: billingEvents.id });
-    if (!recorded) return false;
-    if (!evt.orgId) return true;
+    if (!recorded) return { applied: false, invoiceId: null };
+    if (!evt.orgId) return { applied: true, invoiceId: null };
 
     const existing = await tx.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, evt.orgId) });
-    if (!existing) return true;
+    if (!existing) return { applied: true, invoiceId: null };
     // Ignore stale events for a subscription that has since been replaced.
     if (existing.providerSubscriptionId && evt.subscriptionId && existing.providerSubscriptionId !== evt.subscriptionId && evt.type !== "checkout.session.completed") {
-      return true;
+      return { applied: true, invoiceId: null };
     }
     await tx
       .update(subscriptions)
@@ -126,6 +127,30 @@ export async function applyBillingEvent(evt: BillingEvent): Promise<boolean> {
         updatedAt: new Date(),
       })
       .where(and(eq(subscriptions.orgId, evt.orgId)));
-    return true;
+
+    let invoiceId: string | null = null;
+    if (evt.invoice && evt.invoice.amountCents > 0) {
+      const [inv] = await tx
+        .insert(invoices)
+        .values({
+          orgId: evt.orgId,
+          planCode: evt.invoice.planCode ?? existing.planCode,
+          amountCents: evt.invoice.amountCents,
+          currency: evt.invoice.currency.toUpperCase(),
+          periodStart: evt.invoice.periodStart ?? null,
+          periodEnd: evt.invoice.periodEnd ?? null,
+          provider: evt.provider,
+          providerInvoiceId: evt.invoice.providerInvoiceId,
+          url: evt.invoice.url ?? null,
+        })
+        .onConflictDoNothing()
+        .returning({ id: invoices.id });
+      invoiceId = inv?.id ?? null;
+    }
+    return { applied: true, invoiceId };
   });
+  // Email outside the transaction: a slow mail server never holds the database, and a failed
+  // send never undoes the payment (the invoice stays unemailed and visible on the billing page).
+  if (result.invoiceId) await sendInvoiceEmail(result.invoiceId);
+  return result.applied;
 }

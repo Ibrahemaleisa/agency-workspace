@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { getSaasT } from "@/lib/i18n-saas";
+import { getLang } from "@/lib/lang";
+import { PlanOptions } from "@/components/platform/plan-options";
 import { addressTemplate } from "@/lib/signup-view";
 import { providerName } from "@/lib/billing";
 import { currentSignup, signupStart } from "@/server/signup-actions";
@@ -21,7 +23,9 @@ export default async function SignupStartPage() {
   if (signup.step < 3) redirect("/signup/brand");
   const { t } = await getSaasT();
   const s = t.signup;
-  const plan = await db.query.plans.findFirst({ where: eq(plans.code, signup.planCode) });
+  const lang = await getLang();
+  const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
+  const plan = offered.find((p) => p.code === signup.planCode) ?? offered.find((p) => p.featured) ?? offered[0];
   const payments = !!providerName();
   const row = "flex items-baseline justify-between gap-4 border-b border-[#E3E4E0] py-2.5 text-sm last:border-0";
 
@@ -56,6 +60,13 @@ export default async function SignupStartPage() {
       }
     >
       <ActionForm action={signupStart} className="space-y-4">
+        {offered.length > 0 && (
+          <fieldset>
+            <legend className="mb-3 font-semibold">{s.start.planTitle}</legend>
+            <PlanOptions plans={offered} lang={lang} labels={s.start} defaultCode={plan?.code} />
+          </fieldset>
+        )}
+        <p className="pt-2 font-semibold">{s.start.howTitle}</p>
         <label className="flex cursor-pointer gap-3 rounded-lg border border-zinc-300 p-4 has-checked:border-zinc-900 has-checked:ring-1 has-checked:ring-zinc-900">
           <input type="radio" name="mode" value="trial" defaultChecked className="mt-1" />
           <span>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { clientLimitError, teamLimitError } from "@/lib/limits";
 import {
   accounts,
   clients,
@@ -66,6 +67,8 @@ export async function createClient(_prev: ActionState, fd: FormData): Promise<Ac
   assertCan(user, "clients.manage");
   const values = clientValues(fd);
   if (!values.name) return { error: (await msg()).clientNameRequired };
+  const limit = await clientLimitError(user.orgId);
+  if (limit) return { error: limit };
   const [client] = await db
     .insert(clients)
     .values({ ...values, name: values.name, orgId: user.orgId })
@@ -122,6 +125,10 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
   }
   if (await db.query.users.findFirst({ where: and(eq(users.orgId, admin.orgId), eq(users.email, email)) }))
     return { error: (await msg()).emailExists };
+  if (role !== "client") {
+    const limit = await teamLimitError(admin.orgId);
+    if (limit) return { error: limit };
+  }
   // Someone who already has an account elsewhere joins by invitation, with their own password.
   if (await db.query.accounts.findFirst({ where: eq(accounts.email, email) })) return { error: (await msg()).accountExists };
 
@@ -169,6 +176,12 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
 
   const password = str(fd, "password");
   if (password && password.length < 8) return { error: (await msg()).passwordLength };
+  // Re-activating someone, or moving a client user into the team, takes a team seat.
+  const takesSeat = role !== "client" && active && (target.role === "client" || !target.active);
+  if (takesSeat) {
+    const limit = await teamLimitError(admin.orgId, { countInvites: false });
+    if (limit) return { error: limit };
+  }
 
   const email = str(fd, "email")?.toLowerCase() ?? target.email;
   const emailChanged = email !== target.email;

@@ -13,6 +13,16 @@ export type BillingEvent = {
   status?: "trialing" | "active" | "past_due" | "canceled" | "incomplete" | "unpaid";
   currentPeriodEnd?: Date | null;
   cancelAtPeriodEnd?: boolean;
+  /** A successful payment: recorded once as an invoice and emailed to the agency's admins. */
+  invoice?: {
+    providerInvoiceId: string;
+    amountCents: number;
+    currency: string;
+    planCode?: string | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    url?: string | null;
+  };
   raw: unknown;
 };
 

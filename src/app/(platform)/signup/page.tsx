@@ -59,30 +59,7 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
     >
       {sp.expired && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{s.errors.expired}</p>}
       <ActionForm action={signupAccount} className="space-y-4">
-        {offered.length > 1 ? (
-          <fieldset className="space-y-2">
-            <legend className="mb-2 text-sm font-medium">{s.account.choosePlan}</legend>
-            {offered.map((p) => (
-              <label
-                key={p.code}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#E3E4E0] bg-white p-3 has-[:checked]:border-zinc-900"
-              >
-                <input type="radio" name="plan" value={p.code} defaultChecked={p.code === plan?.code} className="mt-1" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="font-medium">{nameOf(p)}</span>
-                    <span className="text-sm text-[#5A606B]">{fmt(p)}</span>
-                  </span>
-                  {((lang === "ar" && p.descriptionAr) || p.description) && (
-                    <span className="block text-sm text-[#5A606B]">{(lang === "ar" && p.descriptionAr) || p.description}</span>
-                  )}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        ) : (
-          <input type="hidden" name="plan" value={plan?.code ?? "workspace"} />
-        )}
+        <input type="hidden" name="plan" value={plan?.code ?? "full"} />
         <Field label={s.account.name}>
           <Input name="name" required autoComplete="name" autoFocus defaultValue={existing?.name ?? ""} />
         </Field>

@@ -168,10 +168,13 @@ export async function signupStart(_prev: ActionState, fd: FormData): Promise<Act
   platformOnly();
   const s = await requireSignup(3);
   const mode = str(fd, "mode") === "subscribe" && providerName() ? "subscribe" : "trial";
+  const chosen = str(fd, "plan");
+  const plan = chosen ? await db.query.plans.findFirst({ where: and(eq(plans.code, chosen), eq(plans.active, true)) }) : null;
+  const planCode = plan?.code ?? s.planCode;
   // Re-check the address: someone may have taken it since step 2.
   if (!(await slugAvailable(s.slug ?? ""))) return { error: (await getSaasT()).t.signup.errors.slugTaken };
-  await db.update(signups).set({ startMode: mode, step: 4, updatedAt: new Date() }).where(eq(signups.id, s.id));
-  await track("signup_step", { signupId: s.id, meta: { step: 4, mode } });
+  await db.update(signups).set({ planCode, startMode: mode, step: 4, updatedAt: new Date() }).where(eq(signups.id, s.id));
+  await track("signup_step", { signupId: s.id, meta: { step: 4, mode, plan: planCode } });
   redirect("/signup/provisioning");
 }
 

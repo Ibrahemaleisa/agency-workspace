@@ -58,7 +58,13 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
 - Preview tenant (safe, only touches slug `demo`): `npm run db:seed-preview`.
 - Free trial: **14 days** (confirmed by the owner, 27 Sep 2026). Live value per plan in `plans.trial_days`,
   edited in the control center → Plans; code default `DEFAULT_TRIAL_DAYS` in `src/lib/billing/defaults.ts`.
-- **No prices are published** until the owner agrees them (plans.price_cents stays null; site pricing stays unset).
+- **Plans agreed by the owner (27 Sep 2026):** Standard 299 (up to 10 team members, 10 clients) and Full package 499
+  (unlimited), SAR per month (currency/interval assumed — editable in the control center → Plans). Seeded by migration 0013;
+  the old `workspace` plan is hidden. Limits are enforced in `src/lib/limits.ts` (invites, new users, re-activation, clients).
+  Flow: sign-up (or sign-in after the trial) → choose plan → payment → invoice (table `invoices`, emailed to admins) →
+  workspace opens (tutorial for new customers, congratulations for returning ones). Plan badge under the logo:
+  trial white, Standard grey, Full gold. **Payment gateway not connected yet** (needs the owner's provider + keys).
+- **Next (owner):** a per-workspace Settings section — to be planned with the owner.
 - Control center analytics (`src/lib/analytics.ts`, table `platform_events`): site page views (beacon from `site/` to
   `/api/t`, anonymous `operra_vid` visitor id carried into sign-up as `?vid=`), sign-up steps shown/completed,
   workspace creation, sign-ins/failed attempts, daily activity; `accounts.last_login_at/login_count`,

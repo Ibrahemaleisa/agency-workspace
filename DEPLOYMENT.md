@@ -122,14 +122,15 @@ and its email links then use that domain.
 
 ### 3.4 Stripe
 
-1. Stripe Dashboard → Products → create "Operra Workspace" with a recurring Price. Copy the Price ID (`price_…`).
-2. Put it on the plan: control center → **Plans** → Stripe price ID (or env `STRIPE_PRICE_WORKSPACE`).
+1. Nothing to create per plan: each plan is charged its price, currency and interval from the control center → **Plans**
+   (Standard 299 SAR / month, Full package 499 SAR / month). To use your own Stripe Price instead, put its ID on the plan.
+2. The Stripe account must be able to charge the plan currency (SAR).
 3. Developers → API keys → secret key → `STRIPE_SECRET_KEY` (`sk_live_…`).
 4. Settings → Billing → Customer portal: enable it (payment method, invoices, cancel) — the Billing page links to it.
 
 **Webhook:** Developers → Webhooks → Add endpoint `https://app.operra.com/api/billing/webhook` with events
 `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
-`customer.subscription.deleted`. Copy its signing secret → `STRIPE_WEBHOOK_SECRET`.
+`customer.subscription.deleted`, `invoice.paid` (records the invoice and emails it). Copy its signing secret → `STRIPE_WEBHOOK_SECRET`.
 Signatures are verified (5-minute tolerance) and each event applies once (`billing_events` is unique on
 provider + event id), so Stripe's retries are safe. Failed renewals arrive as `past_due` / `unpaid`.
 

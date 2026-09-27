@@ -77,6 +77,9 @@ function route(request: NextRequest) {
     // Let layouts know the path (e.g. a locked workspace still opens its billing page).
     const headers = new Headers(request.headers);
     headers.set("x-pathname", pathname);
+    // Back from paying: a workspace still waiting for the provider's confirmation shows "confirming", not locked.
+    if (request.nextUrl.searchParams.has("subscribed")) headers.set("x-subscribed", "1");
+    else headers.delete("x-subscribed");
     return NextResponse.next({ request: { headers } });
   }
 

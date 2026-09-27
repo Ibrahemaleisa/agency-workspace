@@ -5,8 +5,8 @@ import type { BillingEvent, BillingProvider } from "./types";
 
 /*
  * Stripe over its REST API (no SDK dependency). Needs:
- *   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and a Price per plan: plans.stripe_price_id
- *   (set in the control center) or STRIPE_PRICE_<PLAN> (e.g. STRIPE_PRICE_WORKSPACE).
+ *   STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Each plan is charged its price from the control center
+ *   (currency, amount, month/year), or a Stripe Price if one is set (plans.stripe_price_id / STRIPE_PRICE_<PLAN>).
  * Stripe is the source of truth; our subscriptions table mirrors it through webhooks.
  */
 const API = "https://api.stripe.com/v1";
@@ -35,13 +35,27 @@ const MIN_TRIAL_END_MS = 48 * 3600_000 + 5 * 60_000;
 export const stripeProvider: BillingProvider = {
   name: "stripe",
   async createCheckout({ org, plan, email, successUrl, cancelUrl, trialEndsAt }) {
+    // A Stripe Price if one is set for the plan; otherwise the plan's own price from the control center.
     const price = priceFor(plan);
-    if (!price) throw new Error(`No Stripe price configured for plan "${plan.code}" (plans.stripe_price_id or STRIPE_PRICE_${plan.code.toUpperCase()}).`);
+    if (!price && plan.priceCents == null) {
+      throw new Error(`Plan "${plan.code}" has no price: set a display price (or a Stripe price ID) in the control center.`);
+    }
+    const line: Record<string, string> = price
+      ? { "line_items[0][price]": price }
+      : {
+          "line_items[0][price_data][currency]": plan.currency.toLowerCase(),
+          "line_items[0][price_data][unit_amount]": String(plan.priceCents),
+          "line_items[0][price_data][recurring][interval]": plan.interval === "year" ? "year" : "month",
+          "line_items[0][price_data][product_data][name]": `Operra — ${plan.name}`,
+          "line_items[0][price_data][product_data][metadata][plan]": plan.code,
+        };
     const keepTrial = trialEndsAt && trialEndsAt.getTime() - Date.now() > MIN_TRIAL_END_MS;
     const session = await stripe<{ url: string }>("/checkout/sessions", "POST", {
       mode: "subscription",
-      "line_items[0][price]": price,
+      ...line,
       "line_items[0][quantity]": "1",
+      "metadata[plan]": plan.code,
+      "subscription_data[metadata][plan]": plan.code,
       success_url: successUrl,
       cancel_url: cancelUrl,
       client_reference_id: org.id,
@@ -83,7 +97,7 @@ type StripeSub = {
   cancel_at_period_end: boolean;
   current_period_end?: number;
   items?: { data?: { current_period_end?: number }[] };
-  metadata?: { org_id?: string };
+  metadata?: { org_id?: string; plan?: string };
 };
 
 const periodEnd = (s: StripeSub) => {
@@ -113,6 +127,44 @@ export async function normalizeStripeEvent(event: {
       status: sub.status,
       currentPeriodEnd: periodEnd(sub),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
+      raw: event,
+    };
+  }
+  if (event.type === "invoice.paid") {
+    // A successful charge (first payment and every renewal). Zero-amount invoices (trial starts) are skipped later.
+    const inv = obj as {
+      id: string;
+      amount_paid: number;
+      currency: string;
+      customer: string;
+      hosted_invoice_url?: string | null;
+      subscription?: string | null;
+      parent?: { subscription_details?: { subscription?: string } } | null;
+      lines?: { data?: { period?: { start: number; end: number } }[] };
+    };
+    const subId = inv.subscription ?? inv.parent?.subscription_details?.subscription ?? null;
+    if (!subId) return null;
+    const sub = await stripe<StripeSub>(`/subscriptions/${subId}`, "GET");
+    const period = inv.lines?.data?.[0]?.period;
+    return {
+      provider: "stripe",
+      eventId: event.id,
+      type: event.type,
+      orgId: sub.metadata?.org_id ?? null,
+      customerId: sub.customer,
+      subscriptionId: sub.id,
+      status: sub.status,
+      currentPeriodEnd: periodEnd(sub),
+      cancelAtPeriodEnd: sub.cancel_at_period_end,
+      invoice: {
+        providerInvoiceId: inv.id,
+        amountCents: inv.amount_paid,
+        currency: inv.currency,
+        planCode: sub.metadata?.plan ?? null,
+        periodStart: period ? new Date(period.start * 1000) : null,
+        periodEnd: period ? new Date(period.end * 1000) : null,
+        url: inv.hosted_invoice_url ?? null,
+      },
       raw: event,
     };
   }

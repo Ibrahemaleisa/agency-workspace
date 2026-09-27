@@ -18,6 +18,7 @@ import { getSaasT } from "@/lib/i18n-saas";
 import { parseFocus, startOnboarding } from "@/lib/onboarding";
 import { enterWorkspace } from "@/lib/handoff";
 import { getHostTenant } from "@/lib/tenant";
+import { teamLimitError } from "@/lib/limits";
 
 const INVITE_DAYS = 7;
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 200;
@@ -43,6 +44,10 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
   }
   // Already in this agency? (Belonging to other agencies is fine: they'll join with their own password.)
   if (await db.query.users.findFirst({ where: and(eq(users.orgId, admin.orgId), eq(users.email, email)) })) return { error: e.exists };
+  if (role !== "client") {
+    const limit = await teamLimitError(admin.orgId);
+    if (limit) return { error: limit };
+  }
   if (!(await rateLimit(`invite:${admin.orgId}`, 50, 3600))) return { error: e.rate };
 
   // One live invitation per address: re-inviting replaces the previous link.
@@ -149,6 +154,11 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
   if (!found) return { error: e.invalid };
   const { invite, org } = found;
   if (await db.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.email, invite.email)) })) return { error: e.exists };
+  if (invite.role !== "client") {
+    // The invitation itself was counted when it was sent; only people already in count here.
+    const limit = await teamLimitError(org.id, { countInvites: false });
+    if (limit) return { error: limit };
+  }
 
   let passwordHash: string;
   if (found.hasAccount) {

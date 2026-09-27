@@ -13,16 +13,27 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
 
-/** Admin: send the tenant to the provider's checkout for its plan. */
-export async function startCheckout() {
+/**
+ * Admin: pay for a plan. The form may name the plan (chosen on the billing page); a free trial moves
+ * to it first. After paying, the provider returns the admin to the workspace itself.
+ */
+export async function startCheckout(fd?: FormData) {
   const user = await requireUser({ allowLocked: true });
   assertCan(user, "billing.manage");
   const provider = billingProvider();
   const org = await getOrgById(user.orgId);
-  const sub = await getSubscription(user.orgId);
+  let sub = await getSubscription(user.orgId);
+  const chosen = fd?.get("plan");
+  if (typeof chosen === "string" && sub && !sub.providerSubscriptionId && chosen !== sub.planCode) {
+    const next = await getPlan(chosen);
+    if (next?.active) {
+      await db.update(subscriptions).set({ planCode: next.code, updatedAt: new Date() }).where(eq(subscriptions.orgId, user.orgId));
+      sub = { ...sub, planCode: next.code };
+    }
+  }
   const plan = sub ? await getPlan(sub.planCode) : null;
   if (!provider || !org || !sub || !plan || org.isDemo) redirect("/settings/billing?checkout=unavailable");
-  const base = `${tenantBaseUrl(org)}/settings/billing`;
+  const base = tenantBaseUrl(org);
   let url: string;
   try {
     url = await provider.createCheckout({
@@ -31,8 +42,8 @@ export async function startCheckout() {
       email: user.email,
       // Subscribing mid-trial keeps the remaining free days (billing starts when the trial ends).
       trialEndsAt: effectiveStatus(sub) === "trialing" ? sub.trialEndsAt : null,
-      successUrl: `${base}?checkout=success`,
-      cancelUrl: `${base}?checkout=cancelled`,
+      successUrl: `${base}/?subscribed=1`,
+      cancelUrl: `${base}/settings/billing?checkout=cancelled`,
     });
   } catch (err) {
     console.error("[checkout failed]", err);
@@ -83,6 +94,8 @@ export async function completeTestCheckout(fd: FormData) {
   if (!data || billingProvider()?.name !== "test") redirect("/login");
   const outcome = fd.get("outcome") === "cancel" ? "cancel" : "pay";
   if (outcome === "cancel") redirect(data.cancelUrl);
+  const plan = await getPlan(data.planCode);
+  const now = Date.now();
   await applyBillingEvent({
     provider: "test",
     eventId: `test_evt_${randomUUID()}`,
@@ -91,8 +104,18 @@ export async function completeTestCheckout(fd: FormData) {
     customerId: `test_cus_${data.orgId}`,
     subscriptionId: `test_sub_${data.orgId}`,
     status: "active",
-    currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+    currentPeriodEnd: new Date(now + 30 * 86_400_000),
     cancelAtPeriodEnd: false,
+    invoice: plan?.priceCents
+      ? {
+          providerInvoiceId: `test_in_${randomUUID()}`,
+          amountCents: plan.priceCents,
+          currency: plan.currency,
+          planCode: plan.code,
+          periodStart: new Date(now),
+          periodEnd: new Date(now + 30 * 86_400_000),
+        }
+      : undefined,
     raw: { simulated: true, planCode: data.planCode, at: new Date().toISOString() },
   });
   redirect(data.successUrl);

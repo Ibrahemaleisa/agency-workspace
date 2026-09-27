@@ -563,6 +563,11 @@ export const plans = pgTable("plans", {
   featuresAr: jsonb("features_ar").$type<string[]>().notNull().default([]),
   /** Shown as the recommended plan. */
   featured: boolean("featured").notNull().default(false),
+  /** Limits; null = unlimited. Team members = admins and team (client users don't count). */
+  maxMembers: integer("max_members"),
+  maxClients: integer("max_clients"),
+  /** Look of the plan badge under the agency's logo: "standard" or "full". */
+  tier: text("tier").notNull().default("standard"),
   /** Display price in minor units; null = priced on request. The payment provider holds the real price. */
   priceCents: integer("price_cents"),
   currency: text("currency").notNull().default("USD"),
@@ -574,6 +579,36 @@ export const plans = pgTable("plans", {
   sort: integer("sort").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const invoiceNumberSeq = pgSequence("invoice_number_seq", { startWith: 1, increment: 1 });
+
+/** A paid invoice (one per successful payment), mirrored from the payment provider and emailed to the agency's admins. */
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    number: text("number")
+      .notNull()
+      .unique()
+      .default(sql`'INV-' || lpad(nextval('invoice_number_seq')::text, 6, '0')`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    planCode: text("plan_code"),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    provider: text("provider").notNull(),
+    /** The provider's invoice/payment id; unique, so a retried webhook never records a second invoice. */
+    providerInvoiceId: text("provider_invoice_id").notNull().unique(),
+    /** The provider's own invoice page / PDF, when it has one. */
+    url: text("url"),
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("invoices_org_idx").on(t.orgId, t.createdAt)],
+);
 
 /** One subscription per tenant; the payment provider is the source of truth, mirrored by webhooks. */
 export const subscriptions = pgTable(
@@ -777,6 +812,7 @@ export const platformSessions = pgTable("platform_sessions", {
 export type Organization = typeof organizations.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
 export type Signup = typeof signups.$inferSelect;
 
 export type User = typeof users.$inferSelect;

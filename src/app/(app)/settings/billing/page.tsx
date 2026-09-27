@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { plans } from "@/db/schema";
+import { invoices, plans } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { getSaasT } from "@/lib/i18n-saas";
@@ -10,6 +10,7 @@ import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, t
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { changePlan, openBillingPortal, startCheckout } from "@/server/billing-actions";
+import { formatMoney } from "@/lib/billing/invoice-email";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
 import { AutoSubmitForm } from "@/components/auto-submit";
 
@@ -27,6 +28,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const org = (await getOrgById(user.orgId))!;
   const sub = await getSubscription(org.id);
   const plan = sub ? await db.query.plans.findFirst({ where: eq(plans.code, sub.planCode) }) : null;
+  const paid = await db.select().from(invoices).where(eq(invoices.orgId, org.id)).orderBy(desc(invoices.createdAt)).limit(24);
   const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
   const provider = billingProvider();
   const status = sub ? effectiveStatus(sub) : null;
@@ -109,11 +111,6 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
             <p className="text-sm text-zinc-500">—</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
-            {canPay && (
-              <form action={startCheckout}>
-                <button className={buttonClass("primary")}>{b.subscribe}</button>
-              </form>
-            )}
             {provider && sub?.providerCustomerId && provider.name === "stripe" && (
               <form action={openBillingPortal}>
                 <button className={buttonClass("secondary")}>{b.manage}</button>
@@ -168,17 +165,65 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
                       ))}
                     </ul>
                   )}
-                  {!current && canSwitch && (
-                    <form action={changePlan} className="mt-auto pt-4">
+                  {canPay && p.priceCents != null ? (
+                    // Pay for this plan (a trial moves to it first).
+                    <form action={startCheckout} className="mt-auto pt-4">
                       <input type="hidden" name="plan" value={p.code} />
-                      <button className={buttonClass("secondary", "sm")}>{b.choosePlan}</button>
+                      <button className={buttonClass(p.featured || current ? "primary" : "secondary")} data-testid={`subscribe-${p.code}`}>
+                        {b.subscribeTo(planName(p))}
+                      </button>
                     </form>
+                  ) : (
+                    !current &&
+                    canSwitch &&
+                    !provider && (
+                      <form action={changePlan} className="mt-auto pt-4">
+                        <input type="hidden" name="plan" value={p.code} />
+                        <button className={buttonClass("secondary", "sm")}>{b.choosePlan}</button>
+                      </form>
+                    )
                   )}
                 </li>
               );
             })}
           </ul>
           {!canSwitch && sub?.providerSubscriptionId && <p className="mt-3 text-sm text-zinc-500">{b.paidPlanNote}</p>}
+        </section>
+      )}
+      {paid.length > 0 && (
+        <section aria-labelledby="invoices-title" className="mt-8">
+          <h2 id="invoices-title" className="text-lg font-semibold">{b.invoicesTitle}</h2>
+          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white">
+            <table className="w-full min-w-[520px] text-sm" data-testid="invoices">
+              <thead className="border-b border-zinc-200 text-start text-xs text-zinc-500">
+                <tr>
+                  {[b.invoiceNo, b.invoiceDate, b.plan, b.invoiceAmount, ""].map((h, i) => (
+                    <th key={i} scope="col" className="px-4 py-2.5 text-start font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {paid.map((inv) => {
+                  const p = offered.find((x) => x.code === inv.planCode);
+                  return (
+                    <tr key={inv.id}>
+                      <td className="px-4 py-2.5 font-mono">{inv.number}</td>
+                      <td className="px-4 py-2.5">{fmt(inv.createdAt)}</td>
+                      <td className="px-4 py-2.5">{p ? planName(p) : inv.planCode}</td>
+                      <td className="px-4 py-2.5 tabular-nums">{formatMoney(inv.amountCents, inv.currency, lang)}</td>
+                      <td className="px-4 py-2.5 text-end">
+                        {inv.url && (
+                          <a href={inv.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                            {b.invoiceView}
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </>

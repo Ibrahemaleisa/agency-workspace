@@ -12,13 +12,15 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userOnboarding } from "@/db/schema";
 import { getOrgById } from "@/lib/tenant";
-import { getSubscription, hasAccess, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
+import { effectiveStatus, getPlan, getSubscription, hasAccess, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform } from "@/lib/platform";
 import { getSaasT } from "@/lib/i18n-saas";
 import { flowFor } from "@/lib/onboarding";
 import { TOUR_TARGETS } from "@/lib/tour";
 import { saveTourProgress } from "@/server/onboarding-actions";
 import { TourClient as Tour } from "@/components/tour-client";
+import { SubscribedWelcome } from "@/components/subscribed-welcome";
+import type { PlanBadgeInfo } from "@/components/sidebar";
 import { WorkspaceGate } from "@/components/workspace-gate";
 import { PreviewBanner, TrialBanner } from "@/components/workspace-banners";
 import { VerifyBanner } from "@/components/verify-banner";
@@ -38,6 +40,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const pathname = (await headers()).get("x-pathname") ?? "";
   if (!hasAccess(org, sub) && !(can(user, "billing.manage") && pathname.startsWith("/settings/billing"))) {
     const admin = can(user, "billing.manage");
+    if (admin && (await headers()).get("x-subscribed")) {
+      return (
+        <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
+          <SubscribedWelcome state="pending" labels={{ pending: st.subscribed.pending, title: "", body: "", cta: "" }} />
+        </main>
+      );
+    }
     return (
       <WorkspaceGate
         title={st.gate.endedTitle}
@@ -49,6 +58,17 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     );
   }
   const days = sub && !subscribedInTrial(sub) ? trialDaysLeft(sub) : null;
+  // Plan badge under the logo: free trial, or the paid plan's tier.
+  let planBadge: PlanBadgeInfo | null = null;
+  if (sub) {
+    const status = effectiveStatus(sub);
+    const paid = status === "active" || status === "past_due" || subscribedInTrial(sub);
+    if (status === "trialing" && !paid) planBadge = { kind: "trial", label: st.badge.trial };
+    else if (paid) {
+      const p = await getPlan(sub.planCode);
+      if (p) planBadge = { kind: p.tier === "full" ? "full" : "standard", label: (lang === "ar" && p.nameAr) || p.name };
+    }
+  }
 
   // Tutorial: saved per user; preview sessions keep it in the tab only.
   const onboarding = user.readOnly ? null : await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
@@ -110,6 +130,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         bellLabels={bell}
         orgName={brand.name[lang]}
         logo={brand.logo}
+        plan={planBadge}
         initialUnread={unread}
         workspaces={workspaces}
       />
