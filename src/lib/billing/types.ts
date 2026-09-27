@@ -1,4 +1,4 @@
-import type { Organization } from "@/db/schema";
+import type { Organization, Plan } from "@/db/schema";
 
 export type ProviderName = "stripe" | "test";
 
@@ -19,7 +19,15 @@ export type BillingEvent = {
 export interface BillingProvider {
   name: ProviderName;
   /** Where to send the admin to pay. */
-  createCheckout(input: { org: Organization; planCode: string; email: string; successUrl: string; cancelUrl: string }): Promise<string>;
+  createCheckout(input: {
+    org: Organization;
+    plan: Plan;
+    email: string;
+    successUrl: string;
+    cancelUrl: string;
+    /** End of a running free trial: the paid subscription starts then, so no trial days are lost. */
+    trialEndsAt?: Date | null;
+  }): Promise<string>;
   /** Self-service billing (payment method, invoices, cancel). Null when the provider has none. */
   portalUrl(input: { customerId: string; returnUrl: string }): Promise<string | null>;
 }

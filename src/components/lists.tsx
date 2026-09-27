@@ -122,7 +122,7 @@ export async function TaskTable({
                     <Link href={`/projects/${t.projectId}`} className="block truncate text-zinc-700 hover:text-indigo-600">
                       {t.projectName}
                     </Link>
-                    <div className="truncate text-xs text-zinc-400">{t.clientName}</div>
+                    <div className="truncate text-xs text-zinc-500">{t.clientName}</div>
                   </Td>
                 )}
                 {showAssignee && (
@@ -190,7 +190,7 @@ export async function TaskBoard({ tasks, editableStatus }: { tasks: TaskRow[]; e
                   )}
                 </article>
               ))}
-              {col.length === 0 && <div className="rounded-lg border border-dashed border-zinc-300 py-6 text-center text-xs text-zinc-400">{tr.common.nothingHere}</div>}
+              {col.length === 0 && <div className="rounded-lg border border-dashed border-zinc-300 py-6 text-center text-xs text-zinc-500">{tr.common.nothingHere}</div>}
             </div>
           </section>
         );
@@ -304,7 +304,7 @@ export async function ProjectTable({ projects, showClient = true }: { projects: 
               <div className="flex flex-wrap gap-1">
                 {p.overdue > 0 && <Badge tone="red">{tr.lists.overdueCount(p.overdue)}</Badge>}
                 {p.waiting > 0 && <Badge tone="amber">{tr.lists.awaitingShort(p.waiting)}</Badge>}
-                {p.overdue === 0 && p.waiting === 0 && <span className="text-xs text-zinc-400">—</span>}
+                {p.overdue === 0 && p.waiting === 0 && <span className="text-xs text-zinc-500">—</span>}
               </div>
             </Td>
           </tr>
@@ -330,9 +330,10 @@ export async function ActivityFeed({
   const { t: tr, locale } = await getT();
   if (items.length === 0) return <EmptyState>{empty ?? tr.common.noActivity}</EmptyState>;
   return (
-    <ul className="relative px-4 py-2 md:px-5">
-      <span className="absolute top-4 bottom-4 start-[27px] w-px bg-zinc-100 md:start-[31px]" />
-      {items.map((a) => (
+    <div className="relative px-4 py-2 md:px-5">
+      <span aria-hidden className="absolute top-4 bottom-4 start-[27px] w-px bg-zinc-100 md:start-[31px]" />
+      <ul>
+        {items.map((a) => (
         <li key={a.id} className="relative flex gap-3 py-2.5 text-sm">
           <span className="relative z-10 mt-0.5">
             <Avatar name={a.actorName} size="xs" />
@@ -348,7 +349,7 @@ export async function ActivityFeed({
                 a.summary
               )}
             </p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
               <span className={cn("size-1.5 rounded-full", activityDot(a.action))} />
               {formatDistanceToNow(a.createdAt, { addSuffix: true, locale })}
               {showProject && a.projectName && a.projectId && (
@@ -363,7 +364,8 @@ export async function ActivityFeed({
           </div>
         </li>
       ))}
-    </ul>
+      </ul>
+    </div>
   );
 }
 

@@ -5,7 +5,9 @@ const TENANT_HINT_COOKIE = "operra_tenant";
 
 /** Routes anyone may open without a session. */
 const PUBLIC = [
-  /^\/login$/,
+  /^\/login(\/choose)?$/,
+  /^\/verify-email$/,
+  /^\/(forgot|reset)-password$/,
   /^\/welcome$/,
   /^\/setup$/,
   /^\/lang$/,

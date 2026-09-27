@@ -8,7 +8,7 @@
  * Exits non-zero on the first leak.
  */
 import "dotenv/config";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import * as s from "../src/db/schema";
 import type { SessionUser } from "../src/lib/auth";
@@ -32,9 +32,7 @@ const refuses = async (fn: () => Promise<unknown>) => {
 async function adminOf(orgId: string): Promise<SessionUser> {
   const u = await db.query.users.findFirst({ where: and(eq(s.users.orgId, orgId), eq(s.users.role, "admin")) });
   if (!u) throw new Error(`No admin in ${orgId}`);
-  const { passwordHash: _, ...rest } = u;
-  void _;
-  return { ...rest, readOnly: false };
+  return { ...u, readOnly: false };
 }
 
 async function main() {
@@ -90,6 +88,33 @@ async function main() {
       (select count(*) from chat_messages cm join projects p on p.id = cm.project_id where cm.org_id <> p.org_id)
     )::int as n`) as unknown as { n: number }[];
   check("child rows always share their parent's tenant", mismatch.n === 0);
+
+  // People in several agencies: each membership sees only its own agency.
+  const shared = await db
+    .select({ accountId: s.users.accountId })
+    .from(s.users)
+    .groupBy(s.users.accountId)
+    .having(sql`count(*) > 1`);
+  for (const { accountId } of shared) {
+    const memberships = await db.query.users.findMany({ where: eq(s.users.accountId, accountId) });
+    for (const m of memberships) {
+      const me = { ...m, readOnly: false };
+      const [foreign] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(s.projects)
+        .where(and(projectScope(me), ne(s.projects.orgId, m.orgId)));
+      // Whatever this membership can list must belong to its own agency.
+      const listed = (await listProjects(me)).map((p) => p.id);
+      const [leaked] = listed.length
+        ? await db
+            .select({ n: sql<number>`count(*)::int` })
+            .from(s.projects)
+            .where(and(inArray(s.projects.id, listed), ne(s.projects.orgId, m.orgId)))
+        : [{ n: 0 }];
+      check(`person in ${memberships.length} agencies: membership in ${m.orgId.slice(0, 8)} sees none of the others`, foreign.n === 0 && leaked.n === 0);
+    }
+  }
+  if (shared.length === 0) console.log("(no one belongs to several agencies yet — multi-membership check skipped)");
 
   console.log(failures ? `\n${failures} isolation check(s) FAILED` : "\nAll isolation checks passed.");
   process.exit(failures ? 1 : 0);

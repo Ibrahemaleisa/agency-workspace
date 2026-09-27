@@ -108,7 +108,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
               <ul className="divide-y divide-zinc-100">
                 {portalUsers.map((u) => (
                   <li key={u.id} className="px-4 py-2 text-sm">
-                    <div className="font-medium">{u.name} {!u.active && <span className="text-xs text-zinc-400">({t.common.inactive})</span>}</div>
+                    <div className="font-medium">{u.name} {!u.active && <span className="text-xs text-zinc-500">({t.common.inactive})</span>}</div>
                     <div className="text-xs text-zinc-500">{u.email}</div>
                   </li>
                 ))}

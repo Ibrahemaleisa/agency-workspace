@@ -1,4 +1,5 @@
-import { requireUser } from "@/lib/auth";
+import { getAccount, membershipsOf, requireUser } from "@/lib/auth";
+import { orgBrand } from "@/lib/brand";
 import { navFor } from "@/lib/navigation";
 import { getT } from "@/lib/lang";
 import { Search } from "lucide-react";
@@ -11,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userOnboarding } from "@/db/schema";
 import { getOrgById } from "@/lib/tenant";
-import { getSubscription, hasAccess, trialDaysLeft } from "@/lib/billing";
+import { getSubscription, hasAccess, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform } from "@/lib/platform";
 import { getSaasT } from "@/lib/i18n-saas";
 import { flowFor } from "@/lib/onboarding";
@@ -20,9 +21,12 @@ import { saveTourProgress } from "@/server/onboarding-actions";
 import { TourClient as Tour } from "@/components/tour-client";
 import { WorkspaceGate } from "@/components/workspace-gate";
 import { PreviewBanner, TrialBanner } from "@/components/workspace-banners";
+import { VerifyBanner } from "@/components/verify-banner";
+import { emailEnabled } from "@/lib/email";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const user = await requireUser();
+  // The layout shows its own gate for paused / ended workspaces, so it never throws for them.
+  const user = await requireUser({ allowLocked: true });
   const [{ t, lang, brand }, { t: st }, org] = await Promise.all([getT(), getSaasT(), getOrgById(user.orgId)]);
 
   // A paused or cancelled tenant can't be used, whatever its subscription says.
@@ -44,7 +48,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       />
     );
   }
-  const days = sub ? trialDaysLeft(sub) : null;
+  const days = sub && !subscribedInTrial(sub) ? trialDaysLeft(sub) : null;
 
   // Tutorial: saved per user; preview sessions keep it in the tab only.
   const onboarding = user.readOnly ? null : await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
@@ -57,6 +61,16 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     can(user, "chat.internal") ? unreadTeamMessages(user) : 0,
   ]);
   const items = navFor(user, t).map((i) => (i.icon === "teamChat" ? { ...i, badge: chatUnread } : i));
+  // Email confirmation prompt: only where it can be acted on (platform, email configured).
+  const account = isPlatform() && !user.readOnly && emailEnabled() ? await getAccount(user.accountId) : null;
+  const unverifiedEmail = account && !account.emailVerifiedAt ? account.email : null;
+  // Other agencies this person belongs to (platform mode; never from a preview session).
+  const workspaces =
+    isPlatform() && !user.readOnly
+      ? (await membershipsOf(user.accountId))
+          .filter((m) => m.user.id !== user.id)
+          .map((m) => ({ id: m.user.id, name: orgBrand(m.org).name[lang], switchLabel: st.switchTo }))
+      : [];
   const bell = { title: t.bell.title, viewAll: t.bell.viewAll, empty: t.bell.empty, markAll: t.bell.markAll };
   return (
     <div className="min-h-screen">
@@ -70,6 +84,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         />
       )}
       {days !== null && can(user, "billing.manage") && <TrialBanner text={st.banner.trial(days)} cta={st.billing.title} />}
+      {unverifiedEmail && (
+        <VerifyBanner title={st.verify.bannerTitle} body={st.verify.bannerBody(unverifiedEmail)} resend={st.verify.resend} sent={st.verify.sent} />
+      )}
       {tourSteps && (
         <Tour
           steps={tourSteps}
@@ -94,6 +111,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         orgName={brand.name[lang]}
         logo={brand.logo}
         initialUnread={unread}
+        workspaces={workspaces}
       />
       <main className="min-w-0 md:ps-64">
         {/* Desktop top bar: global search + notifications */}

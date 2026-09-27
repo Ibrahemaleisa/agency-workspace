@@ -6,16 +6,18 @@ import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { loginTokens, organizations, sessions, users, type User } from "@/db/schema";
+import { accounts, loginTokens, organizations, sessions, users, type Account, type Organization, type User } from "@/db/schema";
 import { can, type Permission } from "./permissions";
-import { getHostTenant } from "./tenant";
+import { getHostTenant, getOrgById } from "./tenant";
+import { getSubscription, hasAccess } from "./billing";
 import { isPlatform } from "./platform";
 
 export const SESSION_COOKIE = "apm_session";
 const SESSION_DAYS = 30;
 const PREVIEW_HOURS = 4;
 
-export type SessionUser = Omit<User, "passwordHash"> & {
+/** The signed-in membership (one person in one agency). */
+export type SessionUser = User & {
   /** Preview session into the demo tenant: every write is refused. */
   readOnly: boolean;
 };
@@ -30,25 +32,40 @@ export async function hashPassword(password: string) {
 }
 
 /**
- * Email + password check. Emails are unique across the platform, so the user's tenant is known.
- * On a tenant host (or its branded /w/ page) only that tenant's people can sign in; demo-tenant
- * accounts can't sign in with a password in platform mode (they are reached through /preview).
+ * Email + password check against the person's account (one password across all their agencies).
+ * Compares against a dummy hash when there's no account, so timing doesn't reveal who has one.
  */
-export async function verifyCredentials(email: string, password: string, tenantId?: string | null) {
-  const [row] = await db
-    .select({ user: users, isDemo: organizations.isDemo })
+export async function verifyAccount(email: string, password: string): Promise<Account | null> {
+  const account = await db.query.accounts.findFirst({ where: eq(accounts.email, email.trim().toLowerCase()) });
+  dummyHash ??= await bcrypt.hash(randomBytes(12).toString("hex"), 10);
+  const ok = await bcrypt.compare(password, account?.passwordHash ?? dummyHash);
+  return account && ok ? account : null;
+}
+
+/** The person behind a membership (email, verification status). */
+export const getAccount = cache(async (accountId: string) => db.query.accounts.findFirst({ where: eq(accounts.id, accountId) }));
+
+export type Membership = { user: User; org: Organization };
+
+/**
+ * The agencies a person can sign in to: active memberships, optionally only in one tenant.
+ * In platform mode the demo tenant is excluded — it's reached through /preview, never a password.
+ */
+export async function membershipsOf(accountId: string, opts: { tenantId?: string | null } = {}): Promise<Membership[]> {
+  const rows = await db
+    .select({ user: users, org: organizations })
     .from(users)
     .innerJoin(organizations, eq(organizations.id, users.orgId))
-    .where(eq(users.email, email.trim().toLowerCase()))
-    .limit(1);
-  // Compare against a dummy hash when the user doesn't exist, so timing doesn't reveal accounts.
-  dummyHash ??= await bcrypt.hash(randomBytes(12).toString("hex"), 10);
-  const hash = row?.user.passwordHash ?? dummyHash;
-  const ok = await bcrypt.compare(password, hash);
-  if (!row || !ok || !row.user.active) return null;
-  if (isPlatform() && row.isDemo) return null;
-  if (tenantId && row.user.orgId !== tenantId) return null;
-  return row.user;
+    .where(
+      and(
+        eq(users.accountId, accountId),
+        eq(users.active, true),
+        opts.tenantId ? eq(users.orgId, opts.tenantId) : undefined,
+        isPlatform() ? eq(organizations.isDemo, false) : undefined,
+      ),
+    )
+    .orderBy(organizations.name);
+  return rows;
 }
 
 export async function createSession(userId: string, opts: { readOnly?: boolean } = {}) {
@@ -105,9 +122,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   if (!row || !row.user.active) return null;
   const host = await getHostTenant();
   if (host && host.id !== row.user.orgId) return null;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passwordHash, ...user } = row.user;
-  return { ...user, readOnly: row.readOnly };
+  return { ...row.user, readOnly: row.readOnly };
 });
 
 export class ReadOnlyError extends Error {
@@ -125,10 +140,33 @@ async function assertWritableRequest(user: SessionUser) {
   if ((await headers()).has("next-action")) throw new ReadOnlyError();
 }
 
-export async function requireUser(): Promise<SessionUser> {
+export class WorkspaceLockedError extends Error {
+  constructor() {
+    super("WORKSPACE_LOCKED");
+  }
+}
+
+/**
+ * Platform mode: a paused workspace, or one whose trial ended without a subscription, can't make
+ * changes. Pages show their own gate; this stops server actions posted directly.
+ */
+async function assertWorkspaceOpen(user: SessionUser) {
+  if (!isPlatform() || user.readOnly) return;
+  if (!(await headers()).has("next-action")) return;
+  const [org, sub] = await Promise.all([getOrgById(user.orgId), getSubscription(user.orgId)]);
+  if (!org || org.status !== "active" || !hasAccess(org, sub)) throw new WorkspaceLockedError();
+}
+
+/**
+ * The signed-in membership, for pages and server actions. Refuses writes from read-only previews
+ * and from locked workspaces — except where `allowLocked` (billing, switching agency, verification)
+ * is how a locked workspace gets back in.
+ */
+export async function requireUser(opts: { allowLocked?: boolean } = {}): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   await assertWritableRequest(user);
+  if (!opts.allowLocked) await assertWorkspaceOpen(user);
   return user;
 }
 

@@ -6,7 +6,7 @@ import { plans } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { getSaasT } from "@/lib/i18n-saas";
-import { billingProvider, getSubscription, trialDaysLeft } from "@/lib/billing";
+import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { openBillingPortal, startCheckout } from "@/server/billing-actions";
@@ -28,10 +28,12 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const sub = await getSubscription(org.id);
   const plan = sub ? await db.query.plans.findFirst({ where: eq(plans.code, sub.planCode) }) : null;
   const provider = billingProvider();
-  const days = sub ? trialDaysLeft(sub) : null;
+  const status = sub ? effectiveStatus(sub) : null;
+  const paidTrial = !!sub && subscribedInTrial(sub);
+  const days = sub && !paidTrial ? trialDaysLeft(sub) : null;
   const fmt = (d: Date) => format(d, "d MMM yyyy", { locale });
-  const canPay = !!provider && !!sub && !org.isDemo && sub.status !== "active";
-  const tone = sub?.status === "active" ? "green" : sub?.status === "trialing" ? "blue" : "amber";
+  const canPay = !!provider && !!sub && !org.isDemo && status !== "active" && status !== "past_due" && !paidTrial;
+  const tone = status === "active" || paidTrial ? "green" : status === "trialing" ? "blue" : "amber";
   const notice =
     sp.checkout === "success"
       ? sub?.status === "active"
@@ -59,13 +61,25 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
               <div className="flex justify-between gap-4 py-2.5">
                 <dt className="text-zinc-500">{b.status}</dt>
                 <dd>
-                  <Badge tone={tone}>{b.statuses[sub.status]}</Badge>
+                  <Badge tone={tone}>{paidTrial ? b.statuses.active : b.statuses[status!]}</Badge>
                 </dd>
               </div>
-              {sub.status === "trialing" && sub.trialEndsAt && (
-                <div className="flex justify-between gap-4 py-2.5">
+              {status === "trialing" && sub.trialEndsAt && !paidTrial && (
+                <div className="flex justify-between gap-4 py-2.5" data-testid="trial-row">
                   <dt className="text-zinc-500">{b.trialEnds(fmt(sub.trialEndsAt))}</dt>
                   <dd className="font-medium tabular-nums">{days !== null && b.daysLeft(days)}</dd>
+                </div>
+              )}
+              {paidTrial && sub.trialEndsAt && (
+                <div className="flex justify-between gap-4 py-2.5">
+                  <dt className="text-zinc-500">{b.billingStarts(fmt(sub.trialEndsAt))}</dt>
+                  <dd />
+                </div>
+              )}
+              {status === "expired" && sub.trialEndsAt && (
+                <div className="py-2.5" data-testid="trial-row">
+                  <dt className="text-zinc-500">{b.trialEnded(fmt(sub.trialEndsAt))}</dt>
+                  <dd className="mt-1 text-amber-800">{b.trialEndedNote}</dd>
                 </div>
               )}
               {sub.currentPeriodEnd && sub.status !== "trialing" && (
@@ -98,6 +112,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
               </form>
             )}
           </div>
+          {canPay && status === "trialing" && <p className="mt-3 text-xs text-zinc-500">{b.trialNote}</p>}
           {!provider && isPlatform() && <p className="mt-4 text-sm text-zinc-500">{b.notConfigured}</p>}
           {sp.start === "checkout" && canPay && (
             <AutoSubmitForm action={startCheckout}>

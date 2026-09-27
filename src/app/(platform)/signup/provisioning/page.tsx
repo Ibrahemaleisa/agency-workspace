@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSaasT } from "@/lib/i18n-saas";
-import { currentSignup, enterWorkspace, runProvisioning } from "@/server/signup-actions";
+import { currentSignup, enterNewWorkspace, runProvisioning } from "@/server/signup-actions";
 import { SignupShell } from "@/components/platform/signup-shell";
 import { ProvisioningRunner } from "@/components/platform/provisioning-runner";
 
@@ -17,7 +17,7 @@ export default async function ProvisioningPage() {
     <SignupShell steps={t.signup.steps} current={4} title={p.title}>
       <ProvisioningRunner
         run={runProvisioning}
-        enter={enterWorkspace}
+        enter={enterNewWorkspace}
         labels={{ ...p, restart: t.signup.back }}
       />
     </SignupShell>

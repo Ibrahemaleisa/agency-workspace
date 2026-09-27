@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { asc, eq, sql } from "drizzle-orm";
@@ -81,7 +82,7 @@ export default async function ControlCustomer({ params }: PageProps<"/operra/cus
               <form action={extendTrial} className="mt-4 flex items-center gap-2">
                 <input type="hidden" name="orgId" value={org.id} />
                 <label className="sr-only" htmlFor="days">Days</label>
-                <input id="days" name="days" type="number" min={1} max={90} defaultValue={14} className="w-20 rounded-md border border-[#8C919A] px-2 py-1.5" />
+                <input id="days" name="days" type="number" min={1} max={90} defaultValue={DEFAULT_TRIAL_DAYS} className="w-20 rounded-md border border-[#8C919A] px-2 py-1.5" />
                 <button className="rounded-md border border-[#8C919A] px-3 py-1.5 font-medium">Extend trial</button>
               </form>
             )}

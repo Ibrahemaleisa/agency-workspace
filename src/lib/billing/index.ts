@@ -1,7 +1,8 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { cache } from "react";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { billingEvents, subscriptions, type Organization, type Subscription } from "@/db/schema";
+import { billingEvents, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
 import { appUrl, isPlatform } from "../platform";
 import { sign } from "../secret";
 import { stripeProvider } from "./stripe";
@@ -30,8 +31,8 @@ export function providerName(): ProviderName | null {
 /** Test provider: a clearly labelled page that simulates the provider's confirmation. Never charges. */
 const testProvider: BillingProvider = {
   name: "test",
-  async createCheckout({ org, planCode, successUrl, cancelUrl }) {
-    const token = sign({ orgId: org.id, planCode, successUrl, cancelUrl }, 30 * 60);
+  async createCheckout({ org, plan, successUrl, cancelUrl }) {
+    const token = sign({ orgId: org.id, planCode: plan.code, successUrl, cancelUrl }, 30 * 60);
     return `${appUrl()}/billing/test-checkout?t=${encodeURIComponent(token)}`;
   },
   async portalUrl() {
@@ -44,11 +45,42 @@ export function billingProvider(): BillingProvider | null {
   return name === "stripe" ? stripeProvider : name === "test" ? testProvider : null;
 }
 
-export const getSubscription = (orgId: string) => db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) });
+export const getSubscription = cache((orgId: string) => db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) }));
 
-export function trialDaysLeft(sub: Pick<Subscription, "status" | "trialEndsAt">) {
-  if (sub.status !== "trialing" || !sub.trialEndsAt) return null;
-  return Math.max(0, Math.ceil((sub.trialEndsAt.getTime() - Date.now()) / 86_400_000));
+/** A plan by code (plans live in the database: trial length, display price, provider price ID). */
+export const getPlan = (code: string) => db.query.plans.findFirst({ where: eq(plans.code, code) });
+
+type SubState = Pick<Subscription, "status" | "trialEndsAt" | "providerSubscriptionId">;
+
+/**
+ * What a subscription means right now. A free trial whose end has passed is "expired" at once —
+ * the daily job (expireTrials) only records it; access never waits for the job.
+ * A trial that already has a paid subscription behind it (subscribed mid-trial) is left to the
+ * provider, which moves it to active (or past_due) when billing starts.
+ */
+export function effectiveStatus(sub: SubState): Subscription["status"] {
+  const ended = sub.status === "trialing" && !!sub.trialEndsAt && sub.trialEndsAt.getTime() <= Date.now();
+  return ended && !sub.providerSubscriptionId ? "expired" : sub.status;
+}
+
+/** Subscribed during the trial: paid plan chosen, billing starts when the trial ends. */
+export const subscribedInTrial = (sub: SubState) => sub.status === "trialing" && !!sub.providerSubscriptionId;
+
+/** Days left in a running trial, counting the current day (a new 14-day trial shows 14), or null. */
+export function trialDaysLeft(sub: SubState) {
+  if (effectiveStatus(sub) !== "trialing" || !sub.trialEndsAt) return null;
+  return Math.max(1, Math.ceil((sub.trialEndsAt.getTime() - Date.now()) / 86_400_000));
+}
+
+/** Records trials that ended without a subscription (run daily by /api/cron/cleanup). */
+export async function expireTrials() {
+  return db
+    .update(subscriptions)
+    .set({ status: "expired", updatedAt: new Date() })
+    .where(
+      and(eq(subscriptions.status, "trialing"), lt(subscriptions.trialEndsAt, new Date()), isNull(subscriptions.providerSubscriptionId)),
+    )
+    .returning({ orgId: subscriptions.orgId });
 }
 
 /**
@@ -58,9 +90,8 @@ export function trialDaysLeft(sub: Pick<Subscription, "status" | "trialEndsAt">)
  */
 export function hasAccess(org: Pick<Organization, "isDemo">, sub: Subscription | null | undefined) {
   if (!isPlatform() || org.isDemo || !sub) return true;
-  if (sub.status === "active" || sub.status === "past_due") return true;
-  if (sub.status === "trialing") return !sub.trialEndsAt || sub.trialEndsAt.getTime() > Date.now();
-  return false;
+  const status = effectiveStatus(sub);
+  return status === "active" || status === "past_due" || status === "trialing";
 }
 
 /**

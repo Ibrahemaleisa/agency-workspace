@@ -47,7 +47,12 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
 
 - Isolation check (read-only): `npm run verify:isolation`.
 - Preview tenant (safe, only touches slug `demo`): `npm run db:seed-preview`.
-- Trial length is a DB default of **14 days** (`plans.trial_days`) — not yet confirmed by the owner.
+- Free trial: **14 days** (confirmed by the owner, 27 Sep 2026). Live value per plan in `plans.trial_days`,
+  edited in the control center → Plans; code default `DEFAULT_TRIAL_DAYS` in `src/lib/billing/defaults.ts`.
+- **No prices are published** until the owner agrees them (plans.price_cents stays null; site pricing stays unset).
+- People vs agencies: `accounts` = a person (email, password, verified email); `users` = their **membership** in one
+  agency (role, client link). One person can belong to several agencies and switch between them; sessions and
+  every tenant query work on a membership.
 
 ## Marketing website (`site/`)
 

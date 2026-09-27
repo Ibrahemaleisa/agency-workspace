@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -58,7 +59,7 @@ export default async function SignupStartPage() {
         <label className="flex cursor-pointer gap-3 rounded-lg border border-zinc-300 p-4 has-checked:border-zinc-900 has-checked:ring-1 has-checked:ring-zinc-900">
           <input type="radio" name="mode" value="trial" defaultChecked className="mt-1" />
           <span>
-            <span className="block font-semibold">{s.start.trialTitle(plan?.trialDays ?? 14)}</span>
+            <span className="block font-semibold">{s.start.trialTitle(plan?.trialDays ?? DEFAULT_TRIAL_DAYS)}</span>
             <span className="mt-1 block text-sm text-zinc-600">{s.start.trialBody}</span>
           </span>
         </label>

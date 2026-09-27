@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, BadgeCheck, FolderKanban, MessagesSquare } from 
 import { getCurrentUser } from "@/lib/auth";
 import { isPlatform } from "@/lib/platform";
 import { getDict } from "@/lib/lang";
+import { getSaasT } from "@/lib/i18n-saas";
 import { loginAction } from "@/server/auth-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { BrandLogo } from "@/components/site/brand";
@@ -28,7 +29,7 @@ const field =
 
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
-  const { lang, t, brand } = await getDict();
+  const [{ lang, t, brand }, { t: st }] = await Promise.all([getDict(), getSaasT()]);
   const platform = isPlatform();
   if (!brand.orgId && !platform) redirect("/setup");
   // Single-agency deployments may list the sample logins; the platform uses /preview instead.
@@ -99,6 +100,9 @@ export default async function LoginPage() {
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-zinc-400">{t.login.password}</span>
                   <input name="password" type="password" autoComplete="current-password" required dir="ltr" className={`${field} text-start`} />
+                  <Link href="/forgot-password" className="mt-1.5 inline-block text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline">
+                    {st.reset.forgotLink}
+                  </Link>
                 </label>
                 <SubmitButton
                   className="w-full rounded-xl bg-sand-200! py-3 text-base font-semibold text-ink! shadow-none! hover:bg-sand-100!"

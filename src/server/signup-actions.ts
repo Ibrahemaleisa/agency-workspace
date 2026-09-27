@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { plans, signups, users, type Signup } from "@/db/schema";
-import { createSession, hashPassword, hashToken, newToken } from "@/lib/auth";
+import { accounts, plans, signups, users, type Signup } from "@/db/schema";
+import { hashPassword, hashToken, newToken, verifyAccount } from "@/lib/auth";
 import { HEX } from "@/lib/brand";
 import { str, type ActionState } from "@/lib/action-state";
 import { getSaasT } from "@/lib/i18n-saas";
@@ -15,8 +15,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { ProvisioningError, provisionSignup, slugAvailable } from "@/lib/provisioning";
 import { providerName } from "@/lib/billing";
-import { workspaceRedirectUrl } from "@/lib/handoff";
-import { getOrgById, rememberTenant } from "@/lib/tenant";
+import { enterWorkspace } from "@/lib/handoff";
+import { getOrgById } from "@/lib/tenant";
+import { sendVerification } from "@/lib/verification";
 
 const SIGNUP_COOKIE = "operra_signup";
 const SIGNUP_HOURS = 24;
@@ -59,7 +60,17 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
   if (!isEmail(email)) return { error: e.email };
   if (password.length < 8) return { error: e.password };
   if (!(await rateLimit(`signup:${await clientIp()}`, 10, 3600))) return { error: e.rate };
-  if (await db.query.users.findFirst({ where: eq(users.email, email) })) return { error: e.emailTaken };
+
+  // An existing Operra account can add another agency — with that account's own password.
+  let passwordHash: string;
+  const account = await db.query.accounts.findFirst({ where: eq(accounts.email, email) });
+  if (account) {
+    if (!(await rateLimit(`signup:email:${email}`, 10, 15 * 60))) return { error: e.rate };
+    if (!(await verifyAccount(email, password))) return { error: e.emailTaken };
+    passwordHash = account.passwordHash;
+  } else {
+    passwordHash = await hashPassword(password);
+  }
 
   const planCode = str(fd, "plan") ?? "workspace";
   const plan = await db.query.plans.findFirst({ where: and(eq(plans.code, planCode), eq(plans.active, true)) });
@@ -68,7 +79,7 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
   const values = {
     name,
     email,
-    passwordHash: await hashPassword(password),
+    passwordHash,
     lang: await getLang(),
     planCode: plan.code,
     step: 1,
@@ -176,7 +187,7 @@ export async function runProvisioning(): Promise<ProvisionState> {
 }
 
 /** Signs the new admin in on their workspace's own host and ends the signup session. */
-export async function enterWorkspace() {
+export async function enterNewWorkspace() {
   platformOnly();
   const s = await currentSignup();
   if (!s?.orgId) redirect("/signup");
@@ -185,10 +196,8 @@ export async function enterWorkspace() {
   if (!org || !admin || org.status !== "active") redirect("/signup/provisioning");
 
   (await cookies()).delete(SIGNUP_COOKIE);
-  const next = s.startMode === "subscribe" ? "/settings/billing?start=checkout" : "/";
-  const target = await workspaceRedirectUrl(org, admin.id, next);
-  if (target) redirect(target);
-  if (org) await rememberTenant(org);
-  await createSession(admin.id);
-  redirect(next);
+  // Ask the new admin to confirm their address. Sent only when email is configured (and not already
+  // confirmed); it never blocks getting into the workspace.
+  await sendVerification(admin.accountId, org, admin.lang === "ar" ? "ar" : "en");
+  return enterWorkspace(admin, org, s.startMode === "subscribe" ? "/settings/billing?start=checkout" : "/");
 }

@@ -19,7 +19,7 @@ async function main() {
     }
   }
   console.log("Resetting database…");
-  await db.execute(sql`TRUNCATE organizations, sessions, file_blobs RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE organizations, accounts, sessions, file_blobs RESTART IDENTITY CASCADE`);
 
   const [org] = await db.insert(s.organizations).values({ name: "Northwind Studio", nameAr: "نورثويند", slug: "northwind", showcaseClients: ["Bloom Café", "Atlas Fitness", "Verde Real Estate", "Nimbus Tech"], contactEmail: "hello@northwind.agency" }).returning();
   await populateDemoAgency(org.id, { passwordHash: await bcrypt.hash("password", 10) });

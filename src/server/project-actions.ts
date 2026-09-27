@@ -29,7 +29,7 @@ import {
 } from "@/lib/events";
 import { nt } from "@/lib/notify-text";
 import { addModuleToProject } from "@/lib/modules";
-import { str, type ActionState } from "@/lib/action-state";
+import { idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { projectStatusLabel } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 
@@ -58,7 +58,7 @@ export async function createProject(_prev: ActionState, fd: FormData): Promise<A
   const user = await requireUser();
   assertCan(user, "projects.manage");
   const name = str(fd, "name");
-  const clientId = str(fd, "clientId");
+  const clientId = optId(fd, "clientId");
   if (!name) return { error: (await msg()).projectNameRequired };
   if (!clientId) return { error: (await msg()).chooseClient };
   const client = await db.query.clients.findFirst({
@@ -125,14 +125,14 @@ export async function createProject(_prev: ActionState, fd: FormData): Promise<A
 export async function updateProject(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "projects.manage");
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const name = str(fd, "name");
   if (!name) return { error: (await msg()).projectNameRequired };
   const startDate = str(fd, "startDate");
   const endDate = str(fd, "endDate");
   if (startDate && endDate && endDate < startDate) return { error: (await msg()).endAfterStart };
   const status = parseProjectStatus(str(fd, "status"));
-  const ownerId = (await validInternalUserIds(user, [str(fd, "ownerId") ?? ""]))[0] ?? project.ownerId;
+  const ownerId = (await validInternalUserIds(user, [idOf(fd, "ownerId")]))[0] ?? project.ownerId;
 
   await db
     .update(projects)
@@ -183,9 +183,9 @@ export async function updateProject(_prev: ActionState, fd: FormData): Promise<A
 export async function addModule(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "projects.manage");
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const template = await db.query.moduleTemplates.findFirst({
-    where: and(eq(moduleTemplates.id, str(fd, "templateId") ?? ""), eq(moduleTemplates.orgId, user.orgId)),
+    where: and(eq(moduleTemplates.id, idOf(fd, "templateId")), eq(moduleTemplates.orgId, user.orgId)),
   });
   if (!template) throw new ForbiddenError("Unknown module template.");
   await addModuleToProject(db, { orgId: user.orgId, projectId: project.id, template, createdById: user.id });
@@ -201,9 +201,9 @@ export async function addModule(fd: FormData) {
 export async function removeModule(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "projects.manage");
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const mod = await db.query.projectModules.findFirst({
-    where: and(eq(projectModules.id, str(fd, "moduleId") ?? ""), eq(projectModules.projectId, project.id)),
+    where: and(eq(projectModules.id, idOf(fd, "moduleId")), eq(projectModules.projectId, project.id)),
   });
   if (!mod) return;
   // Removing a module removes its workflow; its tasks are deleted with it (explicit, confirmed in UI).
@@ -220,9 +220,9 @@ export async function removeModule(fd: FormData) {
 export async function updateModuleFields(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "projects.manage");
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const mod = await db.query.projectModules.findFirst({
-    where: and(eq(projectModules.id, str(fd, "moduleId") ?? ""), eq(projectModules.projectId, project.id)),
+    where: and(eq(projectModules.id, idOf(fd, "moduleId")), eq(projectModules.projectId, project.id)),
   });
   if (!mod) return { error: (await msg()).moduleNotFound };
   const values: Record<string, string> = {};
@@ -246,7 +246,7 @@ export async function updateModuleFields(_prev: ActionState, fd: FormData): Prom
 
 export async function sendChatMessage(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const body = str(fd, "body");
   if (!body) return { error: (await msg()).messageEmpty };
   const channel = str(fd, "channel") === "client" ? "client" : "internal";

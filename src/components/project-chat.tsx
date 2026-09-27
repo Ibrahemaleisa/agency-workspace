@@ -48,7 +48,7 @@ export async function ProjectChat({
             </Link>
           ))}
         </div>
-        <span className="hidden text-xs text-zinc-400 sm:block">
+        <span className="hidden text-xs text-zinc-500 sm:block">
           {channel === "internal" ? t.chat.internalHint : t.chat.clientHint}
         </span>
       </div>
@@ -83,7 +83,7 @@ export async function ProjectChat({
                     >
                       <Highlight text={m.body} />
                     </div>
-                    <span className="mt-1 px-1 text-[11px] text-zinc-400">
+                    <span className="mt-1 px-1 text-[11px] text-zinc-500">
                       {format(m.createdAt, isToday(m.createdAt) ? "h:mm a" : "MMM d, h:mm a", { locale })}
                     </span>
                   </div>

@@ -51,30 +51,30 @@ export default async function LeadsPage() {
                         {t.leads.status[s.value]}
                       </Badge>
                       {l.service && <Badge>{l.service}</Badge>}
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-zinc-500">
                         {formatDistanceToNow(l.createdAt, { addSuffix: true, locale })} · {l.lang === "ar" ? t.leads.arabic : t.leads.english}
                       </span>
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
                       {l.company && (
                         <span className="flex items-center gap-1.5">
-                          <Building2 className="size-3.5 text-zinc-400" /> {l.company}
+                          <Building2 className="size-3.5 text-zinc-500" /> {l.company}
                         </span>
                       )}
                       {l.email && (
                         <a href={`mailto:${l.email}`} className="flex items-center gap-1.5 hover:text-indigo-600">
-                          <Mail className="size-3.5 text-zinc-400" /> {l.email}
+                          <Mail className="size-3.5 text-zinc-500" /> {l.email}
                         </a>
                       )}
                       {l.phone && (
                         <a href={`tel:${l.phone}`} className="flex items-center gap-1.5 hover:text-indigo-600" dir="ltr">
-                          <Phone className="size-3.5 text-zinc-400" /> {l.phone}
+                          <Phone className="size-3.5 text-zinc-500" /> {l.phone}
                         </a>
                       )}
                     </div>
                     {l.message && (
                       <p className="mt-2 flex gap-1.5 text-sm whitespace-pre-wrap text-zinc-700" dir="auto">
-                        <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-zinc-400" />
+                        <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-zinc-500" />
                         {l.message}
                       </p>
                     )}

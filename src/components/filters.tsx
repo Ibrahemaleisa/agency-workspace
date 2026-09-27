@@ -26,7 +26,7 @@ export function FilterTabs({
         >
           {o.label}
           {o.count !== undefined && (
-            <span className={cn("ms-1.5 text-xs tabular-nums", "text-zinc-400")}>{o.count}</span>
+            <span className={cn("ms-1.5 text-xs tabular-nums", "text-zinc-500")}>{o.count}</span>
           )}
         </Link>
       ))}

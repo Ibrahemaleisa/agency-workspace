@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations, provisionings, subscriptions, users } from "@/db/schema";
+import { effectiveStatus } from "@/lib/billing";
+import { configChecks } from "@/lib/config-check";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { ControlHeader } from "@/components/platform/control-header";
 import { Badge } from "@/components/ui";
@@ -11,6 +13,7 @@ const STATUS_TONE = { active: "green", provisioning: "blue", suspended: "amber",
 const SUB_TONE: Record<string, "green" | "blue" | "amber" | "red" | "slate"> = {
   active: "green",
   trialing: "blue",
+  expired: "red",
   past_due: "amber",
   incomplete: "amber",
   unpaid: "red",
@@ -40,6 +43,7 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
       createdAt: organizations.createdAt,
       subStatus: subscriptions.status,
       trialEndsAt: subscriptions.trialEndsAt,
+      providerSubscriptionId: subscriptions.providerSubscriptionId,
       provisioning: provisionings.status,
       users: sql<number>`coalesce(${userCount.n}, 0)`.mapWith(Number),
     })
@@ -59,8 +63,9 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
     .from(organizations);
   const [subs] = await db
     .select({
-      trialing: sql<number>`count(*) filter (where ${subscriptions.status} = 'trialing')::int`,
-      paying: sql<number>`count(*) filter (where ${subscriptions.status} = 'active')::int`,
+      trialing: sql<number>`count(*) filter (where ${subscriptions.status} = 'trialing' and ${subscriptions.trialEndsAt} > now() and ${subscriptions.providerSubscriptionId} is null)::int`,
+      ended: sql<number>`count(*) filter (where ${subscriptions.status} = 'expired' or (${subscriptions.status} = 'trialing' and ${subscriptions.trialEndsAt} <= now() and ${subscriptions.providerSubscriptionId} is null))::int`,
+      paying: sql<number>`count(*) filter (where ${subscriptions.status} = 'active' or (${subscriptions.status} = 'trialing' and ${subscriptions.providerSubscriptionId} is not null))::int`,
     })
     .from(subscriptions);
 
@@ -68,6 +73,7 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
     ["Customers", totals.tenants],
     ["Active", totals.active],
     ["On trial", subs.trialing],
+    ["Trial ended", subs.ended],
     ["Paying", subs.paying],
   ] as const;
 
@@ -76,7 +82,7 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
       <ControlHeader name={admin.name} />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#E3E4E0] bg-[#E3E4E0] sm:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#E3E4E0] bg-[#E3E4E0] sm:grid-cols-5">
           {stats.map(([label, n]) => (
             <div key={label} className="bg-white p-4">
               <dt className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{label}</dt>
@@ -126,10 +132,20 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                   </td>
                   <td className="px-4 py-3"><Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge></td>
                   <td className="px-4 py-3">
-                    {r.subStatus ? <Badge tone={SUB_TONE[r.subStatus] ?? "slate"}>{r.subStatus}</Badge> : <span className="text-[#5A606B]">—</span>}
-                    {r.subStatus === "trialing" && r.trialEndsAt && (
-                      <div className="mt-0.5 text-xs text-[#5A606B]">until {format(r.trialEndsAt, "d MMM")}</div>
-                    )}
+                    {(() => {
+                      if (!r.subStatus) return <span className="text-[#5A606B]">—</span>;
+                      const status = effectiveStatus({ status: r.subStatus, trialEndsAt: r.trialEndsAt, providerSubscriptionId: r.providerSubscriptionId });
+                      return (
+                        <>
+                          <Badge tone={SUB_TONE[status] ?? "slate"}>{status}</Badge>
+                          {r.trialEndsAt && (status === "trialing" || status === "expired") && (
+                            <div className="mt-0.5 text-xs text-[#5A606B]">
+                              {status === "expired" ? "ended" : "until"} {format(r.trialEndsAt, "d MMM")}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-[#5A606B]">{r.provisioning ?? "—"}</td>
                   <td className="px-4 py-3 font-mono">{r.users}</td>
@@ -144,6 +160,21 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
             </tbody>
           </table>
         </div>
+        <section aria-labelledby="config-title" className="mt-10">
+          <h2 id="config-title" className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">
+            Configuration
+          </h2>
+          <ul className="mt-3 divide-y divide-[#E3E4E0] rounded-lg border border-[#E3E4E0] bg-white text-sm" data-testid="config-checks">
+            {configChecks().map((c) => (
+              <li key={c.key} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5">
+                <span aria-hidden className={`size-2 shrink-0 rounded-full ${c.ok === true ? "bg-emerald-600" : c.ok === false ? "bg-[#C8283A]" : "bg-[#8C919A]"}`} />
+                <span className="font-mono text-xs">{c.key}</span>
+                <span className="sr-only">{c.ok === true ? "OK" : c.ok === false ? "Problem" : "Optional, not set"}</span>
+                <span className="text-[#5A606B]">{c.note}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
     </>
   );

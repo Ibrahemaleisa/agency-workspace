@@ -113,6 +113,7 @@ src/
   app/operra/            platform mode: Operra control center (staff only)
   lib/tenant.ts          which tenant a request is for (subdomain, custom domain, /w/{slug})
   lib/provisioning.ts    idempotent tenant provisioning · lib/billing/  provider abstraction
+  lib/verification.ts, lib/password-reset.ts   email verification and self-service password reset
   lib/brand.ts           brand settings + colour theming
   lib/permissions.ts     central role → permission policy
   lib/i18n.ts, i18n-app.ts   Arabic + English copy ("{brand}" is replaced with the agency name)

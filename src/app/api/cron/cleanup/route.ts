@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { invitations, loginTokens, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
+import { emailVerifications, invitations, passwordResets, loginTokens, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
+import { expireTrials } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ function authorized(req: Request) {
 }
 
 /**
- * GET /api/cron/cleanup — daily housekeeping (vercel.json → crons). Vercel sends
+ * GET /api/cron/cleanup — daily housekeeping (vercel.json → crons): expired sessions, tokens and
+ * sign-ups, and ended free trials. Vercel sends
  * `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set the route refuses to run.
  */
 export async function GET(req: Request) {
@@ -47,6 +49,19 @@ export async function GET(req: Request) {
           .where(and(isNotNull(signups.orgId), lt(signups.expiresAt, now), sql`${signups.passwordHash} <> ''`))
           .returning({ id: signups.id }),
       ),
+      // Used or expired email-verification links.
+      emailVerifications: n(
+        await tx
+          .delete(emailVerifications)
+          .where(or(lt(emailVerifications.expiresAt, now), and(isNotNull(emailVerifications.usedAt), lt(emailVerifications.usedAt, dayAgo))))
+          .returning({ id: emailVerifications.id }),
+      ),
+      passwordResets: n(
+        await tx
+          .delete(passwordResets)
+          .where(or(lt(passwordResets.expiresAt, now), and(isNotNull(passwordResets.usedAt), lt(passwordResets.usedAt, dayAgo))))
+          .returning({ id: passwordResets.id }),
+      ),
       invitations: n(
         await tx
           .delete(invitations)
@@ -55,6 +70,8 @@ export async function GET(req: Request) {
       ),
     };
   });
-  console.info("[cron] cleanup", counts);
-  return Response.json({ ok: true, ...counts });
+  // Record trials that ended without a subscription (access already follows the end date live).
+  const trialsExpired = (await expireTrials()).length;
+  console.info("[cron] cleanup", { ...counts, trialsExpired });
+  return Response.json({ ok: true, ...counts, trialsExpired });
 }

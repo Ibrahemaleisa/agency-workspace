@@ -111,7 +111,7 @@ export function Stat({
       <div className={cn("mt-1 text-2xl font-semibold tracking-tight tabular-nums md:text-3xl", toneText[tone])}>
         {value}
       </div>
-      {hint && <div className="mt-1 text-xs text-zinc-400">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-zinc-500">{hint}</div>}
     </div>
   );
   return href ? <Link href={href}>{body}</Link> : body;
@@ -120,7 +120,7 @@ export function Stat({
 export function EmptyState({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-zinc-500">
-      {icon && <span className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">{icon}</span>}
+      {icon && <span className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">{icon}</span>}
       {children}
     </div>
   );
@@ -234,7 +234,7 @@ export function Avatar({ name, size = "sm" }: { name?: string | null; size?: "xs
     return (
       <span
         className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-400",
+          "inline-flex shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-500",
           size === "xs" ? "size-5 text-[9px]" : size === "sm" ? "size-6 text-[10px]" : "size-8 text-xs",
         )}
       >

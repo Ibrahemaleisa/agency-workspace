@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
-import { applyBillingEvent, billingProvider, getSubscription } from "@/lib/billing";
+import { applyBillingEvent, billingProvider, effectiveStatus, getPlan, getSubscription } from "@/lib/billing";
 import { tenantBaseUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { verify } from "@/lib/secret";
@@ -12,19 +12,22 @@ import { logActivity } from "@/lib/events";
 
 /** Admin: send the tenant to the provider's checkout for its plan. */
 export async function startCheckout() {
-  const user = await requireUser();
+  const user = await requireUser({ allowLocked: true });
   assertCan(user, "billing.manage");
   const provider = billingProvider();
   const org = await getOrgById(user.orgId);
   const sub = await getSubscription(user.orgId);
-  if (!provider || !org || !sub || org.isDemo) redirect("/settings/billing?checkout=unavailable");
+  const plan = sub ? await getPlan(sub.planCode) : null;
+  if (!provider || !org || !sub || !plan || org.isDemo) redirect("/settings/billing?checkout=unavailable");
   const base = `${tenantBaseUrl(org)}/settings/billing`;
   let url: string;
   try {
     url = await provider.createCheckout({
       org,
-      planCode: sub.planCode,
+      plan,
       email: user.email,
+      // Subscribing mid-trial keeps the remaining free days (billing starts when the trial ends).
+      trialEndsAt: effectiveStatus(sub) === "trialing" ? sub.trialEndsAt : null,
       successUrl: `${base}?checkout=success`,
       cancelUrl: `${base}?checkout=cancelled`,
     });
@@ -38,7 +41,7 @@ export async function startCheckout() {
 
 /** Admin: open the provider's self-service billing portal. */
 export async function openBillingPortal() {
-  const user = await requireUser();
+  const user = await requireUser({ allowLocked: true });
   assertCan(user, "billing.manage");
   const provider = billingProvider();
   const org = await getOrgById(user.orgId);

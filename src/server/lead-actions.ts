@@ -11,7 +11,7 @@ import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
 import { getLang } from "@/lib/lang";
 import { DICT } from "@/lib/i18n";
-import { str, type ActionState } from "@/lib/action-state";
+import { idOf, str, type ActionState } from "@/lib/action-state";
 
 
 /** Public: a visitor requests a project from the landing page. */
@@ -64,6 +64,6 @@ export async function updateLeadStatus(fd: FormData) {
   await db
     .update(leads)
     .set({ status })
-    .where(and(eq(leads.id, str(fd, "leadId") ?? ""), eq(leads.orgId, user.orgId)));
+    .where(and(eq(leads.id, idOf(fd, "leadId")), eq(leads.orgId, user.orgId)));
   revalidatePath("/leads");
 }

@@ -232,7 +232,7 @@ async function ClientDashboard({ user, t, lang }: Props) {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{d.itemsWaiting(approvals.length)}</span>
-            <span className="block text-sm text-zinc-400">{d.feedbackMoves}</span>
+            <span className="block text-sm text-zinc-500">{d.feedbackMoves}</span>
           </span>
           <span className="hidden rounded-lg bg-sand-200 px-3 py-2 text-sm font-semibold text-ink sm:block">{d.reviewNow}</span>
         </Link>
@@ -306,7 +306,7 @@ function WorkloadBars({ rows, t }: { rows: Awaited<ReturnType<typeof teamWorkloa
             <Link href={`/tasks?assignee=${r.id}`} className="block truncate text-sm font-medium hover:text-indigo-600">
               {r.name}
             </Link>
-            <div className="truncate text-xs text-zinc-400">{r.title}</div>
+            <div className="truncate text-xs text-zinc-500">{r.title}</div>
           </div>
           <div className="flex-1" title={t.dashboard.workloadTitle(r.name, r.open, r.overdue, r.inReview)}>
             <div className="h-2 rounded-e bg-zinc-100">

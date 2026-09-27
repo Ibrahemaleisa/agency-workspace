@@ -105,7 +105,7 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
                 </td>
                 <td className="px-3 py-2">
                   {timeUsed === null ? (
-                    <span className="text-xs text-zinc-400">{m.noDates}</span>
+                    <span className="text-xs text-zinc-500">{m.noDates}</span>
                   ) : (
                     <Meter value={timeUsed} className={timeUsed > 100 ? "bg-red-500" : "bg-sand-400"} />
                   )}
@@ -121,7 +121,7 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
           </tbody>
         </table>
       </div>
-      <p className="border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-400">{m.legend}</p>
+      <p className="border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-500">{m.legend}</p>
     </div>
   );
 }

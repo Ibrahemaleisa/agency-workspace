@@ -4,6 +4,9 @@ import { attachments, projects, tasks } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { isUuid, taskScope } from "@/lib/access";
 import { loadFile } from "@/lib/uploads";
+import { getSubscription, hasAccess } from "@/lib/billing";
+import { isPlatform } from "@/lib/platform";
+import { getOrgById } from "@/lib/tenant";
 
 // Raster images may be shown inline (thumbnails / previews); everything else downloads.
 const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
@@ -11,6 +14,11 @@ const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/web
 export async function GET(req: Request, ctx: RouteContext<"/api/files/[id]">) {
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  // A paused workspace, or one whose trial ended, is closed — its files included.
+  if (isPlatform() && !user.readOnly) {
+    const [org, sub] = await Promise.all([getOrgById(user.orgId), getSubscription(user.orgId)]);
+    if (!org || org.status !== "active" || !hasAccess(org, sub)) return new Response("Workspace unavailable", { status: 403 });
+  }
   const { id } = await ctx.params;
   if (!isUuid(id)) return new Response("Not found", { status: 404 });
 

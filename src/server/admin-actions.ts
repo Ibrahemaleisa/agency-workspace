@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  accounts,
   clients,
   clientTeam,
   moduleTemplates,
@@ -16,10 +17,13 @@ import {
   type Role,
   type WorkflowStage,
 } from "@/db/schema";
+import { ensureAccount } from "@/db/accounts";
 import { hashPassword, requireUser } from "@/lib/auth";
+import { safePath } from "@/lib/request";
+import { isUuid } from "@/lib/access";
 import { assertCan } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
-import { bool, str, type ActionState } from "@/lib/action-state";
+import { bool, idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
@@ -75,7 +79,7 @@ export async function createClient(_prev: ActionState, fd: FormData): Promise<Ac
 export async function updateClient(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "clients.manage");
-  const id = str(fd, "clientId") ?? "";
+  const id = idOf(fd, "clientId");
   const values = clientValues(fd);
   if (!values.name) return { error: (await msg()).clientNameRequired };
   const [client] = await db
@@ -105,7 +109,7 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
   const email = str(fd, "email")?.toLowerCase();
   const password = str(fd, "password");
   const role = parseRole(str(fd, "role"));
-  const clientId = role === "client" ? str(fd, "clientId") : null;
+  const clientId = role === "client" ? optId(fd, "clientId") : null;
   if (!name || !email || !password) return { error: (await msg()).userFieldsRequired };
   if (!isEmail(email)) return { error: (await msg()).invalidEmail };
   if (password.length < 8) return { error: (await msg()).passwordLength };
@@ -116,22 +120,29 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
     });
     if (!c) return { error: (await msg()).invalidClient };
   }
-  const exists = await db.query.users.findFirst({ where: eq(users.email, email) });
-  if (exists) return { error: (await msg()).emailExists };
+  if (await db.query.users.findFirst({ where: and(eq(users.orgId, admin.orgId), eq(users.email, email)) }))
+    return { error: (await msg()).emailExists };
+  // Someone who already has an account elsewhere joins by invitation, with their own password.
+  if (await db.query.accounts.findFirst({ where: eq(accounts.email, email) })) return { error: (await msg()).accountExists };
 
-  const [created] = await db
-    .insert(users)
-    .values({
-      orgId: admin.orgId,
-      name,
-      email,
-      passwordHash: await hashPassword(password),
-      role,
-      title: str(fd, "title"),
-      focus: role === "employee" ? parseFocus(str(fd, "focus")) : null,
-      clientId,
-    })
-    .returning();
+  const passwordHash = await hashPassword(password);
+  const created = await db.transaction(async (tx) => {
+    const { account } = await ensureAccount(tx, email, passwordHash);
+    const [u] = await tx
+      .insert(users)
+      .values({
+        orgId: admin.orgId,
+        accountId: account.id,
+        name,
+        email: account.email,
+        role,
+        title: str(fd, "title"),
+        focus: role === "employee" ? parseFocus(str(fd, "focus")) : null,
+        clientId,
+      })
+      .returning();
+    return u;
+  });
   // Their first sign-in opens the tutorial for their role.
   await startOnboarding(created);
   await logActivity(admin, { action: "user.created", summary: `added user ${name} (${role})` });
@@ -142,7 +153,7 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
 export async function updateUser(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireUser();
   assertCan(admin, "users.manage");
-  const id = str(fd, "userId") ?? "";
+  const id = idOf(fd, "userId");
   const target = await db.query.users.findFirst({
     where: and(eq(users.id, id), eq(users.orgId, admin.orgId)),
   });
@@ -153,7 +164,7 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
   const active = bool(fd, "active");
   if (target.id === admin.id && (role !== "admin" || !active))
     return { error: (await msg()).ownAdmin };
-  const clientId = role === "client" ? str(fd, "clientId") : null;
+  const clientId = role === "client" ? optId(fd, "clientId") : null;
   if (role === "client" && !clientId) return { error: (await msg()).clientUserNeedsClient };
 
   const password = str(fd, "password");
@@ -161,26 +172,46 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
 
   const email = str(fd, "email")?.toLowerCase() ?? target.email;
   const emailChanged = email !== target.email;
+  if (emailChanged || password) {
+    // Email and password belong to the person, not to this agency: an admin may only change them
+    // when this is the person's one and only workspace.
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(eq(users.accountId, target.accountId), ne(users.id, target.id)));
+    if (n > 0) return { error: (await msg()).sharedAccount };
+  }
   if (emailChanged) {
     if (!isEmail(email)) return { error: (await msg()).invalidEmail };
-    const taken = await db.query.users.findFirst({ where: eq(users.email, email) });
+    const taken = await db.query.accounts.findFirst({ where: and(eq(accounts.email, email), ne(accounts.id, target.accountId)) });
     if (taken) return { error: (await msg()).emailExists };
   }
 
-  await db
-    .update(users)
-    .set({
-      name,
-      email,
-      // A new (real) address gets email notifications switched on.
-      ...(emailChanged ? { emailNotifications: true } : {}),
-      role,
-      title: str(fd, "title"),
-      clientId,
-      active,
-      ...(password ? { passwordHash: await hashPassword(password) } : {}),
-    })
-    .where(eq(users.id, target.id));
+  await db.transaction(async (tx) => {
+    if (emailChanged || password) {
+      await tx
+        .update(accounts)
+        .set({
+          ...(emailChanged ? { email, emailVerifiedAt: null } : {}),
+          ...(password ? { passwordHash: await hashPassword(password) } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(accounts.id, target.accountId));
+    }
+    await tx
+      .update(users)
+      .set({
+        name,
+        email,
+        // A new (real) address gets email notifications switched on.
+        ...(emailChanged ? { emailNotifications: true } : {}),
+        role,
+        title: str(fd, "title"),
+        clientId,
+        active,
+      })
+      .where(eq(users.id, target.id));
+  });
   if (!active || password) await db.delete(sessions).where(eq(sessions.userId, target.id));
   await logActivity(admin, { action: "user.updated", summary: `updated user ${name}` });
   refresh();
@@ -231,7 +262,7 @@ export async function saveTemplate(_prev: ActionState, fd: FormData): Promise<Ac
   const values = parseTemplateForm(fd);
   if (!values.name) return { error: (await msg()).nameRequired };
   if (values.stages.length === 0) return { error: (await msg()).templateStagesRequired };
-  const id = str(fd, "templateId");
+  const id = optId(fd, "templateId");
   if (id) {
     await db
       .update(moduleTemplates)
@@ -255,14 +286,16 @@ export async function saveTemplate(_prev: ActionState, fd: FormData): Promise<Ac
 
 export async function markNotificationRead(fd: FormData) {
   const user = await requireUser();
-  const id = str(fd, "id") ?? "";
-  await db
+  const id = idOf(fd, "id");
+  if (!isUuid(id)) return;
+  // Follow the link stored on *this user's* notification — never a URL from the form.
+  const [n] = await db
     .update(notifications)
     .set({ readAt: new Date() })
-    .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
-  const link = str(fd, "link");
+    .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)))
+    .returning({ link: notifications.link });
   refresh();
-  if (link?.startsWith("/")) redirect(link);
+  if (n?.link) redirect(safePath(n.link));
 }
 
 export async function markAllNotificationsRead() {

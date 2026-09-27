@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { addDays, format, subHours, subMinutes } from "date-fns";
 import { eq } from "drizzle-orm";
 import { db } from "./index";
+import { ensureAccount } from "./accounts";
 import * as s from "./schema";
 import { DEFAULT_TEMPLATES } from "../lib/default-templates";
 import { addModuleToProject } from "../lib/modules";
@@ -22,6 +23,8 @@ const d = (offset: number) => format(addDays(today, offset), "yyyy-MM-dd");
 export async function populateDemoAgency(orgId: string, opts: { passwordHash: string; mail?: (address: string) => string }) {
   const { passwordHash } = opts;
   const mail = opts.mail ?? ((a: string) => a);
+  /** The person behind each sample address (an existing account keeps its own password). */
+  const accountFor = async (email: string) => (await ensureAccount(db, email, passwordHash)).account;
 
   /* ---------------- Staff ---------------- */
   const staffData = [
@@ -34,9 +37,20 @@ export async function populateDemoAgency(orgId: string, opts: { passwordHash: st
     { key: "adam", name: "Adam Brooks", email: "adam@northwind.agency", role: "employee", title: "Account Manager" },
     { key: "leila", name: "Leila Farouk", email: "leila@northwind.agency", role: "employee", title: "Copywriter" },
   ] as const;
+  const staffAccounts = await Promise.all(staffData.map((u) => accountFor(mail(u.email))));
   const staffRows = await db
     .insert(s.users)
-    .values(staffData.map((u) => ({ name: u.name, email: mail(u.email), role: u.role, title: u.title, orgId: orgId, passwordHash, emailNotifications: false })))
+    .values(
+      staffData.map((u, i) => ({
+        name: u.name,
+        email: staffAccounts[i].email,
+        accountId: staffAccounts[i].id,
+        role: u.role,
+        title: u.title,
+        orgId: orgId,
+        emailNotifications: false,
+      })),
+    )
     .returning();
   const U = Object.fromEntries(staffData.map((u, i) => [u.key, staffRows[i]])) as Record<
     (typeof staffData)[number]["key"],
@@ -83,13 +97,26 @@ export async function populateDemoAgency(orgId: string, opts: { passwordHash: st
   ]);
 
   /* ---------------- Client portal users ---------------- */
+  const clientPeople = [
+    { name: "Lina Mansour", email: "lina@bloomcafe.com", title: "Marketing Manager", clientId: C.bloom.id },
+    { name: "Daniel Price", email: "daniel@atlasfitness.com", title: "Founder", clientId: C.atlas.id },
+    { name: "Rana Aziz", email: "rana@verde-re.com", title: "Head of Sales", clientId: C.verde.id },
+  ];
+  const clientAccounts = await Promise.all(clientPeople.map((p) => accountFor(mail(p.email))));
   const [lina, daniel, rana] = await db
     .insert(s.users)
-    .values([
-      { orgId: orgId, name: "Lina Mansour", email: mail("lina@bloomcafe.com"), role: "client", title: "Marketing Manager", clientId: C.bloom.id, passwordHash, emailNotifications: false },
-      { orgId: orgId, name: "Daniel Price", email: mail("daniel@atlasfitness.com"), role: "client", title: "Founder", clientId: C.atlas.id, passwordHash, emailNotifications: false },
-      { orgId: orgId, name: "Rana Aziz", email: mail("rana@verde-re.com"), role: "client", title: "Head of Sales", clientId: C.verde.id, passwordHash, emailNotifications: false },
-    ])
+    .values(
+      clientPeople.map((p, i) => ({
+        orgId: orgId,
+        accountId: clientAccounts[i].id,
+        name: p.name,
+        email: clientAccounts[i].email,
+        role: "client" as const,
+        title: p.title,
+        clientId: p.clientId,
+        emailNotifications: false,
+      })),
+    )
     .returning();
 
   /* ---------------- Templates ---------------- */

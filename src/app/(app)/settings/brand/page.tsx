@@ -74,7 +74,7 @@ export default async function BrandSettingsPage() {
 
         <Card title={b.publicSite}>
           <Checkbox name="showLanding" defaultChecked={brand.showLanding} label={b.showLanding} />
-          <p className="mt-1 ms-6 text-xs text-zinc-400">{b.showLandingHint}</p>
+          <p className="mt-1 ms-6 text-xs text-zinc-500">{b.showLandingHint}</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <Field label={b.contactEmail}>
               <Input name="contactEmail" type="email" defaultValue={brand.contactEmail} dir="ltr" />

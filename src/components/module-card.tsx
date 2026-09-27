@@ -54,7 +54,7 @@ export async function ModuleCard({
               <span
                 className={cn(
                   "flex items-center gap-1 truncate text-[11px] whitespace-nowrap",
-                  current ? "font-semibold text-zinc-900" : s.complete ? "text-zinc-500" : "text-zinc-400",
+                  current ? "font-semibold text-zinc-900" : s.complete ? "text-zinc-500" : "text-zinc-500",
                 )}
               >
                 {s.complete ? <Check className="size-3 shrink-0 text-emerald-600" /> : <span dir="ltr" className="tabular-nums">{i + 1}.</span>}

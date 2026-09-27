@@ -125,7 +125,6 @@ export function NotificationBell({
                     <li key={n.id}>
                       <form action={markNotificationRead}>
                         <input type="hidden" name="id" value={n.id} />
-                        <input type="hidden" name="link" value={n.link ?? ""} />
                         <button className={cn("flex w-full items-start gap-3 px-4 py-3 text-start hover:bg-zinc-50", !n.read && "bg-sand-50")}>
                           <span className={cn("mt-0.5 rounded-md p-1.5", n.read ? "bg-zinc-100 text-zinc-500" : "bg-ink text-sand-200")}>
                             <Icon className="size-3.5" />
@@ -133,7 +132,7 @@ export function NotificationBell({
                           <span className="min-w-0 flex-1">
                             <span className={cn("block text-sm leading-snug", n.read ? "text-zinc-600" : "font-medium")}>{n.title}</span>
                             {n.body && <span dir="auto" className="mt-0.5 line-clamp-2 block text-xs text-zinc-500">{n.body}</span>}
-                            <span className="mt-0.5 block text-[11px] text-zinc-400">
+                            <span className="mt-0.5 block text-[11px] text-zinc-500">
                               {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale })}
                             </span>
                           </span>

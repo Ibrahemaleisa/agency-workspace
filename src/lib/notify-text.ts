@@ -2,7 +2,11 @@ import type { ProjectStatus, TaskStatus } from "@/db/schema";
 import { APP_DICT } from "./i18n-app";
 import type { Localized } from "./events";
 
-/** Notification titles in English and Arabic. */
+/**
+ * Notification titles in English and Arabic. The Arabic is gender-neutral: it names the action
+ * (passive voice or a noun) and attributes it — "· بواسطة {name}" for actions, "من {name}" for
+ * messages — so it reads naturally whoever the person is.
+ */
 const q = (s: string) => `"${s}"`;
 const qa = (s: string) => `«${s}»`;
 
@@ -17,19 +21,19 @@ export const nt = {
   }),
   projectCreated: (actor: string, project: string, client: string): Localized => ({
     en: `${actor} created project ${q(project)} for ${client}`,
-    ar: `أنشأ ${actor} مشروع ${qa(project)} للعميل ${client}`,
+    ar: `مشروع جديد ${qa(project)} للعميل ${client} · بواسطة ${actor}`,
   }),
   projectStatus: (actor: string, project: string, status: ProjectStatus): Localized => ({
     en: `${actor} changed ${q(project)} to ${APP_DICT.en.projectStatus[status]}`,
-    ar: `غيّر ${actor} حالة ${qa(project)} إلى ${APP_DICT.ar.projectStatus[status]}`,
+    ar: `تغيّرت حالة ${qa(project)} إلى ${APP_DICT.ar.projectStatus[status]} · بواسطة ${actor}`,
   }),
   assigned: (actor: string, task: string): Localized => ({
     en: `${actor} assigned you ${q(task)}`,
-    ar: `أسند إليك ${actor} مهمة ${qa(task)}`,
+    ar: `أُسندت إليك مهمة ${qa(task)} · بواسطة ${actor}`,
   }),
   taskStatus: (actor: string, task: string, status: TaskStatus, project: string): Localized => ({
     en: `${actor} moved ${q(task)} to ${APP_DICT.en.taskStatus[status]} · ${project}`,
-    ar: `نقل ${actor} مهمة ${qa(task)} إلى ${APP_DICT.ar.taskStatus[status]} · ${project}`,
+    ar: `انتقلت مهمة ${qa(task)} إلى ${APP_DICT.ar.taskStatus[status]} · ${project} · بواسطة ${actor}`,
   }),
   approvalRequested: (task: string): Localized => ({
     en: `Approval requested: ${q(task)}`,
@@ -37,38 +41,38 @@ export const nt = {
   }),
   approvalDecided: (actor: string, approved: boolean, task: string): Localized => ({
     en: `${actor} ${approved ? "approved" : "requested changes on"} ${q(task)}`,
-    ar: approved ? `وافق ${actor} على ${qa(task)}` : `طلب ${actor} تعديلات على ${qa(task)}`,
+    ar: approved ? `تم اعتماد ${qa(task)} · بواسطة ${actor}` : `طلب تعديل على ${qa(task)} من ${actor}`,
   }),
   mentionTask: (actor: string, task: string): Localized => ({
     en: `${actor} mentioned you on ${q(task)}`,
-    ar: `أشار إليك ${actor} في مهمة ${qa(task)}`,
+    ar: `تمت الإشارة إليك في مهمة ${qa(task)} · بواسطة ${actor}`,
   }),
   commentTask: (actor: string, task: string): Localized => ({
     en: `${actor} commented on ${q(task)}`,
-    ar: `علّق ${actor} على مهمة ${qa(task)}`,
+    ar: `تعليق جديد على مهمة ${qa(task)} من ${actor}`,
   }),
   replyTask: (actor: string, task: string): Localized => ({
     en: `${actor} replied on ${q(task)}`,
-    ar: `ردّ ${actor} على مهمة ${qa(task)}`,
+    ar: `ردّ جديد على مهمة ${qa(task)} من ${actor}`,
   }),
   mentionChat: (actor: string, project: string): Localized => ({
     en: `${actor} mentioned you in ${project} chat`,
-    ar: `أشار إليك ${actor} في محادثة ${project}`,
+    ar: `تمت الإشارة إليك في محادثة ${project} · بواسطة ${actor}`,
   }),
   chatInternal: (actor: string, project: string): Localized => ({
     en: `${actor} posted in the team chat of ${project}`,
-    ar: `كتب ${actor} في محادثة الفريق لمشروع ${project}`,
+    ar: `رسالة جديدة في محادثة الفريق لمشروع ${project} من ${actor}`,
   }),
   chatClient: (actor: string, project: string): Localized => ({
     en: `${actor} sent a message in ${project}`,
-    ar: `أرسل ${actor} رسالة في ${project}`,
+    ar: `رسالة جديدة في ${project} من ${actor}`,
   }),
   teamChatMention: (actor: string): Localized => ({
     en: `${actor} mentioned you in the team chat`,
-    ar: `أشار إليك ${actor} في الشات العام`,
+    ar: `تمت الإشارة إليك في الشات العام · بواسطة ${actor}`,
   }),
   teamChatAll: (actor: string): Localized => ({
     en: `${actor} posted to everyone in the team chat`,
-    ar: `كتب ${actor} للجميع في الشات العام`,
+    ar: `رسالة للجميع في الشات العام من ${actor}`,
   }),
 };

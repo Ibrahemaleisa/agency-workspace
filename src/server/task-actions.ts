@@ -29,7 +29,7 @@ import {
   resolveMentions,
 } from "@/lib/events";
 import { nt } from "@/lib/notify-text";
-import { bool, str, type ActionState } from "@/lib/action-state";
+import { bool, idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { taskStatusLabel } from "@/lib/constants";
 import { MAX_UPLOAD_BYTES, removeFile, saveFile } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
@@ -62,12 +62,12 @@ function parsePriority(v: string | null): Priority {
 export async function createTask(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "tasks.create");
-  const project = await getAccessibleProject(user, str(fd, "projectId") ?? "");
+  const project = await getAccessibleProject(user, idOf(fd, "projectId"));
   const title = str(fd, "title");
   if (!title) return { error: (await msg()).titleRequired };
 
   // Employees without assign permission can only create tasks for themselves.
-  let assigneeId = str(fd, "assigneeId");
+  let assigneeId = optId(fd, "assigneeId");
   if (!can(user, "tasks.assign")) assigneeId = user.id;
   await assertAssignable(user, assigneeId);
 
@@ -128,7 +128,7 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
 export async function updateTask(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "tasks.edit");
-  const { task } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task } = await getAccessibleTask(user, idOf(fd, "taskId"));
   const title = str(fd, "title");
   if (!title) return { error: (await msg()).titleRequired };
 
@@ -169,8 +169,8 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
 export async function assignTask(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.assign");
-  const { task } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
-  const assigneeId = str(fd, "assigneeId");
+  const { task } = await getAccessibleTask(user, idOf(fd, "taskId"));
+  const assigneeId = optId(fd, "assigneeId");
   if (assigneeId === task.assigneeId) return;
   await assertAssignable(user, assigneeId);
   await db.update(tasks).set({ assigneeId, updatedAt: new Date() }).where(eq(tasks.id, task.id));
@@ -198,7 +198,7 @@ export async function assignTask(fd: FormData) {
 export async function deleteTask(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.delete");
-  const { task } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task } = await getAccessibleTask(user, idOf(fd, "taskId"));
   await db.delete(tasks).where(eq(tasks.id, task.id));
   await logActivity(user, {
     action: "task.deleted",
@@ -216,7 +216,7 @@ export async function deleteTask(fd: FormData) {
 export async function updateTaskStatus(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.updateStatus");
-  const { task, project } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task, project } = await getAccessibleTask(user, idOf(fd, "taskId"));
   const status = parseStatus(str(fd, "status"));
   if (!status || status === task.status) return;
 
@@ -269,7 +269,7 @@ export async function updateTaskStatus(fd: FormData) {
 export async function requestClientApproval(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "tasks.setClientVisibility");
-  const { task, project } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task, project } = await getAccessibleTask(user, idOf(fd, "taskId"));
   if (task.approvalStatus === "pending") return { error: (await msg()).alreadyPending };
   const note = str(fd, "note");
 
@@ -318,7 +318,7 @@ export async function requestClientApproval(_prev: ActionState, fd: FormData): P
 export async function decideApproval(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "approvals.decide");
-  const { task, project } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task, project } = await getAccessibleTask(user, idOf(fd, "taskId"));
   if (task.approvalStatus !== "pending") return { error: (await msg()).notAwaiting };
   const decision = str(fd, "decision");
   const feedback = str(fd, "feedback");
@@ -369,7 +369,7 @@ export async function decideApproval(_prev: ActionState, fd: FormData): Promise<
 
 export async function addComment(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const { task, project } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task, project } = await getAccessibleTask(user, idOf(fd, "taskId"));
   const body = str(fd, "body");
   if (!body) return { error: (await msg()).commentEmpty };
 
@@ -416,7 +416,7 @@ export async function addComment(_prev: ActionState, fd: FormData): Promise<Acti
 export async function uploadAttachment(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser();
   assertCan(user, "files.upload");
-  const { task } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const { task } = await getAccessibleTask(user, idOf(fd, "taskId"));
   const clientVisible = can(user, "tasks.setClientVisibility") && bool(fd, "clientVisible");
   const files = [...fd.getAll("files"), ...fd.getAll("file")];
   if (!files.some((f) => f instanceof File && f.size > 0)) return { error: (await msg()).chooseFile };
@@ -430,7 +430,7 @@ export async function toggleAttachmentVisibility(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.setClientVisibility");
   const att = await db.query.attachments.findFirst({
-    where: and(eq(attachments.id, str(fd, "attachmentId") ?? ""), eq(attachments.orgId, user.orgId)),
+    where: and(eq(attachments.id, idOf(fd, "attachmentId")), eq(attachments.orgId, user.orgId)),
   });
   if (!att) return;
   const { task } = await getAccessibleTask(user, att.taskId);
@@ -451,7 +451,7 @@ export async function toggleAttachmentVisibility(fd: FormData) {
 export async function deleteAttachment(fd: FormData) {
   const user = await requireUser();
   const att = await db.query.attachments.findFirst({
-    where: and(eq(attachments.id, str(fd, "attachmentId") ?? ""), eq(attachments.orgId, user.orgId)),
+    where: and(eq(attachments.id, idOf(fd, "attachmentId")), eq(attachments.orgId, user.orgId)),
   });
   if (!att) return;
   const { task } = await getAccessibleTask(user, att.taskId);

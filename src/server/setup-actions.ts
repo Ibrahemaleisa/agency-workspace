@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, users } from "@/db/schema";
+import { ensureAccount } from "@/db/accounts";
+import { accounts, organizations, users } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
 import { getT } from "@/lib/lang";
@@ -33,10 +34,14 @@ export async function createWorkspace(_prev: ActionState, fd: FormData): Promise
   if (existing) {
     await db.update(organizations).set({ name: agency, nameAr: agencyAr }).where(eq(organizations.id, existing.id));
   }
-  const [admin] = await db
-    .insert(users)
-    .values({ orgId: org.id, name, email, passwordHash: await hashPassword(password), role: "admin", lang })
-    .returning();
+  const passwordHash = await hashPassword(password);
+  const admin = await db.transaction(async (tx) => {
+    const { account, created } = await ensureAccount(tx, email, passwordHash);
+    // First run: nobody uses this workspace yet, so a leftover account (no memberships) takes the new password.
+    if (!created) await tx.update(accounts).set({ passwordHash }).where(eq(accounts.id, account.id));
+    const [u] = await tx.insert(users).values({ orgId: org.id, accountId: account.id, name, email: account.email, role: "admin", lang }).returning();
+    return u;
+  });
   await createSession(admin.id);
   redirect("/settings/brand");
 }

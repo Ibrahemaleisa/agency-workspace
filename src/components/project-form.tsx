@@ -100,7 +100,7 @@ export async function ProjectForm({
               defaultChecked={memberIds.includes(p.id)}
               label={
                 <span>
-                  {p.name} {p.title && <span className="text-xs text-zinc-400">· {p.title}</span>}
+                  {p.name} {p.title && <span className="text-xs text-zinc-500">· {p.title}</span>}
                 </span>
               }
             />

@@ -47,7 +47,7 @@ export async function Person({ name }: { name?: string | null }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <Avatar name={name} size="xs" />
-      <span className={cn("truncate text-sm", name ? "text-zinc-700" : "text-zinc-400")}>
+      <span className={cn("truncate text-sm", name ? "text-zinc-700" : "text-zinc-500")}>
         {name ?? t.common.unassigned}
       </span>
     </span>
@@ -55,7 +55,7 @@ export async function Person({ name }: { name?: string | null }) {
 }
 
 export async function DueDate({ date, status }: { date: string | null; status?: TaskStatus }) {
-  if (!date) return <span className="text-xs text-zinc-400">—</span>;
+  if (!date) return <span className="text-xs text-zinc-500">—</span>;
   const { t, locale } = await getT();
   const d = parseISO(date);
   const overdue = isOverdue(date, status);

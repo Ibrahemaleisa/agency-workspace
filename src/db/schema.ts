@@ -15,6 +15,7 @@ import {
   pgSequence,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { DEFAULT_TRIAL_DAYS } from "../lib/billing/defaults";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
@@ -61,6 +62,8 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "canceled",
   "incomplete",
   "unpaid",
+  /** The free trial ended without a subscription (set on expiry; access is also computed live). */
+  "expired",
 ]);
 
 export const provisionStatusEnum = pgEnum("provision_status", ["pending", "running", "completed", "failed"]);
@@ -127,6 +130,58 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * A person: one sign-in (email + password) and one verified-email status, across every agency they
+ * belong to. Their place in each agency is a membership row in `users`.
+ */
+export const accounts = pgTable("accounts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Single-use email-verification links (token stored hashed). */
+export const emailVerifications = pgTable(
+  "email_verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    /** The address being verified; the link only counts while the account still has this email. */
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_verifications_account_idx").on(t.accountId)],
+);
+
+/** Single-use password-reset links (token stored hashed, 1 hour). */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_resets_account_idx").on(t.accountId)],
+);
+
+/**
+ * A membership: one person (`accounts`) in one agency (`organizations`), with their role there.
+ * The table keeps its historical name; every session and every tenant-scoped query works on a
+ * membership, so a person in two agencies has two rows and never sees across them.
+ */
 export const users = pgTable(
   "users",
   {
@@ -134,9 +189,12 @@ export const users = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Copy of the account's email, kept in sync (used for display and notification emails). */
     email: text("email").notNull(),
-    passwordHash: text("password_hash").notNull(),
     role: roleEnum("role").notNull().default("employee"),
     title: text("title"),
     /** Set only for client-role users: which client company they belong to. */
@@ -152,18 +210,28 @@ export const users = pgTable(
     teamChatSeenAt: timestamp("team_chat_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email), index("users_org_idx").on(t.orgId)],
+  (t) => [
+    uniqueIndex("users_org_account_idx").on(t.orgId, t.accountId),
+    uniqueIndex("users_org_email_idx").on(t.orgId, t.email),
+    index("users_org_idx").on(t.orgId),
+    index("users_account_idx").on(t.accountId),
+  ],
 );
 
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(), // sha256 of the cookie token
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  /** Preview sessions into the demo tenant: every write is refused server-side. */
-  readOnly: boolean("read_only").notNull().default(false),
-});
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(), // sha256 of the cookie token
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Preview sessions into the demo tenant: every write is refused server-side. */
+    readOnly: boolean("read_only").notNull().default(false),
+  },
+  // Signing someone out everywhere (suspension, password change, deactivation) goes by user.
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
 
 /* ------------------------------------------------------------------ */
 /* Clients                                                             */
@@ -239,7 +307,8 @@ export const projectMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
   },
-  (t) => [primaryKey({ columns: [t.projectId, t.userId] })],
+  // By member too: an employee's project visibility is "projects I'm a member of".
+  (t) => [primaryKey({ columns: [t.projectId, t.userId] }), index("project_members_user_idx").on(t.userId)],
 );
 
 /** Reusable module definition (Content, Production, ...). */
@@ -485,7 +554,9 @@ export const plans = pgTable("plans", {
   priceCents: integer("price_cents"),
   currency: text("currency").notNull().default("USD"),
   interval: text("interval").notNull().default("month"),
-  trialDays: integer("trial_days").notNull().default(14),
+  trialDays: integer("trial_days").notNull().default(DEFAULT_TRIAL_DAYS),
+  /** The payment provider's price for this plan (e.g. a Stripe Price ID). Falls back to STRIPE_PRICE_<CODE>. */
+  stripePriceId: text("stripe_price_id"),
   active: boolean("active").notNull().default(true),
   sort: integer("sort").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -601,6 +672,8 @@ export const invitations = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Set when the invitation was actually delivered by email: accepting it then proves the address. */
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("invitations_org_idx").on(t.orgId, t.email)],
@@ -662,9 +735,11 @@ export const platformSessions = pgTable("platform_sessions", {
 
 export type Organization = typeof organizations.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+export type Plan = typeof plans.$inferSelect;
 export type Signup = typeof signups.$inferSelect;
 
 export type User = typeof users.$inferSelect;
+export type Account = typeof accounts.$inferSelect;
 export type Role = (typeof roleEnum.enumValues)[number];
 export type TaskStatus = (typeof taskStatusEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];

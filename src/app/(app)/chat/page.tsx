@@ -62,7 +62,7 @@ export default async function TeamChatPage() {
                         <div className="mb-1 flex items-center gap-1.5 px-1 text-xs">
                           <span className="font-medium text-zinc-700">{m.authorName ?? t.common.deletedUser}</span>
                           {m.authorRole === "admin" && <Badge>{t.roles.admin}</Badge>}
-                          {m.authorTitle && <span className="text-zinc-400">{m.authorTitle}</span>}
+                          {m.authorTitle && <span className="text-zinc-500">{m.authorTitle}</span>}
                         </div>
                       )}
                       <div
@@ -76,7 +76,7 @@ export default async function TeamChatPage() {
                       >
                         <Highlight text={m.body} />
                       </div>
-                      <span className="mt-1 px-1 text-[11px] text-zinc-400">
+                      <span className="mt-1 px-1 text-[11px] text-zinc-500">
                         {format(m.createdAt, isToday(m.createdAt) ? "h:mm a" : "MMM d, h:mm a", { locale })}
                       </span>
                     </div>
@@ -91,7 +91,7 @@ export default async function TeamChatPage() {
             <Textarea name="body" rows={1} className="rounded-2xl" required placeholder={t.teamChat.placeholder} />
             <SubmitButton pendingText={t.chat.sending}>{t.chat.send}</SubmitButton>
           </div>
-          <p className="mt-1.5 px-1 text-[11px] text-zinc-400">{t.teamChat.hint}</p>
+          <p className="mt-1.5 px-1 text-[11px] text-zinc-500">{t.teamChat.hint}</p>
         </ActionForm>
       </div>
     </>

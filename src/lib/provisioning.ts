@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  accounts,
   moduleTemplates,
   organizations,
   plans,
@@ -12,6 +13,7 @@ import {
   users,
   type Signup,
 } from "@/db/schema";
+import { DEFAULT_TRIAL_DAYS } from "./billing/defaults";
 import { DEFAULT_TEMPLATES } from "./default-templates";
 import { RESERVED_SLUGS, SLUG_RE } from "./platform";
 
@@ -77,17 +79,20 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
         await tx.update(signups).set({ orgId: org.id, updatedAt: new Date() }).where(eq(signups.id, signup.id));
       }
 
-      // 3. Admin user (emails are unique across the platform).
-      let admin = await tx.query.users.findFirst({ where: eq(users.email, signup.email) });
-      if (admin && admin.orgId !== org.id) throw new ProvisioningError("emailTaken");
+      // 3. The admin: their person account — new, or an existing Operra account whose password was
+      //    proven at sign-up (the sign-up then carries that account's hash) — and a membership here.
+      let account = await tx.query.accounts.findFirst({ where: eq(accounts.email, signup.email) });
+      if (!account) [account] = await tx.insert(accounts).values({ email: signup.email, passwordHash: signup.passwordHash }).returning();
+      else if (account.passwordHash !== signup.passwordHash) throw new ProvisioningError("emailTaken");
+      let admin = await tx.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.accountId, account.id)) });
       if (!admin) {
         [admin] = await tx
           .insert(users)
           .values({
             orgId: org.id,
+            accountId: account.id,
             name: signup.name,
-            email: signup.email,
-            passwordHash: signup.passwordHash,
+            email: account.email,
             role: "admin",
             title: null,
             lang: signup.lang === "ar" ? "ar" : "en",
@@ -110,7 +115,7 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
           orgId: org.id,
           planCode: signup.planCode,
           status: "trialing",
-          trialEndsAt: new Date(Date.now() + (plan?.trialDays ?? 14) * 86_400_000),
+          trialEndsAt: new Date(Date.now() + (plan?.trialDays ?? DEFAULT_TRIAL_DAYS) * 86_400_000),
         })
         .onConflictDoNothing();
 

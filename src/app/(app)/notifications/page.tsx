@@ -3,7 +3,9 @@ import { formatDistanceToNow } from "date-fns";
 import { AtSign, BadgeCheck, Bell, FolderKanban, Mail, MailX, MessageSquare, MessagesSquare, RefreshCw, Sparkles, UserPlus } from "lucide-react";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { getAccount, requireUser } from "@/lib/auth";
+import { getSaasT } from "@/lib/i18n-saas";
+import { isPlatform } from "@/lib/platform";
 import { markAllNotificationsRead, markNotificationRead, sendTestEmail, setEmailNotifications } from "@/server/admin-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { can } from "@/lib/permissions";
@@ -30,6 +32,9 @@ const ICONS: Record<string, typeof Bell> = {
 
 export default async function NotificationsPage() {
   const user = await requireUser();
+  // The person behind this membership: verification status (platform mode; previews have no real address).
+  const account = isPlatform() && !user.readOnly ? await getAccount(user.accountId) : null;
+  const { t: st } = await getSaasT();
   const { t, locale, lang } = await getT();
   const items = await db
     .select()
@@ -54,11 +59,19 @@ export default async function NotificationsPage() {
       />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/80 bg-white px-4 py-3">
         <span className="flex items-center gap-2 text-sm">
-          {user.emailNotifications ? <Mail className="size-4 text-ink" /> : <MailX className="size-4 text-zinc-400" />}
+          {user.emailNotifications ? <Mail className="size-4 text-ink" /> : <MailX className="size-4 text-zinc-500" />}
           <span className={user.emailNotifications ? "font-medium" : "text-zinc-500"}>
             {user.emailNotifications ? t.bell.emailOn : t.bell.emailOff}
           </span>
-          <span className="text-zinc-400">· {user.email}</span>
+          <span className="text-zinc-500" dir="ltr">· {user.email}</span>
+          {account && (
+            <span
+              data-testid="email-status"
+              className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", account.emailVerifiedAt ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800")}
+            >
+              {account.emailVerifiedAt ? st.verify.verified : st.verify.unverified}
+            </span>
+          )}
         </span>
         <form action={setEmailNotifications}>
           <input type="hidden" name="on" value={user.emailNotifications ? "0" : "1"} />
@@ -89,7 +102,6 @@ export default async function NotificationsPage() {
                 <li key={n.id}>
                   <form action={markNotificationRead}>
                     <input type="hidden" name="id" value={n.id} />
-                    <input type="hidden" name="link" value={n.link ?? ""} />
                     <button
                       className={cn(
                         "flex w-full items-start gap-3 px-4 py-3 text-start hover:bg-zinc-50",
@@ -102,7 +114,7 @@ export default async function NotificationsPage() {
                       <span className="min-w-0 flex-1">
                         <span className={cn("block text-sm", n.readAt ? "text-zinc-600" : "font-medium text-zinc-900")}>{lang === "ar" ? (n.titleAr ?? n.title) : n.title}</span>
                         {n.body && <span dir="auto" className="mt-0.5 line-clamp-2 block text-xs text-zinc-500">{n.body}</span>}
-                        <span className="text-xs text-zinc-400">{formatDistanceToNow(n.createdAt, { addSuffix: true, locale })}</span>
+                        <span className="text-xs text-zinc-500">{formatDistanceToNow(n.createdAt, { addSuffix: true, locale })}</span>
                       </span>
                       {!n.readAt && <span className="mt-2 size-2 rounded-full bg-indigo-600" />}
                     </button>

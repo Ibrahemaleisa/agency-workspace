@@ -110,7 +110,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
       {canManageFile(f) && (
         <form action={deleteAttachment}>
           <input type="hidden" name="attachmentId" value={f.id} />
-          <button className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600" title={tr.common.delete}>
+          <button className="rounded p-1 text-zinc-500 hover:bg-red-50 hover:text-red-600" title={tr.common.delete}>
             <Trash2 className="size-4" />
           </button>
         </form>
@@ -185,7 +185,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                 <input type="hidden" name="taskId" value={task.id} />
                 <Textarea name="note" rows={2} placeholder={k.approvalNotePlaceholder} />
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-zinc-400">{docs.length + images.length > 0 ? k.shareFilesHint : ""}</span>
+                  <span className="text-xs text-zinc-500">{docs.length + images.length > 0 ? k.shareFilesHint : ""}</span>
                   <SubmitButton size="sm" data-testid="request-approval">
                     {task.approvalStatus === "rejected" ? k.requestAgain : k.requestApproval}
                   </SubmitButton>
@@ -198,7 +198,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
             {task.description ? (
               <p dir="auto" className="text-sm whitespace-pre-wrap text-zinc-700">{task.description}</p>
             ) : (
-              <p className="text-sm text-zinc-400">{k.noDescription}</p>
+              <p className="text-sm text-zinc-500">{k.noDescription}</p>
             )}
           </Card>
 
@@ -248,7 +248,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                       <a href={`/api/files/${f.id}`} className="block truncate text-sm font-medium hover:text-indigo-600">
                         {f.fileName}
                       </a>
-                      <div className="text-xs text-zinc-400">
+                      <div className="text-xs text-zinc-500">
                         <bdi>{formatBytes(f.size)}</bdi> · <bdi>{f.uploaderName}</bdi> · {formatDistanceToNow(f.createdAt, { addSuffix: true, locale })}
                       </div>
                     </div>
@@ -295,7 +295,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                               <Eye className="size-3" /> {k.clientVisible}
                             </span>
                           ))}
-                        <span className="text-xs text-zinc-400">{formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}</span>
+                        <span className="text-xs text-zinc-500">{formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}</span>
                       </div>
                       <p dir="auto" className="mt-1 text-sm whitespace-pre-wrap text-zinc-700">
                         <Highlight text={c.body} />
@@ -388,9 +388,9 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
             <details className="group rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
               <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5 text-sm font-semibold select-none md:px-5">
                 <span className="flex items-center gap-2">
-                  <Pencil className="size-4 text-zinc-400" /> {k.editDetails}
+                  <Pencil className="size-4 text-zinc-500" /> {k.editDetails}
                 </span>
-                <ChevronDown className="size-4 text-zinc-400 transition group-open:rotate-180" />
+                <ChevronDown className="size-4 text-zinc-500 transition group-open:rotate-180" />
               </summary>
               <ActionForm action={updateTask} className="space-y-3 border-t border-zinc-100 p-4 md:p-5" successMessage={k.taskUpdated}>
                 <input type="hidden" name="taskId" value={task.id} />

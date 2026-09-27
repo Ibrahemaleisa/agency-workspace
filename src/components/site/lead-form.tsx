@@ -41,7 +41,7 @@ export function LeadForm({ t, services }: { t: Copy; services: { key: string; ti
       {/* Honeypot field for bots — hidden from people and screen readers */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       {state?.error && (
-        <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 sm:col-span-2">{state.error}</p>
+        <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 sm:col-span-2">{state.error}</p>
       )}
       <label className="block">
         <span className="mb-1.5 block text-xs font-medium text-zinc-400">{t.name} *</span>

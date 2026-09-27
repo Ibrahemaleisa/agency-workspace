@@ -1,16 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, destroySession, verifyCredentials } from "@/lib/auth";
+import { destroySession, membershipsOf, requireUser, verifyAccount } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
 import { getDict } from "@/lib/lang";
-import { getHostTenant, getOrgById, rememberTenant } from "@/lib/tenant";
+import { TENANT_HINT_COOKIE, getHostTenant } from "@/lib/tenant";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
-import { workspaceRedirectUrl } from "@/lib/handoff";
+import { chooserAccount, endChooser, enterWorkspace, startChooser } from "@/lib/handoff";
+import { cookies } from "next/headers";
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { t, lang } = await getDict();
@@ -24,21 +25,45 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
     !(await rateLimit(`login:ip:${ip}`, 30, 15 * 60)) || !(await rateLimit(`login:email:${email}`, 10, 15 * 60));
   if (limited) return { error: t.login.errorRateLimited };
 
+  const account = await verifyAccount(email, password);
+  if (!account) return { error: t.login.errorInvalid };
+
+  // On a tenant's own host only that tenant counts; elsewhere every agency the person belongs to.
   const host = await getHostTenant();
-  const user = await verifyCredentials(email, password, host?.id);
-  if (!user) return { error: t.login.errorInvalid };
+  const memberships = await membershipsOf(account.id, { tenantId: host?.id });
+  if (memberships.length === 0) return { error: t.login.errorInvalid };
 
-  // Emails follow the language the user signed in with.
-  if (user.lang !== lang) await db.update(users).set({ lang }).where(eq(users.id, user.id));
+  // Emails follow the language the person signed in with.
+  await db.update(users).set({ lang }).where(inArray(users.id, memberships.map((m) => m.user.id)));
 
-  // On the right host already → a normal session. Otherwise hand the sign-in over to the
-  // tenant's own host (subdomain / custom domain) with a single-use token.
-  const org = await getOrgById(user.orgId);
-  const target = org && !host ? await workspaceRedirectUrl(org, user.id) : null;
-  if (target) redirect(target);
-  if (org) await rememberTenant(org);
-  await createSession(user.id);
-  redirect("/");
+  // One agency, or the one whose branded sign-in page (/w/{slug}) this is: straight in.
+  const hint = (await cookies()).get(TENANT_HINT_COOKIE)?.value;
+  const chosen = memberships.length === 1 ? memberships[0] : memberships.find((m) => m.org.slug === hint);
+  if (chosen) return enterWorkspace(chosen.user, chosen.org);
+  return startChooser(account.id);
+}
+
+/** Picks one agency after sign-in (the password was checked a moment ago on this browser). */
+export async function chooseWorkspace(fd: FormData) {
+  const accountId = await chooserAccount();
+  if (!accountId) redirect("/login");
+  const memberships = await membershipsOf(accountId);
+  const chosen = memberships.find((m) => m.user.id === str(fd, "membershipId"));
+  if (!chosen) redirect("/login/choose");
+  await endChooser();
+  return enterWorkspace(chosen.user, chosen.org);
+}
+
+/**
+ * Moves the signed-in person to another agency they belong to. The target must be one of *their*
+ * memberships — the id from the form is only a choice among those, never trusted on its own.
+ */
+export async function switchWorkspace(fd: FormData) {
+  const me = await requireUser({ allowLocked: true });
+  const target = (await membershipsOf(me.accountId)).find((m) => m.user.id === str(fd, "membershipId"));
+  if (!target || target.user.id === me.id) redirect("/");
+  await db.update(users).set({ lang: me.lang }).where(eq(users.id, target.user.id));
+  return enterWorkspace(target.user, target.org);
 }
 
 export async function logoutAction() {

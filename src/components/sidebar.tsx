@@ -22,12 +22,13 @@ import {
   Sparkles,
   Users,
   X,
+  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "./ui";
 import { BrandMark } from "./site/brand";
 import { LangSwitch } from "./site/lang-switch";
 import type { Lang } from "@/lib/i18n";
-import { logoutAction } from "@/server/auth-actions";
+import { logoutAction, switchWorkspace } from "@/server/auth-actions";
 import { NotificationBell, useUnread } from "./notification-bell";
 
 const ICONS = {
@@ -67,6 +68,7 @@ export function Sidebar({
   lang,
   labels,
   bellLabels,
+  workspaces = [],
 }: {
   items: NavItem[];
   user: { name: string; roleLabel: string };
@@ -76,6 +78,8 @@ export function Sidebar({
   lang: Lang;
   labels: { more: string; signOut: string; alerts: string; workspace: string; close: string; search: string };
   bellLabels: { title: string; viewAll: string; empty: string; markAll: string };
+  /** The person's other agencies (same sign-in); empty for most people. */
+  workspaces?: { id: string; name: string; switchLabel: string }[];
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -108,7 +112,7 @@ export function Sidebar({
             return (
               <div key={item.href}>
                 {showSection && (
-                  <div className="mt-5 mb-1.5 px-3 text-[11px] font-medium tracking-wider text-zinc-500 uppercase">
+                  <div className="mt-5 mb-1.5 px-3 text-[11px] font-medium tracking-wider text-zinc-400 uppercase">
                     {item.section}
                   </div>
                 )}
@@ -121,7 +125,7 @@ export function Sidebar({
                   )}
                 >
                   {active && <span className="absolute inset-y-1.5 start-0 w-0.5 rounded-full bg-sand-300" />}
-                  <Icon className={cn("size-4 shrink-0", active ? "text-sand-300" : "text-zinc-500 group-hover:text-zinc-300")} />
+                  <Icon className={cn("size-4 shrink-0", active ? "text-sand-300" : "text-zinc-400 group-hover:text-zinc-200")} />
                   <span className="flex-1">{item.label}</span>
                   {!!badge && (
                     <span className="rounded-full bg-sand-200 px-1.5 py-px text-[10px] font-semibold text-ink tabular-nums">
@@ -140,14 +144,15 @@ export function Sidebar({
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-white">{user.name}</div>
-              <div className="truncate text-xs text-zinc-500">{user.roleLabel}</div>
+              <div className="truncate text-xs text-zinc-400">{user.roleLabel}</div>
             </div>
             <form action={logoutAction}>
-              <button title={labels.signOut} className="rounded-md p-1.5 text-zinc-500 hover:bg-white/10 hover:text-white">
+              <button title={labels.signOut} className="rounded-md p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white">
                 <LogOut className="size-4 rtl:-scale-x-100" />
               </button>
             </form>
           </div>
+          {workspaces.length > 0 && <WorkspaceSwitch workspaces={workspaces} tone="dark" />}
           <LangSwitch lang={lang} next={pathname} className="mx-2 mt-2 w-fit" />
         </div>
       </aside>
@@ -188,7 +193,7 @@ export function Sidebar({
                 data-tour={`nav-${item.icon}`}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
-                  active ? "text-ink" : "text-zinc-400",
+                  active ? "text-ink" : "text-zinc-500",
                 )}
               >
                 <span className="relative">
@@ -207,7 +212,7 @@ export function Sidebar({
             onClick={() => setMoreOpen(true)}
             className={cn(
               "flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
-              rest.some((i) => isActive(i.href)) ? "text-ink" : "text-zinc-400",
+              rest.some((i) => isActive(i.href)) ? "text-ink" : "text-zinc-500",
             )}
           >
             <Menu className="size-6" strokeWidth={1.8} />
@@ -258,6 +263,11 @@ export function Sidebar({
                   </Link>
                 );
               })}
+              {workspaces.length > 0 && (
+                <div className="col-span-3">
+                  <WorkspaceSwitch workspaces={workspaces} tone="light" />
+                </div>
+              )}
               <form action={logoutAction} className="contents">
                 <button className="flex flex-col items-center gap-1.5 rounded-xl border border-zinc-200 px-2 py-3 text-xs font-medium text-red-600">
                   <LogOut className="size-5 rtl:-scale-x-100" />
@@ -278,8 +288,35 @@ function Brand({ orgName, logo, workspace }: { orgName: string; logo: string | n
       <BrandMark logo={logo} name={orgName} className="h-8" variant="dark" />
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-white">{orgName}</div>
-        <div className="text-[11px] text-zinc-500">{workspace}</div>
+        <div className="text-[11px] text-zinc-400">{workspace}</div>
       </div>
     </div>
+  );
+}
+
+/** Other agencies this person belongs to. Each button only names a membership; the server checks it's theirs. */
+function WorkspaceSwitch({ workspaces, tone }: { workspaces: { id: string; name: string; switchLabel: string }[]; tone: "dark" | "light" }) {
+  return (
+    <ul className={cn("mt-2 space-y-1", tone === "dark" ? "px-2" : "")} aria-label={workspaces[0].switchLabel}>
+      {workspaces.map((w) => (
+        <li key={w.id}>
+          <form action={switchWorkspace}>
+            <input type="hidden" name="membershipId" value={w.id} />
+            <button
+              data-testid="switch-workspace"
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-xs",
+                tone === "dark" ? "text-zinc-400 hover:bg-white/10 hover:text-white" : "border border-zinc-200 text-zinc-700",
+              )}
+            >
+              <ArrowLeftRight className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {w.switchLabel} <bdi className="font-medium">{w.name}</bdi>
+              </span>
+            </button>
+          </form>
+        </li>
+      ))}
+    </ul>
   );
 }

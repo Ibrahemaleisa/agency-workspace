@@ -77,7 +77,7 @@ function ColorField({
           {value}
         </code>
       </span>
-      <span className="mt-1 block text-xs text-zinc-400">{hint}</span>
+      <span className="mt-1 block text-xs text-zinc-500">{hint}</span>
     </label>
   );
 }

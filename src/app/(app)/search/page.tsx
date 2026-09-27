@@ -31,7 +31,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
     <>
       <PageHeader title={t.search.title} description={q ? t.search.results(total) : t.search.prompt} />
       <form role="search" className="relative mb-6 max-w-2xl">
-        <Search className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-zinc-400" />
+        <Search className="pointer-events-none absolute start-4 top-1/2 size-5 -translate-y-1/2 text-zinc-500" />
         <input
           name="q"
           type="search"

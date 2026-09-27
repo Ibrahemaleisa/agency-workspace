@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, invitations, organizations, roleEnum, users, type Role } from "@/db/schema";
-import { createSession, hashPassword, hashToken, newToken, requireUser } from "@/lib/auth";
+import { accounts, clients, invitations, organizations, roleEnum, users, type Role } from "@/db/schema";
+import { ensureAccount } from "@/db/accounts";
+import { hashPassword, hashToken, newToken, requireUser, verifyAccount } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
-import { str, type ActionState } from "@/lib/action-state";
+import { idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
 import { orgBrand } from "@/lib/brand";
 import { tenantBaseUrl } from "@/lib/platform";
@@ -16,8 +16,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { getSaasT } from "@/lib/i18n-saas";
 import { parseFocus, startOnboarding } from "@/lib/onboarding";
-import { workspaceRedirectUrl } from "@/lib/handoff";
-import { getHostTenant, rememberTenant } from "@/lib/tenant";
+import { enterWorkspace } from "@/lib/handoff";
+import { getHostTenant } from "@/lib/tenant";
 
 const INVITE_DAYS = 7;
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 200;
@@ -36,12 +36,13 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
   const email = str(fd, "email")?.toLowerCase() ?? "";
   if (!isEmail(email)) return { error: e.email };
   const role = parseRole(str(fd, "role"));
-  const clientId = role === "client" ? str(fd, "clientId") : null;
+  const clientId = role === "client" ? optId(fd, "clientId") : null;
   if (role === "client") {
     const c = clientId && (await db.query.clients.findFirst({ where: and(eq(clients.id, clientId), eq(clients.orgId, admin.orgId)) }));
     if (!c) return { error: e.client };
   }
-  if (await db.query.users.findFirst({ where: eq(users.email, email) })) return { error: e.exists };
+  // Already in this agency? (Belonging to other agencies is fine: they'll join with their own password.)
+  if (await db.query.users.findFirst({ where: and(eq(users.orgId, admin.orgId), eq(users.email, email)) })) return { error: e.exists };
   if (!(await rateLimit(`invite:${admin.orgId}`, 50, 3600))) return { error: e.rate };
 
   // One live invitation per address: re-inviting replaces the previous link.
@@ -51,7 +52,7 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
     .where(and(eq(invitations.orgId, admin.orgId), eq(invitations.email, email), isNull(invitations.acceptedAt), isNull(invitations.revokedAt)));
 
   const token = newToken();
-  await db.insert(invitations).values({
+  const [created] = await db.insert(invitations).values({
     orgId: admin.orgId,
     email,
     role,
@@ -61,7 +62,7 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
     tokenHash: hashToken(token),
     invitedById: admin.id,
     expiresAt: new Date(Date.now() + INVITE_DAYS * 86_400_000),
-  });
+  }).returning({ id: invitations.id });
 
   const org = (await db.query.organizations.findFirst({ where: eq(organizations.id, admin.orgId) }))!;
   const link = `${tenantBaseUrl(org)}/invite/${token}`;
@@ -85,6 +86,8 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
         }),
       });
       emailed = true;
+      // Delivered to that inbox: accepting it will also confirm the address.
+      await db.update(invitations).set({ emailedAt: new Date() }).where(eq(invitations.id, created.id));
     } catch (err) {
       console.error("[invite email failed]", err);
     }
@@ -100,11 +103,11 @@ export async function revokeInvitation(fd: FormData) {
   await db
     .update(invitations)
     .set({ revokedAt: new Date() })
-    .where(and(eq(invitations.id, str(fd, "id") ?? ""), eq(invitations.orgId, admin.orgId), isNull(invitations.acceptedAt)));
+    .where(and(eq(invitations.id, idOf(fd, "id")), eq(invitations.orgId, admin.orgId), isNull(invitations.acceptedAt)));
   revalidatePath("/team");
 }
 
-/** A live invitation for this token, with its tenant. */
+/** A live invitation for this token, with its tenant and whether the invitee already has an account. */
 export async function findInvitation(token: string) {
   if (!token || token.length > 100) return null;
   const [row] = await db
@@ -123,10 +126,16 @@ export async function findInvitation(token: string) {
   if (!row || row.org.status !== "active" || row.org.isDemo) return null;
   const host = await getHostTenant();
   if (host && host.id !== row.org.id) return null;
-  return row;
+  const account = await db.query.accounts.findFirst({ where: eq(accounts.email, row.invite.email), columns: { id: true } });
+  return { ...row, hasAccount: !!account };
 }
 
-/** Public: the invited person sets their name and password and joins the workspace. */
+/**
+ * Public: joining through an invitation.
+ * - New to Operra: they choose a name and password, which creates their account.
+ * - Already on Operra (another agency): they confirm with their existing password — an invitation
+ *   link alone can never set or replace someone's password.
+ */
 export async function acceptInvitation(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { t } = await getSaasT();
   const e = t.invite.errors;
@@ -135,29 +144,43 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
   const name = str(fd, "name")?.slice(0, 120);
   const password = str(fd, "password") ?? "";
   if (!name) return { error: e.name };
-  if (password.length < 8) return { error: e.password };
 
   const found = await findInvitation(token);
   if (!found) return { error: e.invalid };
   const { invite, org } = found;
-  if (await db.query.users.findFirst({ where: eq(users.email, invite.email) })) return { error: e.exists };
+  if (await db.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.email, invite.email)) })) return { error: e.exists };
 
-  const passwordHash = await hashPassword(password);
+  let passwordHash: string;
+  if (found.hasAccount) {
+    const account = await verifyAccount(invite.email, password);
+    if (!account) return { error: e.accountPassword };
+    passwordHash = account.passwordHash;
+  } else {
+    if (password.length < 8) return { error: e.password };
+    passwordHash = await hashPassword(password);
+  }
+
   const user = await db.transaction(async (tx) => {
-    // Claim the invitation first: a second submit (or a race) can't create a second account.
+    // Claim the invitation first: a second submit (or a race) can't create a second membership.
     const [claimed] = await tx
       .update(invitations)
       .set({ acceptedAt: new Date() })
       .where(and(eq(invitations.id, invite.id), isNull(invitations.acceptedAt), isNull(invitations.revokedAt)))
       .returning({ id: invitations.id });
     if (!claimed) return null;
+    const { account } = await ensureAccount(tx, invite.email, passwordHash);
+    // The account created or proven above must be the one we insert for (no swap in between).
+    if (account.passwordHash !== passwordHash) return null;
+    if (invite.emailedAt && !account.emailVerifiedAt) {
+      await tx.update(accounts).set({ emailVerifiedAt: new Date() }).where(eq(accounts.id, account.id));
+    }
     const [u] = await tx
       .insert(users)
       .values({
         orgId: org.id,
+        accountId: account.id,
         name,
-        email: invite.email,
-        passwordHash,
+        email: account.email,
         role: invite.role,
         title: invite.title,
         focus: invite.focus,
@@ -171,9 +194,5 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
 
   await startOnboarding(user);
   await logActivity({ ...user, readOnly: false }, { action: "user.joined", summary: `${name} joined the workspace` });
-  const target = await workspaceRedirectUrl(org, user.id);
-  if (target) redirect(target);
-  if (org) await rememberTenant(org);
-  await createSession(user.id);
-  redirect("/");
+  return enterWorkspace(user, org);
 }

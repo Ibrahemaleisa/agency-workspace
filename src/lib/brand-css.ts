@@ -1,3 +1,28 @@
+/** WCAG relative luminance of a #rrggbb colour (null if it isn't one). */
+function luminance(hex: string): number | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(m[1].slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Highest surface luminance that keeps zinc-400 text (#9f9fa9) at 4.5:1 or more, with margin for translucent white overlays. */
+const MAX_SURFACE_LUMINANCE = 0.02;
+
+/**
+ * The brand's dark surface colour: the primary itself when it's dark enough, otherwise the primary
+ * mixed with black in OKLab (which scales lightness ~ luminance^⅓) down to MAX_SURFACE_LUMINANCE.
+ */
+export function inkFor(primary: string) {
+  const y = luminance(primary);
+  if (y === null || y <= MAX_SURFACE_LUMINANCE) return primary;
+  const keep = Math.floor(Math.cbrt(MAX_SURFACE_LUMINANCE / y) * 100);
+  return `color-mix(in oklab, ${primary} ${keep}%, black)`;
+}
+
 /**
  * The palette derived from an agency's two brand colours. Shared by the server (page theme)
  * and the browser (live preview during sign-up), so it has no server-only imports.
@@ -17,7 +42,9 @@ export function brandVars(b: { primary: string; accent: string }): Record<string
     400: `color-mix(in oklab, ${A} 45%, ${P})`, 500: mixW(P, 78), 600: P, 700: mixB(P, 85),
     800: mixB(P, 72), 900: mixB(P, 60), 950: mixB(P, 45),
   };
-  const vars: Record<string, string> = { "--color-ink": P, "--brand-primary": P, "--brand-accent": A };
+  // Dark surfaces (sidebar, primary buttons) carry light text, so they must stay dark whatever the
+  // agency picks: a lighter primary is deepened (same hue) until light-grey text passes WCAG AA.
+  const vars: Record<string, string> = { "--color-ink": inkFor(P), "--brand-primary": P, "--brand-accent": A };
   for (const [k, v] of Object.entries(sand)) {
     vars[`--color-sand-${k}`] = v;
     vars[`--color-violet-${k}`] = v;
