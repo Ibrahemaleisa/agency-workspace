@@ -6,7 +6,7 @@ import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { and, eq, gt, isNull, lt, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { passwordResets, sessions, users, type User } from "@/db/schema";
+import { clients, passwordResets, sessions, users, type User } from "@/db/schema";
 import { can, type Permission } from "./permissions";
 
 export const SESSION_COOKIE = "apm_session";
@@ -26,7 +26,14 @@ export async function verifyCredentials(email: string, password: string) {
   });
   // Compare against a dummy hash for unknown emails so response time doesn't reveal which emails exist.
   const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-  return ok && user?.active ? user : null;
+  return ok && user?.active && (await clientIsActive(user)) ? user : null;
+}
+
+/** Portal users of a client the agency marked inactive can no longer use the workspace. */
+async function clientIsActive(user: Pick<User, "role" | "clientId">) {
+  if (user.role !== "client" || !user.clientId) return true;
+  const client = await db.query.clients.findFirst({ where: eq(clients.id, user.clientId), columns: { active: true } });
+  return !!client?.active;
 }
 
 const DUMMY_HASH = "$2b$10$33547ZV1oJKb/rRyWdFwl..m4G134Gm2BE4Ak.KvFNTNhIXidrD.e";
@@ -58,12 +65,14 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const [row] = await db
-    .select({ user: users })
+    .select({ user: users, clientActive: clients.active })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
+    .leftJoin(clients, eq(clients.id, users.clientId))
     .where(and(eq(sessions.id, hashToken(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
   if (!row || !row.user.active) return null;
+  if (row.user.role === "client" && !row.clientActive) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash, ...user } = row.user;
   return user;

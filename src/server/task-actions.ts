@@ -48,6 +48,10 @@ async function assertAssignable(user: SessionUser, assigneeId: string | null) {
   if (!u || u.role === "client") throw new ForbiddenError("Invalid assignee.");
 }
 
+/** Uploads are limited in total (the whole request body), not per file. */
+const totalSize = (entries: FormDataEntryValue[]) =>
+  entries.reduce((n, f) => n + (f instanceof File ? f.size : 0), 0);
+
 function parseStatus(v: string | null): TaskStatus | null {
   return v && (taskStatusEnum.enumValues as string[]).includes(v) ? (v as TaskStatus) : null;
 }
@@ -83,7 +87,7 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
     stage = mod.stages.some((s) => s.name === rawStage) ? rawStage : null;
   }
 
-  if (fd.getAll("files").some((f) => f instanceof File && f.size > MAX_UPLOAD_BYTES))
+  if (totalSize(fd.getAll("files")) > MAX_UPLOAD_BYTES)
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
 
   const requiresApproval = bool(fd, "requiresApproval");
@@ -479,7 +483,7 @@ async function storeAttachments(
   const files = entries.filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return {};
   assertCan(user, "files.upload");
-  if (files.some((f) => f.size > MAX_UPLOAD_BYTES))
+  if (totalSize(files) > MAX_UPLOAD_BYTES)
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
 
   for (const file of files) {
@@ -487,16 +491,22 @@ async function storeAttachments(
     const storageKey = `${user.orgId}/${randomUUID()}-${safeName}`;
     const mimeType = file.type || "application/octet-stream";
     await saveFile(storageKey, Buffer.from(await file.arrayBuffer()), mimeType);
-    await db.insert(attachments).values({
-      orgId: user.orgId,
-      taskId: task.id,
-      uploaderId: user.id,
-      fileName: file.name,
-      storageKey,
-      mimeType,
-      size: file.size,
-      clientVisible,
-    });
+    try {
+      await db.insert(attachments).values({
+        orgId: user.orgId,
+        taskId: task.id,
+        uploaderId: user.id,
+        fileName: file.name,
+        storageKey,
+        mimeType,
+        size: file.size,
+        clientVisible,
+      });
+    } catch (err) {
+      // Don't leave a stored file that nothing points to.
+      await removeFile(storageKey).catch(() => {});
+      throw err;
+    }
   }
   if (clientVisible && !task.clientVisible) {
     await db.update(tasks).set({ clientVisible: true }).where(eq(tasks.id, task.id));

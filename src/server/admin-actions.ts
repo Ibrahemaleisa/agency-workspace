@@ -30,6 +30,12 @@ const msg = async () => (await getT()).t.actions;
 const refresh = () => revalidatePath("/", "layout");
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+/** Postgres unique_violation (Drizzle wraps the driver error in `cause`). */
+function isUniqueViolation(err: unknown) {
+  const code = (e: unknown) => (e && typeof e === "object" && "code" in e ? e.code : undefined);
+  return code(err) === "23505" || code((err as { cause?: unknown })?.cause) === "23505";
+}
+
 /* ------------------------------------------------------------------ */
 /* Clients                                                             */
 /* ------------------------------------------------------------------ */
@@ -121,15 +127,21 @@ export async function createUser(_prev: ActionState, fd: FormData): Promise<Acti
   const exists = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (exists) return { error: (await msg()).emailExists };
 
-  await db.insert(users).values({
-    orgId: admin.orgId,
-    name,
-    email,
-    passwordHash: await hashPassword(password),
-    role,
-    title: str(fd, "title"),
-    clientId,
-  });
+  try {
+    await db.insert(users).values({
+      orgId: admin.orgId,
+      name,
+      email,
+      passwordHash: await hashPassword(password),
+      role,
+      title: str(fd, "title"),
+      clientId,
+    });
+  } catch (err) {
+    // Two admins adding the same address at once: the unique index catches the second one.
+    if (isUniqueViolation(err)) return { error: (await msg()).emailExists };
+    throw err;
+  }
   await logActivity(admin, { action: "user.created", summary: `added user ${name} (${role})` });
   refresh();
   return { ok: true };
@@ -150,7 +162,13 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
   if (target.id === admin.id && (role !== "admin" || !active))
     return { error: (await msg()).ownAdmin };
   const clientId = role === "client" ? str(fd, "clientId") : null;
-  if (role === "client" && !clientId) return { error: (await msg()).clientUserNeedsClient };
+  if (role === "client") {
+    if (!clientId) return { error: (await msg()).clientUserNeedsClient };
+    const c = await db.query.clients.findFirst({
+      where: and(eq(clients.id, clientId), eq(clients.orgId, admin.orgId)),
+    });
+    if (!c) return { error: (await msg()).invalidClient };
+  }
 
   const password = str(fd, "password");
   if (password && password.length < 8) return { error: (await msg()).passwordLength };
@@ -163,20 +181,25 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
     if (taken) return { error: (await msg()).emailExists };
   }
 
-  await db
-    .update(users)
-    .set({
-      name,
-      email,
-      // A new (real) address gets email notifications switched on.
-      ...(emailChanged ? { emailNotifications: true } : {}),
-      role,
-      title: str(fd, "title"),
-      clientId,
-      active,
-      ...(password ? { passwordHash: await hashPassword(password) } : {}),
-    })
-    .where(eq(users.id, target.id));
+  try {
+    await db
+      .update(users)
+      .set({
+        name,
+        email,
+        // A new (real) address gets email notifications switched on.
+        ...(emailChanged ? { emailNotifications: true } : {}),
+        role,
+        title: str(fd, "title"),
+        clientId,
+        active,
+        ...(password ? { passwordHash: await hashPassword(password) } : {}),
+      })
+      .where(eq(users.id, target.id));
+  } catch (err) {
+    if (isUniqueViolation(err)) return { error: (await msg()).emailExists };
+    throw err;
+  }
   if (!active || password) await db.delete(sessions).where(eq(sessions.userId, target.id));
   await logActivity(admin, { action: "user.updated", summary: `updated user ${name}` });
   refresh();

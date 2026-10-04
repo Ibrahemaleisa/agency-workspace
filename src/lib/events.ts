@@ -1,8 +1,8 @@
 import "server-only";
 import { after } from "next/server";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, exists, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { activityLog, notifications, projectMembers, projects, taskComments, tasks, users } from "@/db/schema";
+import { activityLog, clients, notifications, projectMembers, projects, taskComments, tasks, users } from "@/db/schema";
 import { notificationEmail, sendEmail } from "./email";
 import { getBrand } from "./brand";
 import type { SessionUser } from "./auth";
@@ -165,7 +165,12 @@ export async function getProjectAudience(projectId: string) {
         eq(users.active, true),
         or(
           internalIds.size ? inArray(users.id, [...internalIds]) : undefined,
-          and(eq(users.role, "client"), eq(users.clientId, project.clientId)),
+          // Only while the client is active: inactive clients' portal users are cut off.
+          and(
+            eq(users.role, "client"),
+            eq(users.clientId, project.clientId),
+            exists(db.select({ one: sql`1` }).from(clients).where(and(eq(clients.id, project.clientId), eq(clients.active, true)))),
+          ),
         ),
       ),
     );

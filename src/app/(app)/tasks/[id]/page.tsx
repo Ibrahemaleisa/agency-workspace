@@ -7,6 +7,7 @@ import { attachments, projectModules, taskComments, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getAccessibleTask } from "@/lib/access";
 import { getT } from "@/lib/lang";
+import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import { can } from "@/lib/permissions";
 import { PRIORITIES, TASK_STATUSES } from "@/lib/constants";
 import { listActivity, listInternalUsers } from "@/server/queries";
@@ -262,7 +263,13 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
               </ul>
             )}
             {can(user, "files.upload") && (
-              <ActionForm action={uploadAttachment} resetOnSuccess className="flex flex-wrap items-center gap-3 border-t border-zinc-100 px-4 py-3">
+              <ActionForm
+                action={uploadAttachment}
+                resetOnSuccess
+                maxUploadBytes={MAX_UPLOAD_BYTES}
+                tooLargeMessage={tr.actions.fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024)}
+                className="flex flex-wrap items-center gap-3 border-t border-zinc-100 px-4 py-3"
+              >
                 <input type="hidden" name="taskId" value={task.id} />
                 <input type="file" name="files" multiple required aria-label={tr.media.addFiles} className={cn(FILE_INPUT, "w-auto flex-1")} />
                 {can(user, "tasks.setClientVisibility") && <Checkbox name="clientVisible" label={k.shareWithClient} />}

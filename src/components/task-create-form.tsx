@@ -4,6 +4,7 @@ import { createTask } from "@/server/task-actions";
 import { ActionForm, SubmitButton } from "./forms";
 import { Checkbox, FILE_INPUT, Field, Input, Select, Textarea } from "./ui";
 import { getT } from "@/lib/lang";
+import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 
 export async function TaskCreateForm({
   projectId,
@@ -27,7 +28,12 @@ export async function TaskCreateForm({
     ...m.stages.map((s) => ({ value: `${m.id}::${s.name}`, label: `${m.name} › ${s.name}` })),
   ]);
   return (
-    <ActionForm action={createTask} className="space-y-3">
+    <ActionForm
+      action={createTask}
+      className="space-y-3"
+      maxUploadBytes={MAX_UPLOAD_BYTES}
+      tooLargeMessage={t.actions.fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024)}
+    >
       <input type="hidden" name="projectId" value={projectId} />
       <div className="grid gap-3 sm:grid-cols-6">
         <Field label={f.title} className="sm:col-span-6">

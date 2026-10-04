@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { buttonClass, cn, inputClass } from "./ui";
@@ -41,14 +41,20 @@ export function ActionForm({
   className,
   resetOnSuccess,
   successMessage,
+  maxUploadBytes,
+  tooLargeMessage,
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   children: ReactNode;
   className?: string;
   resetOnSuccess?: boolean;
   successMessage?: string;
+  /** Total size allowed for the form's files; checked before sending (Vercel rejects bodies over 4.5 MB). */
+  maxUploadBytes?: number;
+  tooLargeMessage?: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
+  const [localError, setLocalError] = useState<string | null>(null);
   const ref = useRef<HTMLFormElement>(null);
   const submitted = useRef<FormData | null>(null);
   useEffect(() => {
@@ -59,10 +65,27 @@ export function ActionForm({
     if (state?.error && submitted.current) restoreValues(form, submitted.current);
   }, [state, resetOnSuccess]);
   return (
-    <form ref={ref} action={formAction} onSubmit={(e) => (submitted.current = new FormData(e.currentTarget))} className={className}>
-      {state?.error && (
+    <form
+      ref={ref}
+      action={formAction}
+      onSubmit={(e) => {
+        const data = new FormData(e.currentTarget);
+        if (maxUploadBytes) {
+          const total = [...data.values()].reduce((n, v) => n + (v instanceof File ? v.size : 0), 0);
+          if (total > maxUploadBytes) {
+            e.preventDefault();
+            setLocalError(tooLargeMessage ?? "Files are too large.");
+            return;
+          }
+        }
+        setLocalError(null);
+        submitted.current = data;
+      }}
+      className={className}
+    >
+      {(localError || state?.error) && (
         <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {state.error}
+          {localError ?? state?.error}
         </div>
       )}
       {state?.ok && successMessage && (
