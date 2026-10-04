@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LayoutTemplate,
   LogOut,
+  UserRound,
   Menu,
   Palette,
   MessagesSquare,
@@ -72,7 +73,7 @@ export function Sidebar({
   logo: string | null;
   initialUnread: number;
   lang: Lang;
-  labels: { more: string; signOut: string; alerts: string; workspace: string; close: string; search: string };
+  labels: { more: string; signOut: string; alerts: string; workspace: string; close: string; search: string; account: string };
   bellLabels: { title: string; viewAll: string; empty: string; markAll: string };
 }) {
   const pathname = usePathname();
@@ -131,14 +132,23 @@ export function Sidebar({
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sand-200 text-xs font-semibold text-ink">
-              {initials}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-white">{user.name}</div>
-              <div className="truncate text-xs text-zinc-500">{user.roleLabel}</div>
-            </div>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/account"
+              title={labels.account}
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-white/5",
+                isActive("/account") && "bg-white/10",
+              )}
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sand-200 text-xs font-semibold text-ink">
+                {initials}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-white">{user.name}</div>
+                <div className="truncate text-xs text-zinc-500">{user.roleLabel}</div>
+              </div>
+            </Link>
             <form action={logoutAction}>
               <button title={labels.signOut} className="rounded-md p-1.5 text-zinc-500 hover:bg-white/10 hover:text-white">
                 <LogOut className="size-4 rtl:-scale-x-100" />
@@ -254,6 +264,17 @@ export function Sidebar({
                   </Link>
                 );
               })}
+              <Link
+                href="/account"
+                onClick={() => setMoreOpen(false)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-medium",
+                  isActive("/account") ? "border-sand-300 bg-sand-50 text-ink" : "border-zinc-200 text-zinc-700",
+                )}
+              >
+                <UserRound className="size-5" />
+                {labels.account}
+              </Link>
               <form action={logoutAction} className="contents">
                 <button className="flex flex-col items-center gap-1.5 rounded-xl border border-zinc-200 px-2 py-3 text-xs font-medium text-red-600">
                   <LogOut className="size-5 rtl:-scale-x-100" />

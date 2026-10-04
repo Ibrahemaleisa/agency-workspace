@@ -29,6 +29,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           workspace: t.nav.workspace,
           close: t.nav.close,
           search: t.nav.search,
+          account: t.nav.account,
         }}
         bellLabels={bell}
         orgName={brand.name[lang]}

@@ -3,10 +3,11 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { createSession, destroySession, verifyCredentials } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { sessions, users } from "@/db/schema";
+import { createSession, destroySession, hashPassword, requireUser, verifyCredentials } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
-import { getDict } from "@/lib/lang";
+import { getDict, getT } from "@/lib/lang";
 import { clearHits, clientIp, isLimited, recordHit } from "@/lib/rate-limit";
 
 const LOGIN_WINDOW = 15 * 60 * 1000;
@@ -43,4 +44,36 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
 export async function logoutAction() {
   await destroySession();
   redirect("/");
+}
+
+/** Signed-in users change their own password (current password required). */
+export async function changeOwnPassword(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const { t } = await getT();
+  const e = t.account.errors;
+  // The public demo shares one set of logins between visitors (see SHOW_DEMO_ACCOUNTS).
+  if (process.env.SHOW_DEMO_ACCOUNTS === "true") return { error: t.actions.demoLocked };
+
+  const current = str(fd, "current");
+  const next = str(fd, "next");
+  const confirm = str(fd, "confirm");
+  if (!current || !next || !confirm) return { error: e.required };
+
+  const key = `password:${user.id}`;
+  if (await isLimited(key, 10, LOGIN_WINDOW)) return { error: e.tooMany };
+  const row = await db.query.users.findFirst({ where: eq(users.id, user.id), columns: { passwordHash: true } });
+  if (!row || !(await bcrypt.compare(current, row.passwordHash))) {
+    await recordHit(key);
+    return { error: e.wrongCurrent };
+  }
+  if (next.length < 8) return { error: t.actions.passwordLength };
+  if (next !== confirm) return { error: e.mismatch };
+  if (next === current) return { error: e.same };
+
+  await db.update(users).set({ passwordHash: await hashPassword(next) }).where(eq(users.id, user.id));
+  await clearHits(key);
+  // Sign out every other device, then start a fresh session here.
+  await db.delete(sessions).where(eq(sessions.userId, user.id));
+  await createSession(user.id);
+  return { ok: true };
 }
