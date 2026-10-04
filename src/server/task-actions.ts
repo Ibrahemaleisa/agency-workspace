@@ -145,7 +145,8 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
     changes.stage = stage && mod?.stages.some((s) => s.name === stage) ? stage : null;
   }
   if (can(user, "tasks.setClientVisibility")) {
-    changes.requiresApproval = bool(fd, "requiresApproval");
+    // Once a task needs client approval, only admins can drop that (otherwise it's a way around it).
+    changes.requiresApproval = bool(fd, "requiresApproval") || (task.requiresApproval && !can(user, "approvals.override"));
     changes.clientVisible = changes.requiresApproval || bool(fd, "clientVisible");
     if (!changes.requiresApproval && task.approvalStatus === "pending") changes.approvalStatus = "none";
   }
@@ -219,8 +220,16 @@ export async function updateTaskStatus(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.updateStatus");
   const { task, project } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
-  const status = parseStatus(str(fd, "status"));
+  let status = parseStatus(str(fd, "status"));
   if (!status || status === task.status) return;
+
+  // Tasks that need the client's approval can't be closed by staff on their own:
+  // "Completed" sends them to the client instead. Admins may override (it's logged).
+  const skipsClient = status === "completed" && task.requiresApproval && task.approvalStatus !== "approved";
+  if (skipsClient && !can(user, "approvals.override")) {
+    status = "waiting_client";
+    if (task.status === status) return;
+  }
 
   let approvalStatus = task.approvalStatus;
   let clientVisible = task.clientVisible;
@@ -244,7 +253,9 @@ export async function updateTaskStatus(fd: FormData) {
 
   await logActivity(user, {
     action: "task.status",
-    summary: `moved "${task.title}" from ${taskStatusLabel(task.status)} to ${taskStatusLabel(status)}`,
+    summary:
+      `moved "${task.title}" from ${taskStatusLabel(task.status)} to ${taskStatusLabel(status)}` +
+      (skipsClient && status === "completed" ? " without client approval" : ""),
     projectId: task.projectId,
     taskId: task.id,
     clientVisible,

@@ -26,6 +26,7 @@ export const PERMISSIONS = [
   "chat.internal",
   "chat.client",
   "approvals.decide",
+  "approvals.override", // complete an approval task without the client's approval
   "activity.viewAll",
   "leads.manage", // landing-page project requests
   "brand.manage", // white-label brand settings

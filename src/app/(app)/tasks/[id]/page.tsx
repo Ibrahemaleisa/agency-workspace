@@ -351,6 +351,11 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                       defaultValue={task.status}
                       options={TASK_STATUSES.map((x) => ({ value: x.value, label: tr.taskStatus[x.value] }))}
                     />
+                    {task.requiresApproval && task.approvalStatus !== "approved" && task.status !== "completed" && (
+                      <p className="mt-1.5 text-xs text-zinc-500">
+                        {can(user, "approvals.override") ? k.completeNeedsApprovalAdmin : k.completeNeedsApproval}
+                      </p>
+                    )}
                   </form>
                 ) : (
                   <StatusBadge status={task.status} />
@@ -425,7 +430,7 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                 {can(user, "tasks.setClientVisibility") && (
                   <div className="space-y-2">
                     <Checkbox name="clientVisible" defaultChecked={task.clientVisible} label={tr.taskForm.visibleToClient} />
-                    <Checkbox name="requiresApproval" defaultChecked={task.requiresApproval} label={tr.taskForm.requiresApproval} />
+                    <Checkbox name="requiresApproval" defaultChecked={task.requiresApproval} disabled={task.requiresApproval && !can(user, "approvals.override")} label={tr.taskForm.requiresApproval} />
                   </div>
                 )}
                 <div className="flex justify-end">

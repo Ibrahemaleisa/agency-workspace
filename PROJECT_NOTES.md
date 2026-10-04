@@ -36,6 +36,11 @@ Demo env vars: `DATABASE_URL`, `SEED_DEMO=true` (loads "Northwind Studio" sample
 build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `password`
 (admin `sara@northwind.agency`). No email configured on the demo.
 
+**Nightly demo reset:** `vercel.json` schedules `/api/cron/reset-demo` daily at 03:00 UTC for every
+project, but it only acts where `DEMO_RESET=true` **and** `SEED_DEMO=true` **and**
+`SHOW_DEMO_ACCOUNTS=true` are all set and Vercel Cron's `CRON_SECRET` matches; everywhere else it
+returns 404. Set `DEMO_RESET` and `CRON_SECRET` on the demo project only — **never on a customer**.
+
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
 ## Architecture in one minute
@@ -55,6 +60,10 @@ New customers: see README → "Add a new customer". Recommended: a separate Neon
 - `SHOW_DEMO_ACCOUNTS=true` also makes account credentials read-only (no password/email/role/status
   changes), so visitors of the public demo can't lock each other out.
 - The logo is stored as a data: URL but served from `/brand-logo?v=<hash>`; pages never inline it.
+- Approval tasks: staff choosing "Completed" sends the task to the client instead; only admins
+  (`approvals.override`) can complete it without the client or remove the approval requirement.
+- Clients' progress/counts only include tasks shared with them.
+- `src/db/demo-data.ts` holds the sample data (`resetDemoData`, destructive); `src/db/seed.ts` is the CLI.
 - CI (`.github/workflows/ci.yml`) runs migrations, lint, typecheck and build on every push and PR.
 
 ## Working locally

@@ -199,6 +199,8 @@ export async function listProjects(
       waiting: sql<number>`count(*) filter (where ${tasks.approvalStatus} = 'pending')`.as("waiting"),
     })
     .from(tasks)
+    // Clients' progress and counts only include the tasks shared with them.
+    .where(user.role === "client" ? eq(tasks.clientVisible, true) : undefined)
     .groupBy(tasks.projectId)
     .as("task_stats");
 

@@ -192,6 +192,8 @@ const en = {
   },
   task: {
     clientCanSee: "Client can see",
+    completeNeedsApproval: "Marking this complete sends it to the client for approval first.",
+    completeNeedsApprovalAdmin: "Needs client approval — marking it complete yourself skips the client.",
     approvalNeeded: "Your approval is needed",
     approvalNeededHint: "Review the deliverables below, then approve or request changes.",
     feedbackPlaceholder: "Feedback (required when requesting changes)",
@@ -746,6 +748,8 @@ const ar: AppDict = {
   },
   task: {
     clientCanSee: "ظاهرة للعميل",
+    completeNeedsApproval: "عند تحديدها كمكتملة تُرسل أولاً للعميل لاعتمادها.",
+    completeNeedsApprovalAdmin: "تتطلب موافقة العميل — إكمالها بنفسك يتجاوز موافقته.",
     approvalNeeded: "مطلوب موافقتك",
     approvalNeededHint: "راجع التسليمات بالأسفل، ثم اعتمدها أو اطلب التعديل.",
     feedbackPlaceholder: "ملاحظاتك (مطلوبة عند طلب التعديل)",
