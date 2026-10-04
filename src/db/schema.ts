@@ -347,6 +347,17 @@ export const leads = pgTable(
 );
 
 /** File contents, used for uploads when no external file store is configured. */
+/** Recent attempts at rate-limited actions (sign-in, public lead form); old rows are pruned. */
+export const rateLimitHits = pgTable(
+  "rate_limit_hits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("rate_limit_hits_key_idx").on(t.key, t.createdAt)],
+);
+
 export const fileBlobs = pgTable("file_blobs", {
   key: text("key").primaryKey(),
   data: bytea("data").notNull(),

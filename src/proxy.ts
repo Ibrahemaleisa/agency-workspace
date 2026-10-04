@@ -20,6 +20,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Public: sign-in, landing, first-run setup, language switch, static assets.
-  matcher: ["/((?!login|welcome|setup|lang|icon|apple-icon|_next/static|_next/image|favicon.ico).*)"],
+  // Public: sign-in, landing, first-run setup, language switch, brand logo, static assets.
+  matcher: ["/((?!login|welcome|setup|lang|brand-logo|icon|apple-icon|_next/static|_next/image|favicon.ico).*)"],
 };

@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { asc } from "drizzle-orm";
+import { asc, getTableColumns, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations } from "@/db/schema";
 import type { Lang } from "./i18n";
@@ -13,6 +13,7 @@ import type { Lang } from "./i18n";
 export type Brand = {
   orgId: string | null;
   name: { en: string; ar: string };
+  /** URL of the uploaded logo (served by /brand-logo, cache-busted by content), or null. */
   logo: string | null;
   primary: string;
   accent: string;
@@ -40,15 +41,22 @@ export const DEFAULT_BRAND: Brand = {
 
 export const HEX = /^#[0-9a-f]{6}$/i;
 
+// Every column except the logo itself: the logo can be hundreds of KB, so pages only get its URL.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { logo: _logo, ...brandColumns } = getTableColumns(organizations);
+
 export const getBrand = cache(async (): Promise<Brand> => {
-  const org = await db.query.organizations
-    .findFirst({ orderBy: asc(organizations.createdAt) })
-    .catch(() => undefined);
+  const [org] = await db
+    .select({ ...brandColumns, logoHash: sql<string | null>`left(md5(${organizations.logo}), 12)` })
+    .from(organizations)
+    .orderBy(asc(organizations.createdAt))
+    .limit(1)
+    .catch(() => []);
   if (!org) return DEFAULT_BRAND;
   return {
     orgId: org.id,
     name: { en: org.name, ar: org.nameAr || org.name },
-    logo: org.logo,
+    logo: org.logoHash ? `/brand-logo?v=${org.logoHash}` : null,
     primary: HEX.test(org.primaryColor) ? org.primaryColor : DEFAULT_BRAND.primary,
     accent: HEX.test(org.accentColor) ? org.accentColor : DEFAULT_BRAND.accent,
     defaultLang: org.defaultLang === "en" ? "en" : "ar",
@@ -59,6 +67,17 @@ export const getBrand = cache(async (): Promise<Brand> => {
     showcaseClients: org.showcaseClients ?? [],
   };
 });
+
+/** The logo as stored (a data: URL), for the /brand-logo route and the tab icon. */
+export async function getLogoDataUrl(): Promise<string | null> {
+  const [row] = await db
+    .select({ logo: organizations.logo })
+    .from(organizations)
+    .orderBy(asc(organizations.createdAt))
+    .limit(1)
+    .catch(() => []);
+  return row?.logo ?? null;
+}
 
 /**
  * CSS that re-tints the whole interface from two brand colors.

@@ -93,6 +93,7 @@ const ar = {
     sending: "جارٍ الإرسال…",
     success: "وصلنا طلبك! سيتواصل معك فريقنا قريباً.",
     errorRequired: "يرجى إدخال الاسم ووسيلة تواصل واحدة على الأقل.",
+    errorTooMany: "وصلتنا طلبات كثيرة من جهازك. حاول مرة أخرى بعد قليل.",
     whatsapp: "راسلنا على واتساب",
     orEmail: "أو راسلنا على",
   },
@@ -107,6 +108,7 @@ const ar = {
     back: "العودة للرئيسية",
     errorRequired: "أدخل البريد الإلكتروني وكلمة المرور.",
     errorInvalid: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    errorTooMany: "محاولات كثيرة لتسجيل الدخول. حاول مرة أخرى بعد ١٥ دقيقة.",
     highlights: [
       { title: "كل مشاريعك في مكان واحد", text: "تابع التقدّم والمهام والمواعيد لحظة بلحظة." },
       { title: "اعتماد بضغطة واحدة", text: "راجع التسليمات واعتمدها أو اطلب التعديل." },
@@ -204,6 +206,7 @@ const en: Dict = {
     sending: "Sending…",
     success: "Got it! Our team will be in touch soon.",
     errorRequired: "Please enter your name and at least one way to reach you.",
+    errorTooMany: "We've received several requests from you. Please try again a little later.",
     whatsapp: "Message us on WhatsApp",
     orEmail: "or email us at",
   },
@@ -218,6 +221,7 @@ const en: Dict = {
     back: "Back to home",
     errorRequired: "Enter your email and password.",
     errorInvalid: "Invalid email or password.",
+    errorTooMany: "Too many sign-in attempts. Please try again in 15 minutes.",
     highlights: [
       { title: "All your projects in one place", text: "Follow progress, tasks and deadlines live." },
       { title: "One-tap approvals", text: "Review deliverables, approve or request changes." },

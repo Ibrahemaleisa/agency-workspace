@@ -51,6 +51,11 @@ New customers: see README → "Add a new customer". Recommended: a separate Neon
   SMTP or Resend) in each user's language, after the response.
 - Copy: `lib/i18n.ts` (public site), `lib/i18n-app.ts` (app), `content/guide.ts` (built-in guide).
 - Migrations in `drizzle/` (`npm run db:generate`, `npm run db:migrate`).
+- `lib/rate-limit.ts` — DB-backed limits on sign-in (per IP, and per account+IP) and the public lead form.
+- `SHOW_DEMO_ACCOUNTS=true` also makes account credentials read-only (no password/email/role/status
+  changes), so visitors of the public demo can't lock each other out.
+- The logo is stored as a data: URL but served from `/brand-logo?v=<hash>`; pages never inline it.
+- CI (`.github/workflows/ci.yml`) runs migrations, lint, typecheck and build on every push and PR.
 
 ## Working locally
 
@@ -59,5 +64,5 @@ docker compose up -d            # or any local Postgres; set DATABASE_URL in .en
 npm install
 npm run db:migrate && npm run dev          # empty → setup screen
 npm run demo                               # optional: demo data (wipes the DB)
-npx tsc --noEmit && npx eslint src && npm run build   # before every push
+npx next typegen && npx tsc --noEmit && npx eslint src && npm run build   # before every push
 ```

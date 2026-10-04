@@ -19,7 +19,7 @@ import {
 import { hashPassword, requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
-import { bool, str, type ActionState } from "@/lib/action-state";
+import { bool, safePath, str, type ActionState } from "@/lib/action-state";
 import { TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
@@ -27,6 +27,8 @@ import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
 const msg = async () => (await getT()).t.actions;
 
 const refresh = () => revalidatePath("/", "layout");
+/** Public demo deployment (SHOW_DEMO_ACCOUNTS=true): account credentials are read-only. */
+const isDemo = () => process.env.SHOW_DEMO_ACCOUNTS === "true";
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 /* ------------------------------------------------------------------ */
@@ -52,8 +54,10 @@ async function setClientTeam(orgId: string, clientId: string, ids: string[]) {
         .from(users)
         .where(and(eq(users.orgId, orgId), inArray(users.id, ids), ne(users.role, "client")))
     : [];
-  await db.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
-  if (valid.length) await db.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  await db.transaction(async (tx) => {
+    await tx.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
+    if (valid.length) await tx.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  });
 }
 
 export async function createClient(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -147,13 +151,24 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
   if (target.id === admin.id && (role !== "admin" || !active))
     return { error: (await msg()).ownAdmin };
   const clientId = role === "client" ? str(fd, "clientId") : null;
-  if (role === "client" && !clientId) return { error: (await msg()).clientUserNeedsClient };
+  if (role === "client") {
+    if (!clientId) return { error: (await msg()).clientUserNeedsClient };
+    const c = await db.query.clients.findFirst({
+      where: and(eq(clients.id, clientId), eq(clients.orgId, admin.orgId)),
+    });
+    if (!c) return { error: (await msg()).invalidClient };
+  }
 
   const password = str(fd, "password");
   if (password && password.length < 8) return { error: (await msg()).passwordLength };
 
   const email = str(fd, "email")?.toLowerCase() ?? target.email;
   const emailChanged = email !== target.email;
+
+  // Public demo (demo logins shown on the sign-in page): visitors share the admin account,
+  // so nobody may lock the others out by changing credentials or disabling accounts.
+  if (isDemo() && (password || emailChanged || !active || role !== target.role))
+    return { error: (await msg()).demoLocked };
   if (emailChanged) {
     if (!isEmail(email)) return { error: (await msg()).invalidEmail };
     const taken = await db.query.users.findFirst({ where: eq(users.email, email) });
@@ -253,9 +268,9 @@ export async function markNotificationRead(fd: FormData) {
     .update(notifications)
     .set({ readAt: new Date() })
     .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
-  const link = str(fd, "link");
+  const link = safePath(str(fd, "link"));
   refresh();
-  if (link?.startsWith("/")) redirect(link);
+  if (link) redirect(link);
 }
 
 export async function markAllNotificationsRead() {
