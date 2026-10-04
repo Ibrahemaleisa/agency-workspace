@@ -1,9 +1,9 @@
 import path from "node:path";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { del, get, put } from "@vercel/blob";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { fileBlobs } from "@/db/schema";
+import { attachments, fileBlobs } from "@/db/schema";
 
 /**
  * File storage, chosen by environment:
@@ -54,4 +54,21 @@ export async function removeFile(key: string) {
   if (blobEnabled()) await del(key).catch(() => {});
   else if (dbEnabled()) await db.delete(fileBlobs).where(eq(fileBlobs.key, key));
   else await unlink(path.join(UPLOAD_DIR, key)).catch(() => {});
+}
+
+/**
+ * Storage keys of every file attached to these tasks. Read them *before* deleting the tasks
+ * (attachment rows cascade away with them), then pass them to `removeFiles`.
+ */
+export async function taskFileKeys(taskIds: string[]) {
+  if (taskIds.length === 0) return [];
+  const rows = await db
+    .select({ key: attachments.storageKey })
+    .from(attachments)
+    .where(inArray(attachments.taskId, taskIds));
+  return rows.map((r) => r.key);
+}
+
+export async function removeFiles(keys: string[]) {
+  await Promise.all(keys.map((key) => removeFile(key).catch((err) => console.error(`[file cleanup failed] ${key}`, err))));
 }

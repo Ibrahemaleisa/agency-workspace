@@ -119,12 +119,37 @@ export const users = pgTable(
   (t) => [uniqueIndex("users_email_idx").on(t.email), index("users_org_idx").on(t.orgId)],
 );
 
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(), // sha256 of the cookie token
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(), // sha256 of the cookie token
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)],
+);
+
+/** One-time "forgot password" links (the token itself is only ever emailed; we store its sha256). */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: text("id").primaryKey(), // sha256 of the emailed token
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
+/** Fixed-window counters for throttling sign-in, password resets and the public forms. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
 });
 
 /* ------------------------------------------------------------------ */

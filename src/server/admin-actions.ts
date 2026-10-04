@@ -20,6 +20,7 @@ import { hashPassword, requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
 import { bool, str, type ActionState } from "@/lib/action-state";
+import { safePath } from "@/lib/safe-path";
 import { TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
@@ -52,8 +53,10 @@ async function setClientTeam(orgId: string, clientId: string, ids: string[]) {
         .from(users)
         .where(and(eq(users.orgId, orgId), inArray(users.id, ids), ne(users.role, "client")))
     : [];
-  await db.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
-  if (valid.length) await db.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  await db.transaction(async (tx) => {
+    await tx.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
+    if (valid.length) await tx.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  });
 }
 
 export async function createClient(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -255,7 +258,8 @@ export async function markNotificationRead(fd: FormData) {
     .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
   const link = str(fd, "link");
   refresh();
-  if (link?.startsWith("/")) redirect(link);
+  const target = safePath(link);
+  if (target) redirect(target);
 }
 
 export async function markAllNotificationsRead() {

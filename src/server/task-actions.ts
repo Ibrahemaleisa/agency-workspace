@@ -31,7 +31,7 @@ import {
 import { nt } from "@/lib/notify-text";
 import { bool, str, type ActionState } from "@/lib/action-state";
 import { taskStatusLabel } from "@/lib/constants";
-import { MAX_UPLOAD_BYTES, removeFile, saveFile } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, removeFile, removeFiles, saveFile, taskFileKeys } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
 
 const msg = async () => (await getT()).t.actions;
@@ -199,7 +199,9 @@ export async function deleteTask(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.delete");
   const { task } = await getAccessibleTask(user, str(fd, "taskId") ?? "");
+  const fileKeys = await taskFileKeys([task.id]);
   await db.delete(tasks).where(eq(tasks.id, task.id));
+  await removeFiles(fileKeys);
   await logActivity(user, {
     action: "task.deleted",
     summary: `deleted task "${task.title}"`,

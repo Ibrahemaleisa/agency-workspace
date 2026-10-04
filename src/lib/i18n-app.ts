@@ -394,6 +394,16 @@ const en = {
     testSubject: "Test email from {brand}",
     testBody: "If you can read this, email notifications are working.",
   },
+  account: {
+    title: "Password",
+    hint: "Changing it signs you out on every other device.",
+    current: "Current password",
+    next: "New password (8+ characters)",
+    save: "Change password",
+    saved: "Password changed.",
+    wrongCurrent: "Your current password is incorrect.",
+    tooMany: "Too many attempts. Wait 15 minutes and try again.",
+  },
   teamChat: {
     title: "Team chat",
     subtitle: "One conversation for the whole agency team. Clients never see it.",
@@ -493,9 +503,15 @@ const en = {
     email: "Email",
     password: "Password (8+ characters)",
     create: "Create workspace",
+    code: "Setup code",
+    codeHint: "The SETUP_TOKEN value from the deployment's environment variables.",
+    missingToken:
+      "To protect this new workspace, add a SETUP_TOKEN environment variable (any long random text) to the deployment, redeploy, then enter it here.",
     errors: {
       done: "This workspace is already set up. Sign in instead.",
       required: "Fill in the agency name, your name, email and password.",
+      badCode: "The setup code is wrong.",
+      tooMany: "Too many attempts. Wait 15 minutes and try again.",
     },
   },
   actions: {
@@ -923,6 +939,16 @@ const ar: AppDict = {
     testSubject: "بريد تجريبي من {brand}",
     testBody: "إذا وصلتك هذه الرسالة فإشعارات البريد تعمل بنجاح.",
   },
+  account: {
+    title: "كلمة المرور",
+    hint: "تغييرها يسجّل خروجك من كل الأجهزة الأخرى.",
+    current: "كلمة المرور الحالية",
+    next: "كلمة المرور الجديدة (8 أحرف على الأقل)",
+    save: "تغيير كلمة المرور",
+    saved: "تم تغيير كلمة المرور.",
+    wrongCurrent: "كلمة المرور الحالية غير صحيحة.",
+    tooMany: "محاولات كثيرة. انتظر ربع ساعة ثم حاول مجدداً.",
+  },
   teamChat: {
     title: "الشات العام",
     subtitle: "محادثة واحدة لكل فريق الوكالة. العملاء لا يرونها.",
@@ -1022,9 +1048,15 @@ const ar: AppDict = {
     email: "البريد الإلكتروني",
     password: "كلمة المرور (8 أحرف على الأقل)",
     create: "إنشاء مساحة العمل",
+    code: "رمز التجهيز",
+    codeHint: "قيمة SETUP_TOKEN من متغيرات البيئة في النشر.",
+    missingToken:
+      "لحماية مساحة العمل الجديدة، أضف متغير البيئة SETUP_TOKEN (أي نص عشوائي طويل) إلى النشر، ثم أعد النشر وأدخله هنا.",
     errors: {
       done: "مساحة العمل مُجهّزة بالفعل. سجّل الدخول بدلاً من ذلك.",
       required: "أدخل اسم الوكالة واسمك وبريدك وكلمة المرور.",
+      badCode: "رمز التجهيز غير صحيح.",
+      tooMany: "محاولات كثيرة. انتظر ربع ساعة ثم حاول مجدداً.",
     },
   },
   actions: {

@@ -69,7 +69,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     db
       .select({ moduleId: tasks.moduleId, stage: tasks.stage, status: tasks.status })
       .from(tasks)
-      .where(eq(tasks.projectId, project.id)),
+      // Clients' progress and stage counts only reflect the work shared with them.
+      .where(and(eq(tasks.projectId, project.id), user.role === "client" ? eq(tasks.clientVisible, true) : undefined)),
     db
       .select({ id: users.id, name: users.name, title: users.title })
       .from(projectMembers)

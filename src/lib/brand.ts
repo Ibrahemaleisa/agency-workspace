@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { asc } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations } from "@/db/schema";
 import type { Lang } from "./i18n";
@@ -13,6 +13,7 @@ import type { Lang } from "./i18n";
 export type Brand = {
   orgId: string | null;
   name: { en: string; ar: string };
+  /** URL of the uploaded logo (served by /brand-logo, cache-busted by its hash), or null. */
   logo: string | null;
   primary: string;
   accent: string;
@@ -41,14 +42,19 @@ export const DEFAULT_BRAND: Brand = {
 export const HEX = /^#[0-9a-f]{6}$/i;
 
 export const getBrand = cache(async (): Promise<Brand> => {
+  // The logo itself (up to ~400 KB of base64) stays in the database; pages only get a cacheable URL.
   const org = await db.query.organizations
-    .findFirst({ orderBy: asc(organizations.createdAt) })
+    .findFirst({
+      orderBy: asc(organizations.createdAt),
+      columns: { logo: false },
+      extras: { logoHash: sql<string | null>`md5(${organizations.logo})`.as("logo_hash") },
+    })
     .catch(() => undefined);
   if (!org) return DEFAULT_BRAND;
   return {
     orgId: org.id,
     name: { en: org.name, ar: org.nameAr || org.name },
-    logo: org.logo,
+    logo: org.logoHash ? `/brand-logo?v=${org.logoHash.slice(0, 12)}` : null,
     primary: HEX.test(org.primaryColor) ? org.primaryColor : DEFAULT_BRAND.primary,
     accent: HEX.test(org.accentColor) ? org.accentColor : DEFAULT_BRAND.accent,
     defaultLang: org.defaultLang === "en" ? "en" : "ar",
@@ -98,4 +104,14 @@ export function withBrand<T>(value: T, name: string): T {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withBrand(v, name)])) as T;
   }
   return value;
+}
+
+/** The uploaded logo as { type, bytes }, for /brand-logo and the browser-tab icon. */
+export async function getBrandLogo() {
+  const org = await db.query.organizations
+    .findFirst({ orderBy: asc(organizations.createdAt), columns: { logo: true } })
+    .catch(() => undefined);
+  const m = org?.logo?.match(/^data:([\w.+-]+\/[\w.+-]+);base64,(.*)$/);
+  if (!m) return null;
+  return { type: m[1], bytes: Buffer.from(m[2], "base64"), dataUrl: org!.logo! };
 }

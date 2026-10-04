@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { markAllNotificationsRead, markNotificationRead, sendTestEmail, setEmailNotifications } from "@/server/admin-actions";
+import { changePassword } from "@/server/auth-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { can } from "@/lib/permissions";
 import { emailEnabled } from "@/lib/email";
@@ -113,6 +114,15 @@ export default async function NotificationsPage() {
           </ul>
         )}
       </Card>
+      <div id="password" className="mt-6 rounded-xl border border-zinc-200/80 bg-white px-4 py-3">
+        <div className="text-sm font-medium">{t.account.title}</div>
+        <p className="text-xs text-zinc-500">{t.account.hint}</p>
+        <ActionForm action={changePassword} successMessage={t.account.saved} resetOnSuccess className="mt-2 flex flex-wrap items-center gap-2">
+          <Input name="current" type="password" required autoComplete="current-password" dir="ltr" placeholder={t.account.current} className="w-auto min-w-0 flex-1 sm:max-w-xs" />
+          <Input name="next" type="password" required minLength={8} autoComplete="new-password" dir="ltr" placeholder={t.account.next} className="w-auto min-w-0 flex-1 sm:max-w-xs" />
+          <SubmitButton size="sm" variant="secondary">{t.account.save}</SubmitButton>
+        </ActionForm>
+      </div>
     </>
   );
 }

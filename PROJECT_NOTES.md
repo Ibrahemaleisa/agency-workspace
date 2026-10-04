@@ -21,6 +21,8 @@ Talk to the owner in **English** (they write in Arabic or English); the product 
 - **No Fada branding** in code, copy, seed data or defaults. Brand text uses the `{brand}`
   placeholder (see `lib/brand.ts` → `withBrand`).
 - **Never run the demo seed (`npm run demo` / `db:seed`) against a customer's database** — it wipes it.
+  (The seed now refuses unless the DB is empty or already the demo; don't bypass it with `ALLOW_DB_RESET`.)
+- Keep migrations **additive**: a push to `main` migrates every customer's production database at once.
 - Never commit secrets. Credentials live only in Vercel environment variables (sensitive).
 
 ## How deployment works
@@ -31,6 +33,9 @@ Every push to `main` redeploys all customer projects connected to this repo.
 | Deployment | Vercel project | URL | Database |
 |---|---|---|---|
 | Demo for buyers | `workspace-demo` (team fada-team) | workspace-demo-sooty.vercel.app | Neon DB `workspace_demo` with its own restricted login `workspace_demo_app` |
+
+Every customer project also needs `SETUP_TOKEN` (first-run setup code). Migrations run only on
+Production deployments (`scripts/vercel-build.sh`); Preview builds never touch the database.
 
 Demo env vars: `DATABASE_URL`, `SEED_DEMO=true` (loads "Northwind Studio" sample data on the first
 build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `password`
@@ -46,7 +51,11 @@ New customers: see README → "Add a new customer". Recommended: a separate Neon
   deployment) and derives the whole palette from a primary + accent colour (`brandCss`).
 - `app/(public)/setup` — first-run screen; only works while the database has no users.
 - `app/(app)/settings/brand` — brand settings (admin, permission `brand.manage`).
-- `lib/permissions.ts` (roles → permissions), `lib/access.ts` (row scoping).
+- `lib/permissions.ts` (roles → permissions), `lib/scope.ts` (row scoping SQL: employees see projects
+  they own, belong to, or have an assigned task in; clients only client-visible tasks),
+  `lib/access.ts` (load one project/task or 404). Covered by `tests/access.test.ts`.
+- `lib/rate-limit.ts` throttles sign-in, password reset, setup and the landing-page form.
+- Logo: stored as a data URL in `organizations.logo`, served by `/brand-logo?v=<hash>` (cached).
 - `lib/events.ts` → `notify()` stores bilingual notifications and emails them (`lib/email.ts`,
   SMTP or Resend) in each user's language, after the response.
 - Copy: `lib/i18n.ts` (public site), `lib/i18n-app.ts` (app), `content/guide.ts` (built-in guide).
@@ -59,5 +68,5 @@ docker compose up -d            # or any local Postgres; set DATABASE_URL in .en
 npm install
 npm run db:migrate && npm run dev          # empty → setup screen
 npm run demo                               # optional: demo data (wipes the DB)
-npx tsc --noEmit && npx eslint src && npm run build   # before every push
+npm run typecheck && npx eslint src tests && npm test && npm run build   # before every push (CI runs the same)
 ```

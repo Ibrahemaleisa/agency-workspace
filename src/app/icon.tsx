@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getBrand } from "@/lib/brand";
+import { getBrand, getBrandLogo } from "@/lib/brand";
 
 /** Browser-tab icon in the agency's colours: its logo, or its initial. */
 export const size = { width: 64, height: 64 };
@@ -8,8 +8,8 @@ export const contentType = "image/png";
 export const dynamic = "force-dynamic";
 
 export default async function Icon() {
-  const brand = await getBrand();
-  const raster = brand.logo && /^data:image\/(png|jpeg);/.test(brand.logo) ? brand.logo : null;
+  const [brand, logo] = await Promise.all([getBrand(), getBrandLogo()]);
+  const raster = logo && /^image\/(png|jpeg)$/.test(logo.type) ? logo.dataUrl : null;
   const initial = [...brand.name.en.trim()][0]?.toUpperCase() ?? "•";
   return new ImageResponse(
     (

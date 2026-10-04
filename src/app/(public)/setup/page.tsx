@@ -3,6 +3,7 @@ import { count } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getT } from "@/lib/lang";
+import { setupMode } from "@/lib/setup";
 import { createWorkspace } from "@/server/setup-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { LangSwitch } from "@/components/site/lang-switch";
@@ -21,6 +22,7 @@ export default async function SetupPage() {
   if (n > 0) redirect("/login");
   const { t, lang } = await getT();
   const s = t.setup;
+  const mode = setupMode();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col px-5 py-8">
@@ -30,7 +32,18 @@ export default async function SetupPage() {
       <div className="flex flex-1 flex-col justify-center py-8">
         <h1 className="font-display text-3xl font-bold text-white">{s.title}</h1>
         <p className="mt-2 text-sm text-zinc-400">{s.subtitle}</p>
+        {mode === "missing" ? (
+          <p className="mt-8 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm leading-relaxed text-amber-100">
+            {s.missingToken}
+          </p>
+        ) : (
         <ActionForm action={createWorkspace} className="mt-8 space-y-6 rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+          {mode === "token" && (
+            <Label text={s.code}>
+              <input name="code" type="password" required autoComplete="off" dir="ltr" className={`${field} text-start`} />
+              <span className="mt-1 block text-xs text-zinc-500">{s.codeHint}</span>
+            </Label>
+          )}
           <fieldset className="space-y-3">
             <legend className="mb-2 text-xs font-semibold tracking-wide text-sand-200 uppercase">{s.agency}</legend>
             <Label text={t.brandSettings.nameEn}>
@@ -56,6 +69,7 @@ export default async function SetupPage() {
             {s.create}
           </SubmitButton>
         </ActionForm>
+        )}
       </div>
     </main>
   );

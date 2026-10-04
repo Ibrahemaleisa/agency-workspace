@@ -50,6 +50,13 @@
       "when": 1790222111525,
       "tag": "0006_white_label_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791133057453,
+      "tag": "0007_auth_hardening",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,9 @@ import { cn } from "./ui";
 import type { Lang } from "@/lib/i18n";
 import { markAllNotificationsRead, markNotificationRead } from "@/server/admin-actions";
 
+const POLL_MS = 60_000;
+const IDLE_AFTER_MS = 10 * 60_000;
+
 type Item = {
   id: string;
   type: string;
@@ -164,6 +167,10 @@ export function useUnread(initial: number, refreshKey?: unknown) {
     setCount(initial);
   }
   useEffect(() => {
+    // Poll only while someone is actually looking: a forgotten open tab shouldn't keep the
+    // database awake (Neon suspends idle databases, which saves the agency money).
+    let lastActive = Date.now();
+    let idle = false;
     const load = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -171,8 +178,33 @@ export function useUnread(initial: number, refreshKey?: unknown) {
         if (res.ok) setCount((await res.json()).unread);
       } catch {}
     };
-    const id = setInterval(load, 20000);
-    return () => clearInterval(id);
+    const tick = () => {
+      idle = Date.now() - lastActive > IDLE_AFTER_MS;
+      if (!idle) load();
+    };
+    const wake = () => {
+      const wasIdle = idle;
+      lastActive = Date.now();
+      idle = false;
+      if (wasIdle) load();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        lastActive = Date.now();
+        idle = false;
+        load();
+      }
+    };
+    const id = setInterval(tick, POLL_MS);
+    window.addEventListener("pointerdown", wake);
+    window.addEventListener("keydown", wake);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("keydown", wake);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refreshKey]);
   return count;
 }

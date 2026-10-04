@@ -102,6 +102,9 @@ export default async function LoginPage() {
                   {t.login.submit}
                 </SubmitButton>
               </ActionForm>
+              <Link href="/forgot" className="mt-4 block text-center text-sm text-zinc-400 transition hover:text-white">
+                {t.login.forgot}
+              </Link>
             </div>
 
             {showDemo && (

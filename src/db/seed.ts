@@ -11,22 +11,31 @@ import { saveFile } from "../lib/uploads";
 import { nt } from "../lib/notify-text";
 import type { Localized } from "../lib/events";
 
+const DEMO_SLUG = "northwind";
 const today = new Date();
 const d = (offset: number) => format(addDays(today, offset), "yyyy-MM-dd");
 
 async function main() {
   // `--if-empty` (used by the Vercel build) only seeds a brand-new database, never resets one.
-  if (process.argv.includes("--if-empty")) {
-    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(s.organizations);
-    if (n > 0) {
-      console.log("Database already has data — skipping seed.");
-      return;
-    }
+  const orgs = await db.select({ slug: s.organizations.slug }).from(s.organizations);
+  if (process.argv.includes("--if-empty") && orgs.length > 0) {
+    console.log("Database already has data — skipping seed.");
+    return;
+  }
+  // Safety net: only an empty database or an earlier demo ("northwind") may be wiped.
+  // A customer's workspace is refused unless ALLOW_DB_RESET=true is set explicitly.
+  const customer = orgs.find((o) => o.slug !== DEMO_SLUG);
+  if (customer && process.env.ALLOW_DB_RESET !== "true") {
+    console.error(
+      `Refusing to reset: this database belongs to a real workspace ("${customer.slug}").\n` +
+        "The demo seed deletes everything. If you really mean it, re-run with ALLOW_DB_RESET=true.",
+    );
+    process.exit(1);
   }
   console.log("Resetting database…");
   await db.execute(sql`TRUNCATE organizations, sessions, file_blobs RESTART IDENTITY CASCADE`);
 
-  const [org] = await db.insert(s.organizations).values({ name: "Northwind Studio", nameAr: "نورثويند", slug: "northwind", showcaseClients: ["Bloom Café", "Atlas Fitness", "Verde Real Estate", "Nimbus Tech"], contactEmail: "hello@northwind.agency" }).returning();
+  const [org] = await db.insert(s.organizations).values({ name: "Northwind Studio", nameAr: "نورثويند", slug: DEMO_SLUG, showcaseClients: ["Bloom Café", "Atlas Fitness", "Verde Real Estate", "Nimbus Tech"], contactEmail: "hello@northwind.agency" }).returning();
   const passwordHash = await bcrypt.hash("password", 10);
 
   /* ---------------- Staff ---------------- */

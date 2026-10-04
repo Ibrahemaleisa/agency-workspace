@@ -18,9 +18,15 @@ export default async function GuidePage() {
   const user = await requireUser();
   const { t, lang, brand } = await getT();
   const site = appUrl().replace(/^https?:\/\//, "");
-  const sections = withBrand(GUIDE[lang], brand.name[lang])
+  // The guide is raw HTML, so the agency name (typed by an admin) is escaped before it goes in.
+  const name = brand.name[lang];
+  const sections = GUIDE[lang]
     .filter((s) => visible(s.audience, user.role))
-    .map((s) => ({ ...s, html: s.html.replaceAll("{site}", site) }));
+    .map((s) => ({
+      ...s,
+      label: withBrand(s.label, name),
+      html: withBrand(s.html, escapeHtml(name)).replaceAll("{site}", escapeHtml(site)),
+    }));
 
   return (
     <>
@@ -50,4 +56,8 @@ export default async function GuidePage() {
       </div>
     </>
   );
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }

@@ -11,6 +11,7 @@ import { assertCan } from "@/lib/permissions";
 import { getLang } from "@/lib/lang";
 import { DICT } from "@/lib/i18n";
 import { str, type ActionState } from "@/lib/action-state";
+import { clientIp, hitAll } from "@/lib/rate-limit";
 
 /** The agency that owns the public landing page (single-agency deployments use the first one). */
 async function siteOrg() {
@@ -32,6 +33,9 @@ export async function submitLead(_prev: ActionState, fd: FormData): Promise<Acti
   const email = str(fd, "email")?.slice(0, 200) ?? null;
   const phone = str(fd, "phone")?.slice(0, 40) ?? null;
   if (!name || (!email && !phone)) return { error: t.errorRequired };
+  // Each lead emails every admin, so cap how many one visitor can send.
+  if (!(await hitAll([{ key: `lead:ip:${await clientIp()}`, limit: 5, windowSeconds: 60 * 60 }])))
+    return { error: t.errorTooMany };
 
   const org = await siteOrg();
   if (!org) return { error: "Unavailable" };

@@ -30,7 +30,7 @@ import {
   type TaskStatus,
 } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
-import { projectScope, taskScope } from "@/lib/access";
+import { projectScope, taskScope } from "@/lib/scope";
 
 export const todayISO = () => format(new Date(), "yyyy-MM-dd");
 
@@ -191,6 +191,8 @@ export async function listProjects(
       waiting: sql<number>`count(*) filter (where ${tasks.approvalStatus} = 'pending')`.as("waiting"),
     })
     .from(tasks)
+    // Clients only count the tasks shared with them.
+    .where(user.role === "client" ? eq(tasks.clientVisible, true) : undefined)
     .groupBy(tasks.projectId)
     .as("task_stats");
 
