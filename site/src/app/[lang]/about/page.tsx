@@ -10,7 +10,7 @@ export async function generateMetadata() {
   return pageMetadata({ title: PAGES.about.metaTitle, description: PAGES.about.metaDescription, path: "/about", locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 /* The name, told in each language (rich text, so it lives here rather than in content). */
 function NameStory({ ar }: { ar: boolean }) {

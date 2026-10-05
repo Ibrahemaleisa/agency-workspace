@@ -54,7 +54,7 @@ export function BrandForm({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-12">
-      <form action={formAction} className="space-y-5 rounded-xl border border-[#E3E4E0] bg-white p-5 sm:p-6">
+      <form action={formAction} className="space-y-5 rounded-xl border border-[#E1E2DE] bg-white p-5 sm:p-6">
         {state?.error && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</div>}
         <div>
           <span className="mb-1 block text-sm font-medium">{labels.logo}</span>
@@ -139,8 +139,8 @@ export function BrandForm({
       </form>
 
       <figure aria-label={labels.preview} className="min-w-0">
-        <figcaption className="mb-3 font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{labels.preview}</figcaption>
-        <div style={vars as CSSProperties} className="overflow-hidden rounded-xl border border-[#E3E4E0] bg-[#f6f5f2] shadow-sm">
+        <figcaption className="mb-3 text-xs font-medium text-[#5B606B]">{labels.preview}</figcaption>
+        <div style={vars as CSSProperties} className="overflow-hidden rounded-xl border border-[#E1E2DE] bg-[#f6f5f2] shadow-sm">
           <div className="flex min-h-[320px]">
             <aside className="w-40 shrink-0 bg-ink p-3 text-white sm:w-48">
               <div className="flex items-center gap-2">

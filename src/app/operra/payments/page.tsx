@@ -6,8 +6,8 @@ import { saveBankAction } from "@/server/platform-admin-actions";
 import { ControlHeader } from "@/components/platform/control-header";
 import { ActionForm, SubmitButton } from "@/components/forms";
 
-const field = "mt-1 block w-full rounded-md border border-[#8C919A] bg-white px-2.5 py-1.5 text-sm";
-const label = "block text-xs font-medium text-[#5A606B]";
+const field = "mt-1 block w-full rounded-md border border-[#8D929C] bg-white px-2.5 py-1.5 text-sm";
+const label = "block text-xs font-medium text-[#5B606B]";
 
 /** How agencies pay: card payments (provider status and set-up) and the optional bank transfer backup. */
 export default async function PaymentsPage() {
@@ -20,7 +20,7 @@ export default async function PaymentsPage() {
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">Payments</h1>
 
-        <section className="mt-6 rounded-lg border border-[#E3E4E0] bg-white p-5 text-sm" data-testid="card-payments">
+        <section className="mt-6 rounded-lg border border-[#E1E2DE] bg-white p-5 text-sm" data-testid="card-payments">
           <h2 className="text-lg font-semibold">Card payments</h2>
           {provider === "lemonsqueezy" || provider === "stripe" ? (
             <p className="mt-2">
@@ -31,7 +31,7 @@ export default async function PaymentsPage() {
           ) : (
             <>
               <p className="mt-2">
-                <span className="me-2 inline-block size-2 rounded-full bg-[#C8283A]" aria-hidden />
+                <span className="me-2 inline-block size-2 rounded-full bg-[#C42B3C]" aria-hidden />
                 <strong>Not connected yet.</strong> Until it is, “Subscribe” records a request that you activate on the home page.
               </p>
               <ol className="mt-4 list-decimal space-y-2 ps-5 text-[#3F434A]">
@@ -52,9 +52,9 @@ export default async function PaymentsPage() {
           )}
         </section>
 
-        <section className="mt-6 rounded-lg border border-[#E3E4E0] bg-white p-5 text-sm">
+        <section className="mt-6 rounded-lg border border-[#E1E2DE] bg-white p-5 text-sm">
           <h2 className="text-lg font-semibold">Bank transfer (optional)</h2>
-          <p className="mt-1 text-[#5A606B]">
+          <p className="mt-1 text-[#5B606B]">
             {provider
               ? "Card payment is on, so bank transfer isn’t offered to agencies."
               : "Only used while card payment isn’t connected: agencies see these details, transfer, and upload the receipt for you to activate. Leave the IBAN empty to turn it off."}

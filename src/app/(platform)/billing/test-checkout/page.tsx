@@ -22,8 +22,8 @@ export default async function TestCheckoutPage({ searchParams }: PageProps<"/bil
         This page simulates the payment provider so the subscription flow can be tested end to end. No card is
         collected and nothing is charged. It is unavailable in production.
       </div>
-      <div className="mt-6 rounded-xl border border-[#E3E4E0] bg-white p-6">
-        <p className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{org.serial}</p>
+      <div className="mt-6 rounded-xl border border-[#E1E2DE] bg-white p-6">
+        <p className="text-xs font-medium text-[#5B606B]">{org.serial}</p>
         <h1 className="mt-2 text-xl font-semibold">{org.name}</h1>
         <p className="mt-1 text-sm text-zinc-600">Plan: {data.planCode}</p>
         <form action={completeTestCheckout} className="mt-6 flex flex-col gap-2 sm:flex-row">

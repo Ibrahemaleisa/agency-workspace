@@ -25,7 +25,7 @@ export default async function SignupStartPage() {
   const lang = await getLang();
   const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
   const payments = !!providerName();
-  const row = "flex items-baseline justify-between gap-4 border-b border-[#E3E4E0] py-2.5 text-sm last:border-0";
+  const row = "flex items-baseline justify-between gap-4 border-b border-[#E1E2DE] py-2.5 text-sm last:border-0";
 
   return (
     <SignupShell
@@ -34,19 +34,19 @@ export default async function SignupStartPage() {
       title={s.start.title}
       sub={s.start.sub}
       aside={
-        <div className="rounded-xl border border-[#E3E4E0] bg-white p-5 sm:p-6 lg:mt-[92px]">
-          <p className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{s.start.summary}</p>
+        <div className="rounded-xl border border-[#E1E2DE] bg-white p-5 sm:p-6 lg:mt-[92px]">
+          <p className="text-xs font-medium text-[#5B606B]">{s.start.summary}</p>
           <dl className="mt-3">
             <div className={row}>
-              <dt className="text-[#5A606B]">{s.start.company}</dt>
+              <dt className="text-[#5B606B]">{s.start.company}</dt>
               <dd className="font-medium">{signup.companyName}</dd>
             </div>
             <div className={row}>
-              <dt className="text-[#5A606B]">{s.start.address}</dt>
+              <dt className="text-[#5B606B]">{s.start.address}</dt>
               <dd className="font-mono text-xs" dir="ltr">{addressTemplate().replace("{slug}", signup.slug ?? "")}</dd>
             </div>
             <div className={row}>
-              <dt className="text-[#5A606B]">{s.start.colours}</dt>
+              <dt className="text-[#5B606B]">{s.start.colours}</dt>
               <dd className="flex gap-1.5">
                 {[signup.primaryColor, signup.accentColor].map((c) => (
                   <span key={c} className="size-5 rounded border border-zinc-300" style={{ background: c ?? undefined }} title={c ?? ""} />

@@ -72,17 +72,17 @@ export function ProvisioningRunner({
       </ol>
 
       {done && result.status === "completed" && (
-        <div className="mt-8 border-t border-[#E3E4E0] pt-6" role="status">
+        <div className="mt-8 border-t border-[#E1E2DE] pt-6" role="status">
           <p className="text-lg font-semibold">{labels.done}</p>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{labels.instance}</dt>
+              <dt className="text-xs font-medium text-[#5B606B]">{labels.instance}</dt>
               <dd className="mt-1 font-mono text-xl font-medium" data-testid="instance-serial">
                 {result.serial}
               </dd>
             </div>
             <div>
-              <dt className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{labels.address}</dt>
+              <dt className="text-xs font-medium text-[#5B606B]">{labels.address}</dt>
               <dd className="mt-1 font-mono text-sm break-all" dir="ltr">
                 {result.entry}
               </dd>
@@ -93,7 +93,7 @@ export function ProvisioningRunner({
               {labels.enter}
             </button>
           </form>
-          <p className="mt-4 text-sm text-[#5A606B]" dir="auto">{labels.signInLater}</p>
+          <p className="mt-4 text-sm text-[#5B606B]" dir="auto">{labels.signInLater}</p>
         </div>
       )}
 

@@ -22,7 +22,7 @@ export default async function SignupBrandPage() {
         action={signupBrand}
         name={name}
         backHref="/signup/company"
-        initial={{ logo: signup.logo, primary: signup.primaryColor ?? "#121519", accent: signup.accentColor ?? "#e8dcc8" }}
+        initial={{ logo: signup.logo, primary: signup.primaryColor ?? "#1F3FBF", accent: signup.accentColor ?? "#e3e8fc" }}
         labels={{
           ...s.brand,
           back: s.back,

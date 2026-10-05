@@ -71,9 +71,9 @@ export default async function ControlPeople({ searchParams }: PageProps<"/operra
             defaultValue={q}
             placeholder="Search by email, name or agency"
             aria-label="Search people"
-            className="block w-full max-w-md rounded-md border border-[#8C919A] bg-white px-3 py-2 text-sm"
+            className="block w-full max-w-md rounded-md border border-[#8D929C] bg-white px-3 py-2 text-sm"
           />
-          <button className="rounded-md bg-[#0B0D10] px-3.5 py-2 text-sm font-medium text-white">Search</button>
+          <button className="rounded-md bg-[#15171C] px-3.5 py-2 text-sm font-medium text-white">Search</button>
         </form>
         <h2 className={`${label} mt-6`}>{list.length} {list.length === 1 ? "person" : "people"}</h2>
         <div className="mt-3">
@@ -83,19 +83,19 @@ export default async function ControlPeople({ searchParams }: PageProps<"/operra
             minWidth={900}
           >
             {list.map((p) => (
-              <tr key={p.id} className="hover:bg-[#F6F6F3]">
+              <tr key={p.id} className="hover:bg-[#F7F7F4]">
                 <Td>
                   <Link href={`/operra/people/${p.id}`} className="font-medium underline-offset-4 hover:underline">
                     {p.name ?? p.email}
                   </Link>
-                  <div className="text-xs text-[#5A606B]" dir="ltr">{p.email}</div>
+                  <div className="text-xs text-[#5B606B]" dir="ltr">{p.email}</div>
                 </Td>
                 <Td>
                   <ul className="space-y-0.5">
                     {(p.agencies ?? []).map((a) => (
                       <li key={a.orgId}>
                         <Link href={`/operra/customers/${a.orgId}`} className="underline-offset-4 hover:underline">{a.name}</Link>{" "}
-                        <span className="text-xs text-[#5A606B]">{a.role}</span>
+                        <span className="text-xs text-[#5B606B]">{a.role}</span>
                       </li>
                     ))}
                   </ul>

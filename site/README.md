@@ -66,24 +66,19 @@ Change both languages together; TypeScript fails the build if the Arabic shape d
 
 ## Brand
 
-The site follows the **Operra Brand & Identity System** ("Instrument" direction):
-https://claude.ai/artifact/7gPd78PFVXXN8aY5VwwVrF
+The site follows Operra's **Cadence · Kashida** identity; the full rules are in `../BRAND.md`.
 
-- **Tokens** — `src/app/globals.css` (`@theme`) mirrors the brand system's `tokens.json`: paper
-  `#F6F6F3`, surface, ink `#0B0D10`, panel `#121519`, text-muted, line / line-strong, and signal
-  `#FF5A1F`. The 90 / 8 / 2 rule applies: signal marks what is live (the logo dot, a live status
-  dot) and never decorates. Semantic colours (success, warning, danger, info) are product-only;
-  the site uses danger for form errors and info for the focus ring.
-- **Logo** — `src/components/logo.tsx` holds the constructed wordmark and the Live O copied from the
-  brand system (never re-typeset "Operra"). Also in `src/app/icon.svg` and `opengraph-image.tsx`.
-- **Type** — Instrument Sans (display + UI), IBM Plex Mono (labels, data), IBM Plex Sans Arabic —
-  all SIL OFL, self-hosted from `src/fonts/`. Headlines are sentence case with no full stop; the
-  tagline is the only exception.
-- **Shape and motion** — radius 4 / 8 / 12 / 20px, hairlines instead of shadows, 1.5px square-cap
-  icons. Motion only means a state changed: the only animation is the live dot's pulse.
-- **Schematics, not illustration** — `Schematic` and `StatusDot` draw how work moves from status
-  dots and hairlines.
-- **Roles** — `src/content/roles.ts` maps the brand's audiences (Buyer, Champion, Daily users,
+- **Tokens:** `src/app/globals.css` (`@theme`). Token names are kept from the previous system:
+  paper = bone `#F7F7F4`, ink = graphite `#15171C`, panel and signal = lapis `#1F3FBF`, plus
+  `client` = amber `#E9A81A`, used only for work waiting on the client.
+- **Logo:** `src/components/logo.tsx` (the stage-bar mark, mirrored in Arabic, plus the `operra` /
+  `أوبيـــرّا` wordmarks). Also `src/app/icon.svg` and `opengraph-image.tsx`.
+- **Type:** Alexandria for Arabic and Latin (SIL OFL), self-hosted from `src/fonts/`. No monospace;
+  labels are sentence case. Headlines have no full stop; the tagline is the only exception.
+- **Signature graphics:** the kashida stroke under the hero headline (the one load animation), the
+  call sheet (`src/components/call-sheet.tsx`, copy in `content/*/home.ts` → `CALL_SHEET`) and
+  stage bars in `Schematic`.
+- **Roles:** `src/content/roles.ts` maps the brand's audiences (Buyer, Champion, Daily users,
   Guests) to the product's roles (Admin, Team member, Client).
 
 ### Where the site departs from the brand book (on purpose)

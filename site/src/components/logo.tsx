@@ -1,52 +1,96 @@
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 /*
- * The Live O and the constructed lowercase wordmark, copied from the Operra brand system
- * (Logo component). Ring radius : stroke = 2 : 1, 60° opening at 1:30, dot diameter = stroke,
- * butt terminals. The opening never rotates or mirrors (also in RTL). The ring is never orange.
+ * The Kashida mark and wordmarks (BRAND.md → Logo).
+ *
+ * Five rounded bars inside a circle: brief, production, review, approval, delivery.
+ * The first three are complete, the last two are still filling. Like the Arabic kashida
+ * (ـ), the bars grow from the start of the reading direction, so in Arabic the mark is
+ * mirrored and fills from the right. Bars: height 9, gap 3.6, fully rounded ends.
  */
 
-/** `panel-graphic`: the deck-cover treatment — a quiet ring on panel with the signal dot. */
-type Tone = "ink" | "on-panel" | "mono" | "panel-graphic";
+type Tone = "brand" | "on-panel" | "mono" | "panel-graphic";
 
-const ringClass: Record<Tone, string> = {
-  ink: "stroke-ink",
-  "on-panel": "stroke-on-panel",
-  mono: "stroke-ink",
-  "panel-graphic": "stroke-line-panel",
-};
-const dotClass: Record<Tone, string> = {
-  ink: "fill-signal",
-  "on-panel": "fill-signal",
+const barFill: Record<Tone, string> = {
+  brand: "fill-signal",
+  "on-panel": "fill-on-panel",
   mono: "fill-ink",
-  "panel-graphic": "fill-signal",
+  "panel-graphic": "fill-line-panel",
 };
 
-/** Primary / reverse / mono wordmark. Minimum 64px wide on screen. */
-export function Wordmark({ tone = "ink", className, title = "Operra" }: { tone?: Tone; className?: string; title?: string }) {
+/** Bar lengths as a share of the full width, top to bottom. */
+const BARS = [1, 1, 1, 0.62, 0.3];
+
+export function Mark({
+  tone = "brand",
+  rtl = false,
+  className,
+  title,
+}: {
+  tone?: Tone;
+  /** Fill from the right (Arabic). */
+  rtl?: boolean;
+  className?: string;
+  title?: string;
+}) {
+  const clip = useId();
   return (
-    <svg viewBox="-8 4 268 78" role="img" aria-label={title} className={cn("h-6 w-auto", className)}>
-      <path className={ringClass[tone]} d="M35.45 31.86 A16 16 0 1 1 24.14 20.55" fill="none" strokeWidth="8" />
-      <circle className={dotClass[tone]} cx="31.31" cy="24.69" r="4.0" />
-      <g className={ringClass[tone]} fill="none" strokeWidth="8">
-        <path d="M54 16 V74" />
-        <circle cx="70" cy="36" r="16" />
-        <path d="M104 36 H136 A16 16 0 1 0 132.26 46.28" />
-        <path d="M154 16 V56 M154 36 A16 16 0 0 1 170 20 H175" />
-        <path d="M185 16 V56 M185 36 A16 16 0 0 1 201 20 H206" />
-        <circle cx="232" cy="36" r="16" />
-        <path d="M248 16 V56" />
+    <svg
+      viewBox="0 0 64 64"
+      role={title ? "img" : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+      className={cn("size-6 shrink-0", className)}
+    >
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="32" cy="32" r="30" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`} className={barFill[tone]} transform={rtl ? "translate(64 0) scale(-1 1)" : undefined}>
+        {BARS.map((w, i) => (
+          <rect key={i} x={w === 1 ? -6 : -4.5} y={2 + i * 12.6} width={w === 1 ? 76 : 64 * w + 4.5} height="9" rx="4.5" />
+        ))}
       </g>
     </svg>
   );
 }
 
-/** The Live O on its own: avatars, favicon, small spaces. Minimum 16px. */
-export function LiveO({ tone = "ink", className }: { tone?: Tone; className?: string }) {
+/** Kept name for older call sites: the mark on its own (avatars, favicon, small spaces). */
+export const LiveO = Mark;
+
+/**
+ * Mark + wordmark. English "operra" in lowercase; Arabic "أوبيـرّا" with a kashida between
+ * the ب and the ي, the stretch that gives the identity its name. Minimum 72px wide.
+ */
+export function Wordmark({
+  tone = "brand",
+  lang = "en",
+  className,
+  title = "Operra",
+}: {
+  tone?: Tone;
+  lang?: "en" | "ar";
+  className?: string;
+  title?: string;
+}) {
+  const ar = lang === "ar";
+  const text = tone === "on-panel" ? "text-on-panel" : "text-ink";
   return (
-    <svg viewBox="0 0 64 64" aria-hidden className={cn("size-6", className)}>
-      <path className={ringClass[tone]} d="M51.32 26.82 A20 20 0 1 1 37.18 12.68" fill="none" strokeWidth="10" />
-      <circle className={dotClass[tone]} cx="46.14" cy="17.86" r="5.0" />
-    </svg>
+    <span role="img" aria-label={title} className={cn("inline-flex h-6 items-center gap-2", className)}>
+      <Mark tone={tone === "panel-graphic" ? "on-panel" : tone} rtl={ar} className="h-full w-auto" />
+      <span
+        aria-hidden
+        lang={ar ? "ar" : "en"}
+        className={cn(
+          "font-semibold whitespace-nowrap",
+          text,
+          ar ? "text-[1.15em] leading-none" : "text-[1.2em] leading-none tracking-[-0.04em]",
+        )}
+      >
+        {ar ? "أوبيـــرّا" : "operra"}
+      </span>
+    </span>
   );
 }

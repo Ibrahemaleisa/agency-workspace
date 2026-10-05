@@ -29,7 +29,7 @@ export default async function SolutionsPage() {
             {SOLUTIONS.map((s, i) => (
               <li key={s.slug} className="bg-surface">
                 <LocalLink href={`/solutions/${s.slug}`} className="group flex h-full flex-col p-6 transition-colors hover:bg-paper sm:p-8">
-                  <p className="flex items-center gap-2 font-mono text-[11px] leading-4 font-medium tracking-[0.08em] text-muted uppercase">
+                  <p className="flex items-center gap-2 text-[13px] leading-5 font-medium text-muted">
                     <Icon name={s.icon} className="size-4 text-ink" />
                     {String(i + 1).padStart(2, "0")} — <bdi>{s.module.name}</bdi> {t.moduleSuffix}
                   </p>

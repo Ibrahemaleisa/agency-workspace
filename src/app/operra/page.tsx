@@ -112,22 +112,22 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
       <ControlHeader name={admin.name} />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {requests.length > 0 && (
-          <section aria-labelledby="requests-title" className="mb-10 rounded-lg border-2 border-[#0B0D10] bg-white p-5" data-testid="plan-requests">
+          <section aria-labelledby="requests-title" className="mb-10 rounded-lg border-2 border-[#15171C] bg-white p-5" data-testid="plan-requests">
             <h2 id="requests-title" className="text-lg font-semibold">
               Waiting for activation · {requests.length}
             </h2>
-            <p className="mt-1 text-sm text-[#5A606B]">
+            <p className="mt-1 text-sm text-[#5B606B]">
               These agencies chose a plan. Once they’ve paid, activate it: their workspace opens for the months paid and they get an invoice.
             </p>
-            <ul className="mt-4 divide-y divide-[#E3E4E0]">
+            <ul className="mt-4 divide-y divide-[#E1E2DE]">
               {requests.map((r) => (
                 <li key={r.id} className="py-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span>
                       <Link href={`/operra/customers/${r.orgId}`} className="font-medium underline-offset-4 hover:underline">{r.org}</Link>{" "}
-                      <span className="font-mono text-xs text-[#5A606B]">{r.serial}</span> · wants <strong>{r.plan}</strong>
+                      <span className="font-mono text-xs text-[#5B606B]">{r.serial}</span> · wants <strong>{r.plan}</strong>
                     </span>
-                    <span className="text-xs text-[#5A606B]">
+                    <span className="text-xs text-[#5B606B]">
                       {r.by ? `${r.by} · ` : ""}
                       {format(r.createdAt, "d MMM yyyy, HH:mm")}
                     </span>
@@ -159,7 +159,7 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                     />
                     <form action={dismissRequestAction}>
                       <input type="hidden" name="requestId" value={r.id} />
-                      <button className="rounded-md px-3 py-1.5 text-sm text-[#5A606B] underline underline-offset-4">Dismiss</button>
+                      <button className="rounded-md px-3 py-1.5 text-sm text-[#5B606B] underline underline-offset-4">Dismiss</button>
                     </form>
                   </div>
                 </li>
@@ -168,10 +168,10 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
           </section>
         )}
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#E3E4E0] bg-[#E3E4E0] sm:grid-cols-5">
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#E1E2DE] bg-[#E1E2DE] sm:grid-cols-5">
           {stats.map(([label, n]) => (
             <div key={label} className="bg-white p-4">
-              <dt className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{label}</dt>
+              <dt className="text-xs font-medium text-[#5B606B]">{label}</dt>
               <dd className="mt-1 font-mono text-2xl">{n}</dd>
             </div>
           ))}
@@ -182,13 +182,13 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
             defaultValue={q}
             placeholder="Search by instance ID, company or address — e.g. OPR-000042"
             aria-label="Search customers"
-            className="block w-full max-w-md rounded-md border border-[#8C919A] bg-white px-3 py-2 text-sm"
+            className="block w-full max-w-md rounded-md border border-[#8D929C] bg-white px-3 py-2 text-sm"
           />
-          <button className="rounded-md bg-[#0B0D10] px-3.5 py-2 text-sm font-medium text-white">Search</button>
+          <button className="rounded-md bg-[#15171C] px-3.5 py-2 text-sm font-medium text-white">Search</button>
         </form>
-        <div className="mt-4 overflow-x-auto rounded-lg border border-[#E3E4E0] bg-white">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-[#E1E2DE] bg-white">
           <table className="w-full min-w-[820px] text-sm">
-            <thead className="border-b border-[#E3E4E0] text-start font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">
+            <thead className="border-b border-[#E1E2DE] text-start text-xs font-medium text-[#5B606B]">
               <tr>
                 {["Instance", "Company", "Tenant", "Subscription", "Provisioning", "Users", "Created"].map((h) => (
                   <th key={h} scope="col" className="px-4 py-2.5 text-start font-medium">
@@ -197,9 +197,9 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E3E4E0]">
+            <tbody className="divide-y divide-[#E1E2DE]">
               {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-[#F6F6F3]">
+                <tr key={r.id} className="hover:bg-[#F7F7F4]">
                   <td className="px-4 py-3 font-mono">
                     <Link href={`/operra/customers/${r.id}`} className="underline-offset-4 hover:underline">
                       {r.serial}
@@ -214,18 +214,18 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                       <span className="font-medium">{r.name}</span>
                       {r.isDemo && <Badge tone="violet">Preview</Badge>}
                     </div>
-                    <div className="font-mono text-xs text-[#5A606B]">{r.slug}</div>
+                    <div className="font-mono text-xs text-[#5B606B]">{r.slug}</div>
                   </td>
                   <td className="px-4 py-3"><Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge></td>
                   <td className="px-4 py-3">
                     {(() => {
-                      if (!r.subStatus) return <span className="text-[#5A606B]">—</span>;
+                      if (!r.subStatus) return <span className="text-[#5B606B]">—</span>;
                       const status = effectiveStatus({ status: r.subStatus, trialEndsAt: r.trialEndsAt, providerSubscriptionId: r.providerSubscriptionId, provider: r.provider ?? undefined, currentPeriodEnd: r.currentPeriodEnd });
                       return (
                         <>
                           <Badge tone={SUB_TONE[status] ?? "slate"}>{status}</Badge>
                           {r.trialEndsAt && (status === "trialing" || status === "expired") && (
-                            <div className="mt-0.5 text-xs text-[#5A606B]">
+                            <div className="mt-0.5 text-xs text-[#5B606B]">
                               {status === "expired" ? "ended" : "until"} {format(r.trialEndsAt, "d MMM")}
                             </div>
                           )}
@@ -233,30 +233,30 @@ export default async function ControlCustomers({ searchParams }: PageProps<"/ope
                       );
                     })()}
                   </td>
-                  <td className="px-4 py-3 text-[#5A606B]">{r.provisioning ?? "—"}</td>
+                  <td className="px-4 py-3 text-[#5B606B]">{r.provisioning ?? "—"}</td>
                   <td className="px-4 py-3 font-mono">{r.users}</td>
-                  <td className="px-4 py-3 text-[#5A606B]">{format(r.createdAt, "d MMM yyyy")}</td>
+                  <td className="px-4 py-3 text-[#5B606B]">{format(r.createdAt, "d MMM yyyy")}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-[#5A606B]">No customers match “{q}”.</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-[#5B606B]">No customers match “{q}”.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
         <section aria-labelledby="config-title" className="mt-10">
-          <h2 id="config-title" className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">
+          <h2 id="config-title" className="text-xs font-medium text-[#5B606B]">
             Configuration
           </h2>
-          <ul className="mt-3 divide-y divide-[#E3E4E0] rounded-lg border border-[#E3E4E0] bg-white text-sm" data-testid="config-checks">
+          <ul className="mt-3 divide-y divide-[#E1E2DE] rounded-lg border border-[#E1E2DE] bg-white text-sm" data-testid="config-checks">
             {configChecks().map((c) => (
               <li key={c.key} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5">
-                <span aria-hidden className={`size-2 shrink-0 rounded-full ${c.ok === true ? "bg-emerald-600" : c.ok === false ? "bg-[#C8283A]" : "bg-[#8C919A]"}`} />
+                <span aria-hidden className={`size-2 shrink-0 rounded-full ${c.ok === true ? "bg-emerald-600" : c.ok === false ? "bg-[#C42B3C]" : "bg-[#8D929C]"}`} />
                 <span className="font-mono text-xs">{c.key}</span>
                 <span className="sr-only">{c.ok === true ? "OK" : c.ok === false ? "Problem" : "Optional, not set"}</span>
-                <span className="text-[#5A606B]">{c.note}</span>
+                <span className="text-[#5B606B]">{c.note}</span>
               </li>
             ))}
           </ul>

@@ -103,19 +103,19 @@ export default async function ControlSignups({ searchParams }: PageProps<"/operr
 
         <section aria-labelledby="funnel" className="mt-8">
           <h2 id="funnel" className={label}>Funnel · last {days} days</h2>
-          <ol className="mt-3 space-y-2 rounded-lg border border-[#E3E4E0] bg-white p-4 text-sm" data-testid="funnel">
+          <ol className="mt-3 space-y-2 rounded-lg border border-[#E1E2DE] bg-white p-4 text-sm" data-testid="funnel">
             {stages.map(([name, n], i) => {
               const prev = i > 0 ? stages[i - 1][1] : 0;
               return (
                 <li key={name} className="grid grid-cols-[minmax(0,11rem)_1fr_auto] items-center gap-3 sm:grid-cols-[14rem_1fr_9rem]">
                   <span className="truncate">{name}</span>
-                  <span className="h-5 rounded bg-[#F6F6F3]" aria-hidden>
-                    <span className="block h-5 rounded bg-[#0B0D10]" style={{ width: `${(n / top) * 100}%`, minWidth: n ? 4 : 0 }} />
+                  <span className="h-5 rounded bg-[#F7F7F4]" aria-hidden>
+                    <span className="block h-5 rounded bg-[#15171C]" style={{ width: `${(n / top) * 100}%`, minWidth: n ? 4 : 0 }} />
                   </span>
                   <span className="text-end font-mono">
                     {n}
                     {i > 0 && prev > 0 && n <= prev && (
-                      <span className="ms-2 text-xs text-[#5A606B]" title="Share of the stage before">
+                      <span className="ms-2 text-xs text-[#5B606B]" title="Share of the stage before">
                         {pct(n, prev)}
                       </span>
                     )}
@@ -124,7 +124,7 @@ export default async function ControlSignups({ searchParams }: PageProps<"/operr
               );
             })}
           </ol>
-          <p className="mt-2 text-xs text-[#5A606B]">
+          <p className="mt-2 text-xs text-[#5B606B]">
             Visitors come from the marketing site; a visit and a sign-up line up when the visitor arrived through the site’s links.
           </p>
         </section>
@@ -137,10 +137,10 @@ export default async function ControlSignups({ searchParams }: PageProps<"/operr
               empty={unfinished.length === 0 && "Everyone who started in this period finished."}
             >
               {unfinished.map((s) => (
-                <tr key={s.id} className="hover:bg-[#F6F6F3]">
+                <tr key={s.id} className="hover:bg-[#F7F7F4]">
                   <Td>
                     <div className="font-medium">{s.name}</div>
-                    <a href={`mailto:${s.email}`} className="text-xs text-[#5A606B] underline-offset-4 hover:underline" dir="ltr">
+                    <a href={`mailto:${s.email}`} className="text-xs text-[#5B606B] underline-offset-4 hover:underline" dir="ltr">
                       {s.email}
                     </a>
                   </Td>
@@ -165,14 +165,14 @@ export default async function ControlSignups({ searchParams }: PageProps<"/operr
           ).map(([title, list, unit]) => (
             <section key={title}>
               <h2 className={label}>{title}</h2>
-              <ul className="mt-3 divide-y divide-[#E3E4E0] rounded-lg border border-[#E3E4E0] bg-white text-sm">
+              <ul className="mt-3 divide-y divide-[#E1E2DE] rounded-lg border border-[#E1E2DE] bg-white text-sm">
                 {list.map((r) => (
                   <li key={r.key ?? "—"} className="flex justify-between gap-3 px-4 py-2">
                     <span className="truncate font-mono text-xs" dir="ltr">{r.key ?? "—"}</span>
                     <span className="font-mono" title={unit}>{r.n}</span>
                   </li>
                 ))}
-                {list.length === 0 && <li className="px-4 py-3 text-[#5A606B]">No visits yet.</li>}
+                {list.length === 0 && <li className="px-4 py-3 text-[#5B606B]">No visits yet.</li>}
               </ul>
             </section>
           ))}

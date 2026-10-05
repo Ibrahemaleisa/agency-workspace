@@ -11,7 +11,7 @@ export async function generateMetadata() {
   return pageMetadata({ title: PAGES.contact.metaTitle, description: PAGES.contact.metaDescription, path: "/contact", locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 const link = "text-ink underline underline-offset-4";
 
 export default async function ContactPage() {

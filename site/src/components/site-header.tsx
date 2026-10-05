@@ -68,7 +68,7 @@ export function SiteHeader({ nav, mobileNav }: { nav: NavLink[]; mobileNav: NavL
       </a>
       <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-8 px-4 sm:px-8">
         <LocalLink href="/" aria-label={ui.home} className="-m-2 shrink-0 p-2">
-          <Wordmark className="h-6" title="Operra" />
+          <Wordmark className="h-6" lang={locale === "ar" ? "ar" : "en"} title="Operra" />
         </LocalLink>
 
         <nav aria-label={ui.mainNav} className="hidden md:block">

@@ -4,12 +4,12 @@ import { OperraWordmark } from "./operra-mark";
 
 export function ControlHeader({ name }: { name: string }) {
   return (
-    <header className="border-b border-[#E3E4E0] bg-[#F6F6F3]">
+    <header className="border-b border-[#E1E2DE] bg-[#F7F7F4]">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Link href="/operra" aria-label="Control center home">
           <OperraWordmark className="h-5 w-auto" />
         </Link>
-        <span className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">Control center</span>
+        <span className="text-xs font-medium text-[#5B606B]">Control center</span>
         <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link href="/operra" className="hover:underline">Customers</Link>
           <Link href="/operra/signups" className="hover:underline">Sign-ups</Link>
@@ -18,7 +18,7 @@ export function ControlHeader({ name }: { name: string }) {
           <Link href="/operra/payments" className="hover:underline">Payments</Link>
         </nav>
         <div className="ms-auto flex items-center gap-4 text-sm">
-          <span className="text-[#5A606B]">{name}</span>
+          <span className="text-[#5B606B]">{name}</span>
           <form action={platformLogout}>
             <button className="underline underline-offset-4">Sign out</button>
           </form>

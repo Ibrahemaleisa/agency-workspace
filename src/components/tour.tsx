@@ -176,7 +176,7 @@ export function Tour({
         className="absolute w-[min(340px,calc(100vw-24px))] rounded-xl bg-white p-5 text-zinc-900 shadow-2xl outline-none"
         style={cardStyle}
       >
-        <p className="font-mono text-[11px] tracking-[0.08em] text-zinc-500 uppercase">
+        <p className="text-xs font-medium text-zinc-500">
           {labels.stepOf.replace("{i}", String(step + 1)).replace("{n}", String(steps.length))}
         </p>
         <h2 id={titleId} className="mt-1.5 text-base font-semibold">

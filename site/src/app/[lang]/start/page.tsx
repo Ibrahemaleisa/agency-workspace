@@ -12,7 +12,7 @@ export async function generateMetadata() {
   return pageMetadata({ title: PAGES.start.metaTitle, description: PAGES.start.metaDescription, path: "/start", locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 /**
  * With the Operra app configured, sign-up is self-serve and this page explains the steps and hands

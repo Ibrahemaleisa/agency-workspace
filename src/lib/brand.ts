@@ -45,8 +45,8 @@ export const HEX = /^#[0-9a-f]{6}$/i;
 export const OPERRA_BRAND: Brand = {
   ...DEFAULT_BRAND,
   name: { en: "Operra", ar: "أوبيرّا" },
-  primary: "#121519",
-  accent: "#ffe9df",
+  primary: "#1F3FBF",
+  accent: "#E3E8FC",
   defaultLang: "en",
   showLanding: false,
 };

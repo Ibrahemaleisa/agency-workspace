@@ -10,8 +10,8 @@ export default async function ControlLogin() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5">
       <OperraWordmark />
-      <p className="mt-6 font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">Control center · staff only</p>
-      <div className="mt-3 rounded-xl border border-[#E3E4E0] bg-white p-6">
+      <p className="mt-6 text-xs font-medium text-[#5B606B]">Control center · staff only</p>
+      <div className="mt-3 rounded-xl border border-[#E1E2DE] bg-white p-6">
         <ActionForm action={platformLogin} className="space-y-4">
           <Field label="Email"><Input name="email" type="email" required autoComplete="username" /></Field>
           <Field label="Password"><Input name="password" type="password" required autoComplete="current-password" /></Field>

@@ -72,8 +72,8 @@ export function notificationEmail(opts: {
     ? "وصلك هذا البريد لأن إشعارات البريد مفعّلة في حسابك. يمكنك إيقافها من صفحة الإشعارات."
     : "You received this because email notifications are on for your account. You can turn them off on the Notifications page.");
   const font = ar ? "Tahoma, 'Segoe UI', Arial, sans-serif" : "'Helvetica Neue', Arial, sans-serif";
-  const html = `<!doctype html><html lang="${opts.lang}" dir="${dir}"><body style="margin:0;background:#f6f5f2;font-family:${font}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;padding:24px 12px"><tr><td align="center">
+  const html = `<!doctype html><html lang="${opts.lang}" dir="${dir}"><body style="margin:0;background:#f7f7f4;font-family:${font}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f4;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e7e5e4">
 <tr><td style="background:${primary};padding:18px 24px;color:${accent};font-size:18px;font-weight:700;letter-spacing:.3px" dir="${dir}">${esc(brandName)}</td></tr>
 <tr><td style="padding:24px" dir="${dir}" align="${ar ? "right" : "left"}">

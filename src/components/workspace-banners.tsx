@@ -21,16 +21,16 @@ export function PreviewBanner({
       data-title={readOnlyTitle}
       data-body={readOnlyBody}
       data-cta={startTrial}
-      className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 bg-[#121519] px-4 py-2 text-center text-xs text-[#F6F6F3] md:ms-64"
+      className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 bg-[#1F3FBF] px-4 py-2 text-center text-xs text-[#F7F7F4] md:ms-64"
       role="region"
       aria-label="Preview"
     >
       <span className="flex items-center gap-2">
-        <span aria-hidden className="size-2 rounded-full bg-[#FF5A1F]" />
+        <span aria-hidden className="size-2 rounded-full bg-[#E9A81A]" />
         {text}
       </span>
       <span className="flex items-center gap-3">
-        <Link href="/signup" className="rounded-md bg-[#F6F6F3] px-2.5 py-1 font-medium text-[#0B0D10]">
+        <Link href="/signup" className="rounded-md bg-[#F7F7F4] px-2.5 py-1 font-medium text-[#15171C]">
           {startTrial}
         </Link>
         <form action={logoutAction}>

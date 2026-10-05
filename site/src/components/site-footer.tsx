@@ -13,8 +13,8 @@ export async function SiteFooter() {
         <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             {/* Descriptor lock-up: wordmark above the descriptor, with the other language small. */}
-            <Wordmark className="h-6" />
-            <p className="mt-4 font-mono text-[11px] leading-4 font-medium tracking-[0.08em] text-muted uppercase">
+            <Wordmark className="h-6" lang={ar ? "ar" : "en"} />
+            <p className="mt-4 text-[13px] leading-5 font-medium text-muted">
               {ar ? site.descriptorAr : site.descriptor}
             </p>
             <p className="mt-1 text-[13px] leading-5 text-muted">
@@ -30,7 +30,7 @@ export async function SiteFooter() {
           </div>
           {FOOTER_NAV.map((group) => (
             <nav key={group.title} aria-label={group.title}>
-              <h2 className="font-mono text-[11px] leading-4 font-medium tracking-[0.08em] text-muted uppercase">{group.title}</h2>
+              <h2 className="text-[13px] leading-5 font-medium text-muted">{group.title}</h2>
               <ul className="mt-4 space-y-2.5">
                 {group.links.map((l) => (
                   <li key={l.href}>

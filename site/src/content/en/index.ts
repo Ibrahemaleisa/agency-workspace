@@ -1,5 +1,5 @@
 export { MAIN_NAV, MOBILE_NAV, FOOTER_NAV } from "./nav";
-export { THREAD_VS_OPERRA, PILLARS, FACTS } from "./home";
+export { THREAD_VS_OPERRA, PILLARS, FACTS, CALL_SHEET } from "./home";
 export { WORKFLOW } from "./workflow";
 export { AUDIENCES } from "./roles";
 export { THEMES, PLATFORM } from "./features";

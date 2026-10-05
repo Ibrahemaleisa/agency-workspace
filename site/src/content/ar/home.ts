@@ -41,3 +41,19 @@ export const FACTS: { value: string; label: string }[] = [
   { value: "2", label: "قناتا محادثة لكل مشروع" },
   { value: "2", label: "لغتان، واليمين لليسار أصيل" },
 ];
+
+/** جدول الأسبوع في الواجهة: أسبوع عمل حقيقي من الأحد إلى الخميس. */
+export const CALL_SHEET: typeof import("../en/home").CALL_SHEET = {
+  title: "بلوم كافيه · إطلاق الخريف",
+  week: "الأسبوع 41",
+  days: ["أحد 5", "اثنين 6", "ثلاثاء 7", "أربعاء 8", "خميس 9"],
+  weekend: "عطلة",
+  rows: [
+    { task: "الموجز ولوحة الإلهام", who: "ليلى", start: 0, span: 2, state: "done" },
+    { task: "يوم التصوير", who: "عمر", start: 2, span: 1, state: "done" },
+    { task: "مونتاج الإعلان التشويقي", who: "مايا", start: 2, span: 2, state: "now" },
+    { task: "اعتماد العميل", who: "لينا، بلوم كافيه", start: 4, span: 1, state: "client" },
+    { task: "منشورات يوم الإطلاق", who: "يوسف", start: 4, span: 1, state: "planned" },
+  ],
+  legend: { done: "مكتمل", now: "قيد التنفيذ", client: "بانتظار العميل", planned: "مخطّط" },
+};

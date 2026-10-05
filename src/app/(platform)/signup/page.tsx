@@ -40,15 +40,15 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
       sub={s.account.sub}
       aside={
         plan && (
-          <div className="rounded-xl border border-[#E3E4E0] bg-white p-5 sm:p-6 lg:mt-[92px]">
-            <p className="font-mono text-[11px] tracking-[0.08em] text-[#5A606B] uppercase">{s.account.plan}</p>
+          <div className="rounded-xl border border-[#E1E2DE] bg-white p-5 sm:p-6 lg:mt-[92px]">
+            <p className="text-xs font-medium text-[#5B606B]">{s.account.plan}</p>
             <p className="mt-2 text-lg font-semibold">{nameOf(plan)}</p>
-            <p className="mt-1 text-sm text-[#5A606B]">
+            <p className="mt-1 text-sm text-[#5B606B]">
               {s.start.trialTitle(plan.trialDays)}
               {price && ` · ${price}`}
             </p>
-            <p className="mt-4 text-sm leading-relaxed text-[#5A606B]">{s.start.trialBody}</p>
-            <p className="mt-6 border-t border-[#E3E4E0] pt-4 text-sm">
+            <p className="mt-4 text-sm leading-relaxed text-[#5B606B]">{s.start.trialBody}</p>
+            <p className="mt-6 border-t border-[#E1E2DE] pt-4 text-sm">
               <Link href="/preview" className="underline underline-offset-4">
                 {s.account.preview}
               </Link>

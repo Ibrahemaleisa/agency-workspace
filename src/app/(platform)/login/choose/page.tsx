@@ -22,13 +22,13 @@ export default async function ChooseWorkspacePage() {
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6 sm:py-16">
       <h1 className="text-[32px] leading-[38px] font-semibold tracking-[-0.02em]">{c.title}</h1>
       {memberships.length === 0 ? (
-        <p role="alert" className="mt-4 text-[#5A606B]">
+        <p role="alert" className="mt-4 text-[#5B606B]">
           {c.expired}
         </p>
       ) : (
         <>
-          <p className="mt-3 text-[16px] leading-[24px] text-[#5A606B]">{c.sub}</p>
-          <ul className="mt-8 divide-y divide-[#E3E4E0] overflow-hidden rounded-xl border border-[#E3E4E0] bg-white">
+          <p className="mt-3 text-[16px] leading-[24px] text-[#5B606B]">{c.sub}</p>
+          <ul className="mt-8 divide-y divide-[#E1E2DE] overflow-hidden rounded-xl border border-[#E1E2DE] bg-white">
             {memberships.map(({ user, org }) => {
               const brand = orgBrand(org);
               return (
@@ -36,10 +36,10 @@ export default async function ChooseWorkspacePage() {
                   <BrandMark logo={brand.logo} name={brand.name[lang]} className="h-10" variant="light" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{brand.name[lang]}</p>
-                    <p className="truncate font-mono text-xs text-[#5A606B]" dir="ltr">
+                    <p className="truncate font-mono text-xs text-[#5B606B]" dir="ltr">
                       {tenantEntryUrl(org).replace(/^https?:\/\//, "")}
                     </p>
-                    <p className="text-xs text-[#5A606B]">{t.roles[user.role]}</p>
+                    <p className="text-xs text-[#5B606B]">{t.roles[user.role]}</p>
                   </div>
                   <form action={chooseWorkspace}>
                     <input type="hidden" name="membershipId" value={user.id} />
@@ -53,7 +53,7 @@ export default async function ChooseWorkspacePage() {
           </ul>
         </>
       )}
-      <Link href="/login" className="mt-6 inline-block text-sm text-[#5A606B] underline underline-offset-4">
+      <Link href="/login" className="mt-6 inline-block text-sm text-[#5B606B] underline underline-offset-4">
         {c.other}
       </Link>
     </div>

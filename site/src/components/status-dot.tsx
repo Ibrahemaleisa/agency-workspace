@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
  * lightness, not hue alone. Marketing uses only the neutral states plus `live`
  * (success/warning/danger/info are product-only). Always paired with a text label.
  */
-export type DotState = "draft" | "queued" | "live" | "done";
+export type DotState = "draft" | "queued" | "live" | "client" | "done";
 
 export function StatusDot({ state, className, pulse = true }: { state: DotState; className?: string; pulse?: boolean }) {
   return (
@@ -16,6 +16,7 @@ export function StatusDot({ state, className, pulse = true }: { state: DotState;
         state === "draft" && "border-[1.5px] border-line-strong bg-surface",
         state === "queued" && "bg-muted",
         state === "live" && cn("bg-signal", pulse && "animate-signal"),
+        state === "client" && "bg-client",
         state === "done" && "bg-ink",
         className,
       )}

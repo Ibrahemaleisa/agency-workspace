@@ -69,8 +69,8 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
             status: "provisioning",
             // 4. Branding.
             logo: signup.logo,
-            primaryColor: signup.primaryColor ?? "#121519",
-            accentColor: signup.accentColor ?? "#e3e4e0",
+            primaryColor: signup.primaryColor ?? "#1F3FBF",
+            accentColor: signup.accentColor ?? "#e3e8fc",
             defaultLang: signup.defaultLang === "ar" ? "ar" : "en",
             contactEmail: signup.email,
           })

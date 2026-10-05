@@ -14,7 +14,7 @@ export async function generateMetadata() {
   return pageMetadata({ title: PAGES.product.metaTitle, description: PAGES.product.metaDescription, path: "/product", locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 export default async function ProductPage() {
   const { PAGES, AUDIENCES, UI } = await getContent();

@@ -1,30 +1,61 @@
-/* The Operra wordmark and Live O, copied from the Operra brand system (never re-typeset). */
-export function OperraWordmark({ className = "h-6 w-auto", onDark = false }: { className?: string; onDark?: boolean }) {
-  const ring = onDark ? "#F6F6F3" : "#0B0D10";
+/*
+ * The Operra Kashida mark and wordmark (BRAND.md → Logo), as used on Operra's own screens.
+ * Five rounded stage bars in a circle; the last two are still filling. In Arabic the mark is
+ * mirrored so it fills from the right, like a kashida stretching in the reading direction.
+ */
+const BARS = [1, 1, 1, 0.62, 0.3];
+
+export function OperraMark({ className = "size-6", onDark = false, rtl = false }: { className?: string; onDark?: boolean; rtl?: boolean }) {
+  const fill = onDark ? "#F7F7F4" : "#1F3FBF";
   return (
-    <svg viewBox="-8 4 268 78" role="img" aria-label="Operra" className={className}>
-      <path d="M35.45 31.86 A16 16 0 1 1 24.14 20.55" fill="none" stroke={ring} strokeWidth="8" />
-      <circle cx="31.31" cy="24.69" r="4" fill="#FF5A1F" />
-      <g fill="none" stroke={ring} strokeWidth="8">
-        <path d="M54 16 V74" />
-        <circle cx="70" cy="36" r="16" />
-        <path d="M104 36 H136 A16 16 0 1 0 132.26 46.28" />
-        <path d="M154 16 V56 M154 36 A16 16 0 0 1 170 20 H175" />
-        <path d="M185 16 V56 M185 36 A16 16 0 0 1 201 20 H206" />
-        <circle cx="232" cy="36" r="16" />
-        <path d="M248 16 V56" />
+    <svg viewBox="0 0 64 64" aria-hidden className={className}>
+      <defs>
+        <clipPath id="operra-mark-clip">
+          <circle cx="32" cy="32" r="30" />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#operra-mark-clip)" fill={fill} transform={rtl ? "translate(64 0) scale(-1 1)" : undefined}>
+        {BARS.map((w, i) => (
+          <rect key={i} x={w === 1 ? -6 : -4.5} y={2 + i * 12.6} width={w === 1 ? 76 : 64 * w + 4.5} height="9" rx="4.5" />
+        ))}
       </g>
     </svg>
   );
 }
 
-/** Status dot: done (ink), live (signal), next (hollow). */
+/** Mark + wordmark: "operra" in English, "أوبيـــرّا" (with its kashida) in Arabic. */
+export function OperraWordmark({
+  className = "h-6",
+  onDark = false,
+  lang = "en",
+}: {
+  className?: string;
+  onDark?: boolean;
+  lang?: "en" | "ar";
+}) {
+  const ar = lang === "ar";
+  return (
+    <span role="img" aria-label="Operra" className={`inline-flex items-center gap-2 ${className}`}>
+      <OperraMark className="h-full w-auto" onDark={onDark} rtl={ar} />
+      <span
+        aria-hidden
+        lang={ar ? "ar" : "en"}
+        className={`font-semibold leading-none whitespace-nowrap ${onDark ? "text-[#F7F7F4]" : "text-[#15171C]"} ${ar ? "text-[1.15em]" : "text-[1.2em] tracking-[-0.04em]"}`}
+        style={{ fontFamily: '"Alexandria Variable", system-ui, sans-serif' }}
+      >
+        {ar ? "أوبيـــرّا" : "operra"}
+      </span>
+    </span>
+  );
+}
+
+/** Stage state: done (lapis), live (lapis, breathing), next (empty). Amber is only for waiting on the client. */
 export function Dot({ state }: { state: "done" | "live" | "next" }) {
   const cls =
     state === "done"
-      ? "bg-[#0B0D10]"
+      ? "bg-[#15171C]"
       : state === "live"
-        ? "bg-[#FF5A1F] motion-safe:animate-pulse"
-        : "border-[1.5px] border-[#8C919A] bg-white";
+        ? "bg-[#1F3FBF] motion-safe:animate-pulse"
+        : "border-[1.5px] border-[#8D929C] bg-white";
   return <span aria-hidden className={`inline-block size-2.5 shrink-0 rounded-full ${cls}`} />;
 }

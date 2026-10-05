@@ -12,41 +12,25 @@ import { OG_IMAGES } from "@/lib/metadata";
 import { site } from "@/lib/site";
 
 /*
- * Brand type (all SIL Open Font License, see src/fonts/*-OFL.txt), self-hosted:
- * Instrument Sans for display and UI, IBM Plex Mono for labels and data,
- * IBM Plex Sans Arabic for Arabic.
+ * Brand type: Alexandria (SIL Open Font License, see src/fonts/Alexandria-OFL.txt), self-hosted.
+ * One family drawn for Arabic and Latin together, so both languages read as one voice.
+ * Two files split by script; the browser takes each glyph from whichever file has it.
  */
-const instrument = localFont({
-  src: "../../fonts/instrument-sans-latin-wght-normal.woff2",
-  weight: "400 700",
+const alexLatin = localFont({
+  src: "../../fonts/alexandria-latin-wght-normal.woff2",
+  weight: "300 800",
   style: "normal",
-  variable: "--font-instrument",
+  variable: "--font-alex-latin",
   display: "swap",
   adjustFontFallback: "Arial",
 });
 
-const plexMono = localFont({
-  src: [
-    { path: "../../fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
-    { path: "../../fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500", style: "normal" },
-  ],
-  variable: "--font-plex-mono",
+const alexArabic = localFont({
+  src: "../../fonts/alexandria-arabic-wght-normal.woff2",
+  weight: "300 800",
+  style: "normal",
+  variable: "--font-alex-arabic",
   display: "swap",
-  // Labels only — not worth competing with the headline font for early bandwidth.
-  preload: false,
-  adjustFontFallback: false,
-  fallback: ["ui-monospace", "SF Mono", "Consolas", "monospace"],
-});
-
-const plexArabic = localFont({
-  src: [
-    { path: "../../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2", weight: "400", style: "normal" },
-    { path: "../../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2", weight: "600", style: "normal" },
-  ],
-  variable: "--font-plex-arabic",
-  display: "swap",
-  // Only requested on pages that render Arabic text (unicode-range), so no preload.
-  preload: false,
   adjustFontFallback: "Arial",
 });
 
@@ -84,7 +68,7 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
 }
 
 export const viewport: Viewport = {
-  themeColor: "#f6f6f3",
+  themeColor: "#f7f7f4",
   colorScheme: "light",
 };
 
@@ -92,7 +76,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   return (
-    <html lang={lang} dir={dirOf(lang)} className={`${instrument.variable} ${plexMono.variable} ${plexArabic.variable} antialiased`}>
+    <html lang={lang} dir={dirOf(lang)} className={`${alexLatin.variable} ${alexArabic.variable} antialiased`}>
       <body className="min-h-dvh">
         <LocaleProvider locale={lang} ui={CONTENT[lang].UI}>
           <SiteHeader nav={CONTENT[lang].MAIN_NAV} mobileNav={CONTENT[lang].MOBILE_NAV} />

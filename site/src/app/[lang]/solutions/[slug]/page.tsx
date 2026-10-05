@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/solutions/
   return pageMetadata({ title: PAGES.solutions.detail.metaTitle.replace("{name}", name), description: s.summary, path: `/solutions/${s.slug}`, locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 export default async function SolutionPage({ params }: PageProps<"/[lang]/solutions/[slug]">) {
   const { PAGES, SOLUTIONS, UI, solutionBySlug, locale } = await getContent();

@@ -1,45 +1,52 @@
 @import "tailwindcss";
 
 /*
- * Operra design tokens — "Instrument" identity (Operra Brand & Identity System).
- * Names and values mirror the brand system's tokens.json. The website is light by default.
+ * Operra design tokens: "Cadence · Kashida" identity (see BRAND.md at the repo root).
  *
- * Colour budget per surface (the 90 / 8 / 2 rule): ~90% paper/surface/line,
- * ~8% ink/panel, at most ~2% signal. Signal marks what is live — never decoration.
- * success / warning / danger / info are product-only and don't appear in marketing.
+ * Lapis is the brand and is used big and confidently: primary buttons, the proof band,
+ * the mark. Bone is the page, graphite the text. Amber appears only where work is waiting
+ * on the client. Things that progress grow in the reader's direction (right to left in
+ * Arabic), like a kashida stretching along the baseline.
+ *
+ * Token names are kept from the previous system so every component restyles from here.
  */
 @theme {
-  --font-sans: var(--font-instrument), var(--font-plex-arabic), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Consolas, monospace;
-  --font-arabic: var(--font-plex-arabic), var(--font-instrument), system-ui, sans-serif;
+  --font-sans: var(--font-alex-latin), var(--font-alex-arabic), "Segoe UI", Tahoma, system-ui, sans-serif;
+  /* No monospace in this identity: data uses Alexandria with tabular figures. */
+  --font-mono: var(--font-alex-latin), var(--font-alex-arabic), "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-arabic: var(--font-alex-arabic), var(--font-alex-latin), Tahoma, system-ui, sans-serif;
 
-  /* Colour (light theme) */
-  --color-paper: #f6f6f3; /* page ground — warm, never pure white */
-  --color-surface: #ffffff; /* cards, tables, inputs on paper */
-  --color-panel: #121519; /* dark bands on light pages */
-  --color-ink: #0b0d10; /* text, logo, icons, primary buttons */
-  --color-on-panel: #f6f6f3; /* text, logo and icons on a panel band */
-  --color-on-panel-muted: #a3a8b1; /* secondary text on panel (4.5:1+) */
-  --color-muted: #5a606b; /* text-muted: secondary text, metadata */
-  --color-line: #e3e4e0; /* hairlines — decorative only */
-  --color-line-panel: #262b33; /* hairlines on panel */
-  --color-line-strong: #8c919a; /* control borders (3:1), hollow Draft dot */
-  --color-signal: #ff5a1f; /* the dot; live state; one hero moment per page */
-  --color-signal-text: #c2410c; /* signal when it must be text or an icon */
-  --color-signal-soft: #ffe9df; /* tint behind a live row */
-  --color-focus: #1d4ed8; /* focus ring (= info) */
-  --color-danger: #c8283a; /* form errors only */
+  /* Colour */
+  --color-paper: #f7f7f4; /* bone: page ground */
+  --color-surface: #ffffff; /* cards, tables, inputs */
+  --color-panel: #1f3fbf; /* lapis band */
+  --color-panel-deep: #182f8f; /* pressed / deepest lapis */
+  --color-ink: #15171c; /* graphite: text, icons */
+  --color-on-panel: #f7f7f4; /* text on lapis */
+  --color-on-panel-muted: #c7d0fa; /* secondary text on lapis (4.6:1) */
+  --color-muted: #5b606b; /* steel: secondary text */
+  --color-line: #e1e2de; /* hairlines */
+  --color-line-panel: #3d58cc; /* hairlines on lapis */
+  --color-line-strong: #8d929c; /* control borders (3:1) */
+  --color-signal: #1f3fbf; /* lapis: progress, the live state, primary action */
+  --color-signal-text: #1f3fbf;
+  --color-signal-soft: #e3e8fc; /* lapis tint */
+  --color-client: #e9a81a; /* amber: waiting on the client, nothing else */
+  --color-client-text: #8a5f00;
+  --color-client-soft: #fbf0d4;
+  --color-focus: #1f3fbf;
+  --color-danger: #c42b3c;
 
-  /* Shape */
-  --radius-xs: 4px; /* chips, keycaps, tags */
-  --radius-md: 8px; /* buttons, inputs, controls */
-  --radius-lg: 12px; /* cards, panels, dialogs */
-  --radius-xl: 20px; /* marketing media frames */
+  /* Shape: squared, architectural */
+  --radius-xs: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 
-  /* Motion — motion means a state changed; nothing moves for decoration */
+  /* Motion: things move when state changes, and the kashida stretches once on load */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --default-transition-duration: 120ms;
+  --default-transition-duration: 140ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -53,7 +60,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: 15px;
-  line-height: 22px;
+  line-height: 24px;
   text-rendering: optimizeLegibility;
 }
 
@@ -68,38 +75,25 @@ body {
   outline-offset: 2px;
 }
 
-/* Instrument Sans has a narrow word space; tight headline tracking needs a little back. */
 h1, h2, h3 {
   text-wrap: balance;
-  word-spacing: 0.06em;
 }
 
 p {
   text-wrap: pretty;
 }
 
-/*
- * Arabic: IBM Plex Sans Arabic leads, Instrument Sans picks up Latin words; mono labels fall back
- * to Plex Arabic for Arabic glyphs. Tracking breaks Arabic letter joining, so it's always 0, and
- * uppercase has no meaning there.
- */
+/* Arabic: tracking breaks letter joining, so it's always 0; Arabic needs more line height. */
 :lang(ar) {
-  --font-sans: var(--font-plex-arabic), var(--font-instrument), system-ui, sans-serif;
+  font-family: var(--font-arabic);
+  letter-spacing: 0 !important;
+}
+:lang(ar) h1, :lang(ar) h2, :lang(ar) h3 {
+  line-height: 1.4;
+}
+/* Latin runs inside Arabic pages lead with the Latin file. */
+html[lang="ar"] [lang="en"] {
   font-family: var(--font-sans);
-  letter-spacing: 0;
-}
-/* Mono labels in Arabic: Plex Arabic leads (Plex Mono's wide space would gap the words); numbers stay tabular. */
-:lang(ar) .font-mono {
-  font-family: var(--font-plex-arabic), var(--font-plex-mono), ui-monospace, monospace;
-}
-/* Latin data (addresses, emails) marked ltr / lang="en" keeps the real mono face. */
-:lang(ar) .font-mono[dir="ltr"],
-:lang(ar) .font-mono:lang(en) {
-  font-family: var(--font-plex-mono), ui-monospace, monospace;
-}
-/* Latin runs marked lang="en" inside Arabic pages (the other-language tagline) keep the Latin face. */
-html[lang="ar"] [lang="en"]:not(.font-mono) {
-  font-family: var(--font-instrument), system-ui, sans-serif;
 }
 
 /* Arrows point along the reading direction. */
@@ -108,27 +102,60 @@ html[lang="ar"] [lang="en"]:not(.font-mono) {
   transform: scaleX(-1);
 }
 
-/* Icons: 1.5px stroke, square caps, mitred joins — the wordmark's butt terminals. */
+/* Icons: 1.75px stroke with round ends, matching the mark's rounded bars. */
 svg.lucide {
-  stroke-width: 1.5;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* Numbers are tabular everywhere they are data. */
-.font-mono {
+/* Numbers are tabular wherever they are data. */
+.font-mono,
+.tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* The Signal: a live dot breathes (opacity 1 → 0.4 over 1.6s). Only on things actually in progress. */
+/* The live state breathes (opacity 1 → 0.45 over 1.6s). Only on things actually in progress. */
 @keyframes signal {
-  50% { opacity: 0.4; }
+  50% { opacity: 0.45; }
 }
 .animate-signal {
   animation: signal 1600ms ease-in-out infinite;
 }
 
+/*
+ * The kashida stretch: Operra's one orchestrated moment. A bar grows from the start edge
+ * (right in Arabic, left in English) to full length, once, when the page loads.
+ */
+@keyframes kashida {
+  from { transform: scaleX(0.08); }
+  to { transform: scaleX(1); }
+}
+.kashida-bar {
+  display: block;
+  transform-origin: var(--kashida-origin, left) center;
+  animation: kashida 1100ms var(--ease-out) 250ms both;
+}
+[dir="rtl"] .kashida-bar {
+  --kashida-origin: right;
+}
+
+/* Schedule bars on the call sheet fill in once, in reading order. */
+@keyframes schedule-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.schedule-bar {
+  transform-origin: var(--kashida-origin, left) center;
+  animation: schedule-fill 700ms var(--ease-out) both;
+}
+[dir="rtl"] .schedule-bar {
+  --kashida-origin: right;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-signal { animation: none; }
+  .animate-signal,
+  .kashida-bar,
+  .schedule-bar { animation: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

@@ -14,7 +14,7 @@ export async function generateMetadata() {
   return pageMetadata({ title: PAGES.pricing.metaTitle, description: PAGES.pricing.metaDescription, path: "/pricing", locale });
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 // Plans come from the app (control center → Plans); refresh them every minute.
 export const revalidate = 60;

@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { ButtonLink } from "@/components/button";
+import { CallSheet } from "@/components/call-sheet";
 import { CtaBand } from "@/components/cta-band";
 import { FeatureRow } from "@/components/feature-row";
 import { HeroShot } from "@/components/hero-shot";
@@ -26,7 +27,7 @@ export async function generateMetadata() {
   };
 }
 
-const label = "font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase";
+const label = "text-[13px] leading-5 font-medium";
 
 export default async function HomePage() {
   const { THEMES, FACTS, PILLARS, THREAD_VS_OPERRA, AUDIENCES, SOLUTIONS, WORKFLOW, PAGES, UI, locale } = await getContent();
@@ -54,35 +55,47 @@ export default async function HomePage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
-      {/* Hero: tagline → descriptor → subline, then the real product at 1:1. */}
+      {/*
+        Hero: the tagline with the kashida stroke stretching under it (the page's one moment of
+        motion), the call sheet beside it, then the real product at 1:1.
+      */}
       <section aria-labelledby="hero-title" className="bg-paper">
         <Container className="pt-14 sm:pt-20">
-          <p className={`flex items-center gap-2 text-muted ${label}`}>
-            <StatusDot state="live" />
-            {ar ? site.descriptorAr : site.descriptor}
-          </p>
-          <h1
-            id="hero-title"
-            className="mt-6 max-w-4xl text-[44px] leading-[46px] font-semibold tracking-[-0.035em] sm:text-[64px] sm:leading-[64px]"
-          >
-            {ar ? site.taglineAr : site.tagline}
-          </h1>
-          {/* The tagline in the other language, as in the bilingual lock-up. */}
-          <p className="mt-3 text-[20px] leading-8 text-muted sm:text-[22px]">
-            <span lang={ar ? "en" : "ar"} dir={ar ? "ltr" : "rtl"}>
-              {ar ? site.tagline : site.taglineAr}
-            </span>
-          </p>
-          <p className="mt-6 max-w-xl text-[18px] leading-[28px] text-muted">{t.heroSub}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href={links.trial} size="lg" arrow>
-              {UI.startTrial}
-            </ButtonLink>
-            <ButtonLink href="/demo" size="lg" variant="secondary">
-              {UI.exploreProduct}
-            </ButtonLink>
+          <div className="grid items-end gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16">
+            <div className="min-w-0">
+              <p className={`flex items-center gap-2 text-muted ${label}`}>
+                <StatusDot state="live" />
+                {ar ? site.descriptorAr : site.descriptor}
+              </p>
+              <h1
+                id="hero-title"
+                className="mt-6 max-w-3xl text-[44px] leading-[48px] font-bold tracking-[-0.04em] sm:text-[68px] sm:leading-[70px]"
+              >
+                {/* In Arabic the kashida stretches the word for "moving" itself. */}
+                {ar ? site.taglineAr.replace("يتحرك", "يتحـــرك") : site.tagline}
+              </h1>
+              <span aria-hidden className="mt-7 block h-2 w-full max-w-[560px] overflow-hidden rounded-full">
+                <span className="kashida-bar h-full w-full rounded-full bg-signal" />
+              </span>
+              {/* The tagline in the other language, as in the bilingual lock-up. */}
+              <p className="mt-6 text-[19px] leading-8 text-muted sm:text-[21px]">
+                <span lang={ar ? "en" : "ar"} dir={ar ? "ltr" : "rtl"}>
+                  {ar ? site.tagline : site.taglineAr}
+                </span>
+              </p>
+              <p className="mt-4 max-w-xl text-[18px] leading-[28px] text-ink/80">{t.heroSub}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <ButtonLink href={links.trial} size="lg" arrow>
+                  {UI.startTrial}
+                </ButtonLink>
+                <ButtonLink href="/demo" size="lg" variant="secondary">
+                  {UI.exploreProduct}
+                </ButtonLink>
+              </div>
+            </div>
+            <CallSheet className="min-w-0" />
           </div>
-          <div className="mt-12 sm:mt-16">
+          <div className="mt-14 sm:mt-20">
             <HeroShot />
           </div>
         </Container>

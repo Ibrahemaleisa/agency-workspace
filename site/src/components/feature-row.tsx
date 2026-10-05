@@ -22,7 +22,7 @@ export function FeatureRow({
   return (
     <article id={theme.id} className="grid scroll-mt-20 items-center gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
       <div className={cn(flip && "lg:order-2")}>
-        <p className="flex items-center gap-2 font-mono text-[11px] leading-4 font-medium tracking-[0.08em] text-muted uppercase">
+        <p className="flex items-center gap-2 text-[13px] leading-5 font-medium text-muted">
           <Icon name={theme.icon} className="size-4 text-ink" />
           {index !== undefined && `${String(index).padStart(2, "0")} — `}
           {theme.eyebrow}

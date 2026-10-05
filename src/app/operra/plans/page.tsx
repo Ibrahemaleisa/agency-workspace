@@ -7,8 +7,8 @@ import { createPlan, updatePlan } from "@/server/platform-admin-actions";
 import { ControlHeader } from "@/components/platform/control-header";
 import { ActionForm, SubmitButton } from "@/components/forms";
 
-const field = "mt-1 block w-full rounded-md border border-[#8C919A] bg-white px-2.5 py-1.5 text-sm";
-const label = "block text-xs font-medium text-[#5A606B]";
+const field = "mt-1 block w-full rounded-md border border-[#8D929C] bg-white px-2.5 py-1.5 text-sm";
+const label = "block text-xs font-medium text-[#5B606B]";
 
 /** The editable fields of a plan (new or existing). */
 function PlanFields({ p }: { p?: Plan }) {
@@ -86,7 +86,7 @@ export default async function PlansPage() {
       <ControlHeader name={admin.name} />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-semibold tracking-[-0.02em]">Plans</h1>
-        <p className="mt-1 max-w-3xl text-sm text-[#5A606B]">
+        <p className="mt-1 max-w-3xl text-sm text-[#5B606B]">
           Every plan marked “shown” appears on the website’s pricing page, in sign-up and on each agency’s billing page, in English
           and Arabic. Changes apply within a few minutes, to new sign-ups and new checkouts; running trials keep their end date.
           Leave the display price blank to show “priced on request”. Stripe charges its own Price; put its ID here (or in{" "}
@@ -94,8 +94,8 @@ export default async function PlansPage() {
         </p>
         <ul className="mt-6 space-y-4">
           {rows.map((p) => (
-            <li key={p.code} className="rounded-lg border border-[#E3E4E0] bg-white p-5">
-              <p className="font-mono text-xs text-[#5A606B]">
+            <li key={p.code} className="rounded-lg border border-[#E1E2DE] bg-white p-5">
+              <p className="font-mono text-xs text-[#5B606B]">
                 {p.code}
                 {!p.active && " · hidden"}
                 {p.featured && " · recommended"}
@@ -111,7 +111,7 @@ export default async function PlansPage() {
           ))}
         </ul>
 
-        <section aria-labelledby="new-plan" className="mt-10 rounded-lg border border-dashed border-[#8C919A] bg-white p-5">
+        <section aria-labelledby="new-plan" className="mt-10 rounded-lg border border-dashed border-[#8D929C] bg-white p-5">
           <h2 id="new-plan" className="text-lg font-semibold">Add a plan</h2>
           <ActionForm action={createPlan} successMessage="Plan added." className="mt-3 grid gap-4 sm:grid-cols-3">
             <label className={label}>

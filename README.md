@@ -99,7 +99,7 @@ Platform mode adds `OPERRA_PLATFORM`, `APP_SECRET`, `APP_ROOT_DOMAIN`, `CRON_SEC
 ## Fonts
 
 English uses **DM Sans** and Arabic uses **IBM Plex Sans Arabic**; Operra's own screens (sign-up,
-preview, control center) use **Instrument Sans** — all open-source (SIL OFL), so the edition can be
+preview, control center) and the marketing site use **Alexandria** (see `BRAND.md`) — all open-source (SIL OFL), so the edition can be
 redistributed to any customer. Don't add a commercially licensed font here unless
 its licence covers every customer deployment.
 

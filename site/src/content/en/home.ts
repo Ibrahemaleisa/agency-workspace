@@ -44,3 +44,30 @@ export const FACTS: { value: string; label: string }[] = [
   { value: "2", label: "Chat channels per project" },
   { value: "2", label: "Languages, RTL native" },
 ];
+
+/**
+ * The hero's call sheet: one real agency week, Sunday to Thursday (Friday and Saturday are the
+ * weekend). `start` and `span` are day columns (0 = Sunday). One row waits on the client.
+ */
+export type CallSheetState = "done" | "now" | "client" | "planned";
+export const CALL_SHEET: {
+  title: string;
+  week: string;
+  days: string[];
+  weekend: string;
+  rows: { task: string; who: string; start: number; span: number; state: CallSheetState }[];
+  legend: Record<CallSheetState, string>;
+} = {
+  title: "Bloom Café · Autumn launch",
+  week: "Week 41",
+  days: ["Sun 5", "Mon 6", "Tue 7", "Wed 8", "Thu 9"],
+  weekend: "Weekend",
+  rows: [
+    { task: "Brief and moodboard", who: "Leila", start: 0, span: 2, state: "done" },
+    { task: "Shoot day", who: "Omar", start: 2, span: 1, state: "done" },
+    { task: "Teaser edit", who: "Maya", start: 2, span: 2, state: "now" },
+    { task: "Client approval", who: "Lina, Bloom Café", start: 4, span: 1, state: "client" },
+    { task: "Launch-day posts", who: "Yusuf", start: 4, span: 1, state: "planned" },
+  ],
+  legend: { done: "Done", now: "In progress", client: "Waiting on the client", planned: "Planned" },
+};

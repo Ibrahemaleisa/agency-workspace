@@ -5,7 +5,7 @@ export function Container({ children, className }: { children: ReactNode; classN
   return <div className={cn("mx-auto w-full max-w-[1200px] px-4 sm:px-8", className)}>{children}</div>;
 }
 
-/* paper = page ground; surface = white band; panel = the dark proof band (use sparingly: ~8%). */
+/* paper = bone page ground; surface = white band; panel = the lapis band (one or two per page). */
 const tones = {
   paper: "bg-paper text-ink",
   surface: "bg-surface text-ink",
@@ -38,11 +38,11 @@ export function Section({
   );
 }
 
-/** Mono section marker: `01 — CLIENTS`. Uppercase, tracked +8%. */
+/** Section marker: a short sentence-case label above a heading. Sections aren't a sequence, so no numbers. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function Marker({ children, index, onPanel }: { children: ReactNode; index?: number; onPanel?: boolean }) {
   return (
-    <p className={cn("font-mono text-[11px] leading-4 font-medium tracking-[0.08em] uppercase", onPanel ? "text-on-panel-muted" : "text-muted")}>
-      {index !== undefined && <span>{String(index).padStart(2, "0")} — </span>}
+    <p className={cn("text-[13px] leading-5 font-medium", onPanel ? "text-on-panel-muted" : "text-muted")}>
       {children}
     </p>
   );

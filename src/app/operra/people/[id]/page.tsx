@@ -45,7 +45,7 @@ export default async function ControlPerson({ params }: PageProps<"/operra/peopl
   ]);
   const name = memberships[0]?.name ?? theirSignups[0]?.name ?? account.email;
   const timeline = events as unknown as Ev[];
-  const row = "flex justify-between gap-4 border-b border-[#E3E4E0] py-2.5 last:border-0";
+  const row = "flex justify-between gap-4 border-b border-[#E1E2DE] py-2.5 last:border-0";
   const fmt = (d: Date | null | undefined) => (d ? format(d, "d MMM yyyy, HH:mm") : "—");
 
   const detail = (e: Ev) => {
@@ -62,50 +62,50 @@ export default async function ControlPerson({ params }: PageProps<"/operra/peopl
     <>
       <ControlHeader name={admin.name} />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <Link href="/operra/people" className="text-sm text-[#5A606B] underline-offset-4 hover:underline">← People</Link>
+        <Link href="/operra/people" className="text-sm text-[#5B606B] underline-offset-4 hover:underline">← People</Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
           {account.emailVerifiedAt ? <Badge tone="green">verified</Badge> : <Badge tone="slate">unverified</Badge>}
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <section className="rounded-lg border border-[#E3E4E0] bg-white p-5 text-sm">
+          <section className="rounded-lg border border-[#E1E2DE] bg-white p-5 text-sm">
             <h2 className={label}>Account</h2>
             <dl className="mt-3">
-              <div className={row}><dt className="text-[#5A606B]">Email</dt><dd dir="ltr"><a href={`mailto:${account.email}`} className="underline-offset-4 hover:underline">{account.email}</a></dd></div>
-              <div className={row}><dt className="text-[#5A606B]">Joined</dt><dd>{fmt(account.createdAt)}</dd></div>
-              <div className={row}><dt className="text-[#5A606B]">Last sign-in</dt><dd>{fmt(account.lastLoginAt)}</dd></div>
-              <div className={row}><dt className="text-[#5A606B]">Sign-ins</dt><dd className="font-mono">{account.loginCount}</dd></div>
+              <div className={row}><dt className="text-[#5B606B]">Email</dt><dd dir="ltr"><a href={`mailto:${account.email}`} className="underline-offset-4 hover:underline">{account.email}</a></dd></div>
+              <div className={row}><dt className="text-[#5B606B]">Joined</dt><dd>{fmt(account.createdAt)}</dd></div>
+              <div className={row}><dt className="text-[#5B606B]">Last sign-in</dt><dd>{fmt(account.lastLoginAt)}</dd></div>
+              <div className={row}><dt className="text-[#5B606B]">Sign-ins</dt><dd className="font-mono">{account.loginCount}</dd></div>
             </dl>
             <ActionForm action={resetLinkAction} className="mt-4" linkLabels={{ note: "Give this link to the person yourself (valid 24 hours, works once):", copy: "Copy link", copied: "Copied" }}>
               <input type="hidden" name="accountId" value={account.id} />
               <SubmitButton size="sm" variant="secondary">Create password reset link</SubmitButton>
             </ActionForm>
           </section>
-          <section className="rounded-lg border border-[#E3E4E0] bg-white p-5 text-sm lg:col-span-2">
+          <section className="rounded-lg border border-[#E1E2DE] bg-white p-5 text-sm lg:col-span-2">
             <h2 className={label}>Agencies</h2>
-            <ul className="mt-3 divide-y divide-[#E3E4E0]">
+            <ul className="mt-3 divide-y divide-[#E1E2DE]">
               {memberships.map((m) => (
                 <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2.5">
                   <span>
                     <Link href={`/operra/customers/${m.orgId}`} className="font-medium underline-offset-4 hover:underline">{m.org}</Link>{" "}
-                    <span className="font-mono text-xs text-[#5A606B]">{m.serial}</span>
+                    <span className="font-mono text-xs text-[#5B606B]">{m.serial}</span>
                   </span>
-                  <span className="text-[#5A606B]">
+                  <span className="text-[#5B606B]">
                     {m.role}{!m.active && " · deactivated"} · last seen <Ago at={m.lastSeenAt} />
                   </span>
                 </li>
               ))}
-              {memberships.length === 0 && <li className="py-2.5 text-[#5A606B]">No agency yet.</li>}
+              {memberships.length === 0 && <li className="py-2.5 text-[#5B606B]">No agency yet.</li>}
             </ul>
             {theirSignups.length > 0 && (
               <>
                 <h2 className={`${label} mt-5`}>Sign-ups</h2>
-                <ul className="mt-2 divide-y divide-[#E3E4E0]">
+                <ul className="mt-2 divide-y divide-[#E1E2DE]">
                   {theirSignups.map((s) => (
                     <li key={s.id} className="flex flex-wrap justify-between gap-3 py-2">
                       <span>{s.companyName ?? "—"}</span>
-                      <span className="text-[#5A606B]">
+                      <span className="text-[#5B606B]">
                         {s.orgId ? "Finished" : `Stopped at ${stoppedAt(s.step)}`} · <Ago at={s.createdAt} />
                       </span>
                     </li>

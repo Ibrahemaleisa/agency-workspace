@@ -71,7 +71,7 @@ export function WorkflowTour({ steps, frames }: { steps: WorkflowStep[]; frames:
                 <StatusDot state={i < active ? "done" : i === active ? "live" : "draft"} pulse={false} />
                 {i < steps.length - 1 && <span aria-hidden className="ms-2 h-px flex-1 bg-line-strong" />}
               </span>
-              <span className="font-mono text-[11px] leading-4 tracking-[0.08em] text-muted">{String(i + 1).padStart(2, "0")}</span>
+              <span className="tabular text-[12px] leading-4 text-muted">{String(i + 1).padStart(2, "0")}</span>
               <span className={cn("text-[14px] leading-5", i === active ? "font-semibold text-ink" : "text-muted group-hover:text-ink")}>
                 {s.label}
               </span>
@@ -91,7 +91,7 @@ export function WorkflowTour({ steps, frames }: { steps: WorkflowStep[]; frames:
           className="mt-8 grid gap-8 lg:mt-10 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:gap-12"
         >
           <div className="flex flex-col">
-            <p className="font-mono text-[11px] leading-4 tracking-[0.08em] text-muted uppercase">
+            <p className="text-[13px] leading-5 text-muted">
               {t.step} {String(i + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
             </p>
             <h3 className="mt-3 text-[24px] leading-[30px] font-semibold tracking-[-0.015em]">{s.title}</h3>
@@ -116,7 +116,7 @@ export function WorkflowTour({ steps, frames }: { steps: WorkflowStep[]; frames:
               <button
                 type="button"
                 onClick={() => select(active + 1)}
-                className="inline-flex h-9 items-center gap-2 rounded-md bg-ink px-3.5 text-[14px] font-medium text-paper transition-colors hover:bg-[#23272e]"
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-signal px-3.5 text-[14px] font-medium text-on-panel transition-colors hover:bg-panel-deep"
               >
                 {active === steps.length - 1 ? t.startOver : `${t.next} ${steps[active + 1].label}`}
                 <ArrowRight aria-hidden className="size-4" />

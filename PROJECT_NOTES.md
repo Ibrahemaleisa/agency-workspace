@@ -16,8 +16,11 @@ Talk to the owner in **English** (they write in Arabic or English); the product 
 - **Never touch Fada's own project.** Do not modify, push to, deploy or change settings of:
   the GitHub repo `Ibrahemaleisa/agency-pm`, the Vercel project `agency-pm`
   (`agency-pm-gilt.vercel.app`), or its Neon database `neondb`. All work happens here.
-- **No commercially licensed fonts.** Only open-source fonts (currently DM Sans, IBM Plex Sans
-  Arabic, and — for Operra's own screens and the marketing site — Instrument Sans and IBM Plex Mono). Fada's Thmanyah font is licensed to Fada only and must never be added here.
+- **No commercially licensed fonts.** Only open-source fonts (currently DM Sans and IBM Plex Sans
+  Arabic in customer workspaces, and Alexandria for Operra's own screens and the marketing site). Fada's Thmanyah font is licensed to Fada only and must never be added here.
+- **Operra's identity is "Cadence · Kashida"** (lapis, bone, graphite, amber only for waiting on the
+  client; Alexandria; the stage-bar mark that fills in the reading direction). Rules: `BRAND.md`.
+  Design skill for this repo: `.claude/skills/frontend-design`.
 - **No Fada branding** in code, copy, seed data or defaults. Brand text uses the `{brand}`
   placeholder (see `lib/brand.ts` → `withBrand`).
 - **Never run the demo seed (`npm run demo` / `db:seed`) against a customer's database** — it wipes it.

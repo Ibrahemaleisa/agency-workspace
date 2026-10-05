@@ -4,8 +4,8 @@ import { cn } from "@/lib/cn";
 import { LocalLink } from "./local-link";
 
 /*
- * Buttons (brand system → Button). Primary actions are ink, not orange.
- * `signal` is reserved for the one decisive moment in a flow — at most one per screen.
+ * Buttons (BRAND.md → Button). Primary actions are lapis: the brand colour is the call to action.
+ * `signal` is kept as an alias of primary for older call sites.
  */
 type Variant = "primary" | "secondary" | "signal" | "ghost" | "on-panel" | "on-panel-secondary";
 
@@ -13,11 +13,11 @@ const base =
   "group inline-flex items-center justify-center gap-2 rounded-md border font-medium whitespace-nowrap transition-colors duration-[120ms] disabled:pointer-events-none disabled:opacity-60";
 
 const variants: Record<Variant, string> = {
-  primary: "border-transparent bg-ink text-paper hover:bg-[#23272e]",
+  primary: "border-transparent bg-signal text-on-panel hover:bg-panel-deep",
   secondary: "border-line-strong bg-surface text-ink hover:bg-paper",
-  signal: "border-transparent bg-signal text-ink hover:bg-[#ff6d38]",
+  signal: "border-transparent bg-signal text-on-panel hover:bg-panel-deep",
   ghost: "border-transparent text-ink hover:bg-ink/5",
-  "on-panel": "border-transparent bg-paper text-ink hover:bg-surface",
+  "on-panel": "border-transparent bg-paper text-signal hover:bg-surface",
   "on-panel-secondary": "border-on-panel/35 text-on-panel hover:border-on-panel/70",
 };
 
