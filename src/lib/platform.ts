@@ -8,6 +8,12 @@
  */
 export const isPlatform = () => process.env.OPERRA_PLATFORM === "true";
 
+/**
+ * The shared public demo of a single-agency deployment (SHOW_DEMO_ACCOUNTS=true lists the demo
+ * logins on the sign-in page). Visitors share those accounts, so credentials are read-only there.
+ */
+export const isSharedDemo = () => !isPlatform() && process.env.SHOW_DEMO_ACCOUNTS === "true";
+
 /** Public base URL of the app (sign-up, preview, platform pages, path-based tenant entry). */
 export function appUrl() {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");

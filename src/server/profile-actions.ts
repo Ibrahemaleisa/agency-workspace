@@ -10,6 +10,7 @@ import { str, type ActionState } from "@/lib/action-state";
 import { getT } from "@/lib/lang";
 import { isLang, LANG_COOKIE } from "@/lib/i18n";
 import { rateLimit } from "@/lib/rate-limit";
+import { isSharedDemo } from "@/lib/platform";
 
 /** Anyone: their own name, job title, language and email notifications (this membership). */
 export async function updateProfile(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -41,7 +42,10 @@ export async function updateProfile(_prev: ActionState, fd: FormData): Promise<A
  */
 export async function changeOwnPassword(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireUser({ allowLocked: true });
-  const e = (await getT()).t.settings.errors;
+  const { t } = await getT();
+  const e = t.settings.errors;
+  // The public demo shares its logins between visitors (SHOW_DEMO_ACCOUNTS=true).
+  if (isSharedDemo()) return { error: t.actions.demoLocked };
   if (!(await rateLimit(`pw-change:${user.accountId}`, 10, 15 * 60))) return { error: e.rate };
   const current = str(fd, "current") ?? "";
   const next = str(fd, "password") ?? "";

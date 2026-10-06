@@ -47,6 +47,13 @@ which is why `claude/**` branches are excluded from deployments in `vercel.json`
 Demo env vars: `DATABASE_URL`, `SEED_DEMO=true` (loads "Northwind Studio" sample data on the first
 build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `password`
 (admin `sara@northwind.agency`). No email configured on the demo.
+On a deployment with `SHOW_DEMO_ACCOUNTS=true` (not the platform), passwords, emails, roles and account
+status are read-only, so visitors can't lock each other out (`isSharedDemo()` in `lib/platform.ts`).
+
+**Nightly demo reset:** `vercel.json` schedules `/api/cron/reset-demo` daily at 03:00 UTC for every project,
+but it only acts where `DEMO_RESET=true`, `SEED_DEMO=true` and `SHOW_DEMO_ACCOUNTS=true` are all set, the
+deployment is not the Operra platform, and `CRON_SECRET` matches; everywhere else it returns 404. Set
+`DEMO_RESET` and `CRON_SECRET` on `workspace-demo` only — **never on a customer**.
 
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
@@ -116,6 +123,11 @@ the demo data (`site/scripts/capture-screenshots.mjs`). Pricing numbers are deli
   SMTP or Resend) in each user's language, after the response.
 - Copy: `lib/i18n.ts` (public site), `lib/i18n-app.ts` (app), `content/guide.ts` (built-in guide).
 - Migrations in `drizzle/` (`npm run db:generate`, `npm run db:migrate`).
+- Approval tasks: staff choosing "Completed" sends the task to the client instead; only admins
+  (`approvals.override`) can complete it without the client or remove the approval requirement.
+- Clients' project progress and counts only include tasks shared with them.
+- Logos are stored as data URLs but served from `/brand-logo/{orgId}?v=<hash>`; pages never inline them.
+- CI (`.github/workflows/ci.yml`) runs migrations, lint, typecheck and build for the app and `site/`.
 
 ## Working locally
 
@@ -124,5 +136,5 @@ docker compose up -d            # or any local Postgres; set DATABASE_URL in .en
 npm install
 npm run db:migrate && npm run dev          # empty → setup screen
 npm run demo                               # optional: demo data (wipes the DB)
-npx tsc --noEmit && npx eslint src && npm run build   # before every push
+npx next typegen && npx tsc --noEmit && npx eslint src && npm run build   # before every push
 ```

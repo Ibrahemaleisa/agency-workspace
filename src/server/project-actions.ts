@@ -29,6 +29,7 @@ import {
 } from "@/lib/events";
 import { nt } from "@/lib/notify-text";
 import { addModuleToProject } from "@/lib/modules";
+import { attachmentKeysForTasks, removeFiles } from "@/lib/uploads";
 import { idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { projectStatusLabel } from "@/lib/constants";
 import { getT } from "@/lib/lang";
@@ -71,34 +72,37 @@ export async function createProject(_prev: ActionState, fd: FormData): Promise<A
   if (startDate && endDate && endDate < startDate) return { error: (await msg()).endAfterStart };
 
   const ownerId = (await validInternalUserIds(user, [str(fd, "ownerId") ?? user.id]))[0] ?? user.id;
-  const [project] = await db
-    .insert(projects)
-    .values({
-      orgId: user.orgId,
-      clientId,
-      name,
-      description: str(fd, "description"),
-      status: parseProjectStatus(str(fd, "status")),
-      startDate,
-      endDate,
-      ownerId,
-    })
-    .returning();
-
   const memberIds = await validInternalUserIds(user, fd.getAll("memberIds").map(String));
-  if (memberIds.length)
-    await db.insert(projectMembers).values(memberIds.map((userId) => ({ projectId: project.id, userId })));
-
   const templateIds = fd.getAll("templateIds").map(String);
-  if (templateIds.length) {
-    const templates = await db
-      .select()
-      .from(moduleTemplates)
-      .where(and(eq(moduleTemplates.orgId, user.orgId), inArray(moduleTemplates.id, templateIds)));
+  const templates = templateIds.length
+    ? await db
+        .select()
+        .from(moduleTemplates)
+        .where(and(eq(moduleTemplates.orgId, user.orgId), inArray(moduleTemplates.id, templateIds)))
+    : [];
+
+  // The project, its members and its modules are created together or not at all.
+  const project = await db.transaction(async (tx) => {
+    const [project] = await tx
+      .insert(projects)
+      .values({
+        orgId: user.orgId,
+        clientId,
+        name,
+        description: str(fd, "description"),
+        status: parseProjectStatus(str(fd, "status")),
+        startDate,
+        endDate,
+        ownerId,
+      })
+      .returning();
+    if (memberIds.length)
+      await tx.insert(projectMembers).values(memberIds.map((userId) => ({ projectId: project.id, userId })));
     for (const template of templates) {
-      await addModuleToProject(db, { orgId: user.orgId, projectId: project.id, template, createdById: user.id });
+      await addModuleToProject(tx, { orgId: user.orgId, projectId: project.id, template, createdById: user.id });
     }
-  }
+    return project;
+  });
 
   await logActivity(user, {
     action: "project.created",
@@ -135,20 +139,23 @@ export async function updateProject(_prev: ActionState, fd: FormData): Promise<A
   const status = parseProjectStatus(str(fd, "status"));
   const ownerId = (await validInternalUserIds(user, [idOf(fd, "ownerId")]))[0] ?? project.ownerId;
 
-  await db
-    .update(projects)
-    .set({ name, description: str(fd, "description"), status, startDate, endDate, ownerId })
-    .where(eq(projects.id, project.id));
-
   const memberIds = await validInternalUserIds(user, fd.getAll("memberIds").map(String));
   const existing = await db
     .select({ userId: projectMembers.userId })
     .from(projectMembers)
     .where(eq(projectMembers.projectId, project.id));
   const added = memberIds.filter((id) => !existing.some((e) => e.userId === id));
-  await db.delete(projectMembers).where(eq(projectMembers.projectId, project.id));
-  if (memberIds.length)
-    await db.insert(projectMembers).values(memberIds.map((userId) => ({ projectId: project.id, userId })));
+
+  // Details and the member list change together, so a failure never leaves a project without members.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(projects)
+      .set({ name, description: str(fd, "description"), status, startDate, endDate, ownerId })
+      .where(eq(projects.id, project.id));
+    await tx.delete(projectMembers).where(eq(projectMembers.projectId, project.id));
+    if (memberIds.length)
+      await tx.insert(projectMembers).values(memberIds.map((userId) => ({ projectId: project.id, userId })));
+  });
 
   const changes: string[] = [];
   if (status !== project.status) changes.push(`status to ${projectStatusLabel(status)}`);
@@ -210,8 +217,13 @@ export async function removeModule(fd: FormData) {
   });
   if (!mod) return;
   // Removing a module removes its workflow; its tasks are deleted with it (explicit, confirmed in UI).
-  await db.delete(tasks).where(eq(tasks.moduleId, mod.id));
-  await db.delete(projectModules).where(eq(projectModules.id, mod.id));
+  const moduleTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.moduleId, mod.id));
+  const fileKeys = await attachmentKeysForTasks(moduleTasks.map((t) => t.id));
+  await db.transaction(async (tx) => {
+    await tx.delete(tasks).where(eq(tasks.moduleId, mod.id));
+    await tx.delete(projectModules).where(eq(projectModules.id, mod.id));
+  });
+  await removeFiles(fileKeys);
   await logActivity(user, {
     action: "module.removed",
     summary: `removed ${mod.name} module from "${project.name}"`,

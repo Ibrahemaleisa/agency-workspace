@@ -239,6 +239,8 @@ const en = {
   },
   task: {
     clientCanSee: "Client can see",
+    completeNeedsApproval: "Marking this complete sends it to the client for approval first.",
+    completeNeedsApprovalAdmin: "Needs client approval — marking it complete yourself skips the client.",
     approvalNeeded: "Your approval is needed",
     approvalNeededHint: "Review the deliverables below, then approve or request changes.",
     feedbackPlaceholder: "Feedback (required when requesting changes)",
@@ -577,6 +579,7 @@ const en = {
     userNotFound: "User not found.",
     nameRequired: "Name is required.",
     ownAdmin: "You cannot remove your own admin access.",
+    demoLocked: "This is a shared demo, so passwords, emails, roles and account status can’t be changed here.",
     templateNameRequired: "Name is required.",
     templateStagesRequired: "Add at least one workflow stage.",
     alreadyPending: "This task is already waiting for the client's approval.",
@@ -822,6 +825,8 @@ const ar: AppDict = {
   },
   task: {
     clientCanSee: "ظاهرة للعميل",
+    completeNeedsApproval: "عند تحديدها كمكتملة تُرسل أولاً للعميل لاعتمادها.",
+    completeNeedsApprovalAdmin: "تتطلب موافقة العميل — إكمالها بنفسك يتجاوز موافقته.",
     approvalNeeded: "مطلوب موافقتك",
     approvalNeededHint: "راجع التسليمات بالأسفل، ثم اعتمدها أو اطلب التعديل.",
     feedbackPlaceholder: "ملاحظاتك (مطلوبة عند طلب التعديل)",
@@ -1160,6 +1165,7 @@ const ar: AppDict = {
     userNotFound: "المستخدم غير موجود.",
     nameRequired: "الاسم مطلوب.",
     ownAdmin: "لا يمكنك إزالة صلاحية المدير عن نفسك.",
+    demoLocked: "هذه نسخة تجريبية مشتركة، لذلك لا يمكن تغيير كلمات المرور أو البريد أو الأدوار أو حالة الحسابات هنا.",
     templateNameRequired: "الاسم مطلوب.",
     templateStagesRequired: "أضف مرحلة واحدة على الأقل.",
     alreadyPending: "هذه المهمة بانتظار موافقة العميل بالفعل.",

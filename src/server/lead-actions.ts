@@ -12,6 +12,8 @@ import { assertCan } from "@/lib/permissions";
 import { getLang } from "@/lib/lang";
 import { DICT } from "@/lib/i18n";
 import { idOf, str, type ActionState } from "@/lib/action-state";
+import { rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request";
 
 
 /** Public: a visitor requests a project from the landing page. */
@@ -29,6 +31,8 @@ export async function submitLead(_prev: ActionState, fd: FormData): Promise<Acti
   // The agency whose public page this is (host / branded link / single-agency deployment).
   const org = await getPublicTenant();
   if (!org || org.isDemo || org.status !== "active") return { error: "Unavailable" };
+  // Every lead notifies (and may email) all of the agency's admins, so cap requests per visitor.
+  if (!(await rateLimit(`lead:${org.id}:${await clientIp()}`, 5, 3600))) return { error: t.errorTooMany };
 
   const [lead] = await db
     .insert(leads)

@@ -30,6 +30,8 @@ import {
   teamMessages,
   users,
   type TaskStatus,
+  projectStatusEnum,
+  type ProjectStatus,
 } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
 import { projectScope, taskScope } from "@/lib/access";
@@ -185,7 +187,11 @@ export async function listProjects(
   const today = todayISO();
   const conds: (SQL | undefined)[] = [projectScope(user)];
   if (f.status === "open") conds.push(inArray(projects.status, ["planning", "active", "on_hold"]));
-  else if (f.status) conds.push(eq(projects.status, f.status as never));
+  // An unknown status (e.g. a hand-edited URL) matches nothing instead of erroring in Postgres.
+  else if (f.status)
+    conds.push(
+      (projectStatusEnum.enumValues as string[]).includes(f.status) ? eq(projects.status, f.status as ProjectStatus) : sql`false`,
+    );
   if (f.clientId) conds.push(eq(projects.clientId, f.clientId));
   conds.push(keywordMatch(f.q, [projects.name, projects.description, clients.name, clients.industry, owner.name]));
 
@@ -198,6 +204,8 @@ export async function listProjects(
       waiting: sql<number>`count(*) filter (where ${tasks.approvalStatus} = 'pending')`.as("waiting"),
     })
     .from(tasks)
+    // Clients' progress and counts only include the tasks shared with them.
+    .where(user.role === "client" ? eq(tasks.clientVisible, true) : undefined)
     .groupBy(tasks.projectId)
     .as("task_stats");
 

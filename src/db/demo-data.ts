@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { addDays, format, subHours, subMinutes } from "date-fns";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "./index";
 import { ensureAccount } from "./accounts";
 import * as s from "./schema";
 import { DEFAULT_TEMPLATES } from "../lib/default-templates";
 import { addModuleToProject } from "../lib/modules";
-import { saveFile } from "../lib/uploads";
+import { removeFiles, saveFile } from "../lib/uploads";
 import { nt } from "../lib/notify-text";
 import type { Localized } from "../lib/events";
 
@@ -16,6 +16,24 @@ import type { Localized } from "../lib/events";
  * Used by the local demo seed (seed.ts) and the platform's read-only preview tenant (seed-preview.ts).
  * `mail` maps each login address (the preview uses unroutable .invalid addresses).
  */
+
+/**
+ * DESTRUCTIVE: wipes the whole database and loads Northwind Studio as the only agency.
+ * Used by `npm run demo` (seed.ts) and the shared demo's nightly reset (/api/cron/reset-demo).
+ * Never run against a customer's database or the Operra platform.
+ */
+export async function resetDemoDatabase(passwordHash: string) {
+  // Files in external storage (Vercel Blob) don't go away with the tables, so remove them too.
+  const oldFiles = await db.select({ key: s.attachments.storageKey }).from(s.attachments);
+  await db.execute(sql`TRUNCATE organizations, accounts, sessions, file_blobs, rate_limits RESTART IDENTITY CASCADE`);
+  await removeFiles(oldFiles.map((f) => f.key));
+  const [org] = await db
+    .insert(s.organizations)
+    .values({ name: "Northwind Studio", nameAr: "نورثويند", slug: "northwind", showcaseClients: ["Bloom Café", "Atlas Fitness", "Verde Real Estate", "Nimbus Tech"], contactEmail: "hello@northwind.agency" })
+    .returning();
+  await populateDemoAgency(org.id, { passwordHash });
+  return org;
+}
 
 const today = new Date();
 const d = (offset: number) => format(addDays(today, offset), "yyyy-MM-dd");

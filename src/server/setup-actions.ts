@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { count, eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { ensureAccount } from "@/db/accounts";
 import { accounts, organizations, users } from "@/db/schema";
@@ -27,21 +27,26 @@ export async function createWorkspace(_prev: ActionState, fd: FormData): Promise
   if (password.length < 8) return { error: t.actions.passwordLength };
 
   const slug = agency.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "agency";
-  const existing = await db.query.organizations.findFirst();
-  const org =
-    existing ??
-    (await db.insert(organizations).values({ name: agency, nameAr: agencyAr, slug, defaultLang: lang }).returning())[0];
-  if (existing) {
-    await db.update(organizations).set({ name: agency, nameAr: agencyAr }).where(eq(organizations.id, existing.id));
-  }
   const passwordHash = await hashPassword(password);
+  // Serialized: if two people submit at once, only the first creates the admin.
   const admin = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('workspace-setup'))`);
+    const [{ n: existingUsers }] = await tx.select({ n: count() }).from(users);
+    if (existingUsers > 0) return null;
+    const existing = await tx.query.organizations.findFirst();
+    const org =
+      existing ??
+      (await tx.insert(organizations).values({ name: agency, nameAr: agencyAr, slug, defaultLang: lang }).returning())[0];
+    if (existing) {
+      await tx.update(organizations).set({ name: agency, nameAr: agencyAr }).where(eq(organizations.id, existing.id));
+    }
     const { account, created } = await ensureAccount(tx, email, passwordHash);
     // First run: nobody uses this workspace yet, so a leftover account (no memberships) takes the new password.
     if (!created) await tx.update(accounts).set({ passwordHash }).where(eq(accounts.id, account.id));
     const [u] = await tx.insert(users).values({ orgId: org.id, accountId: account.id, name, email: account.email, role: "admin", lang }).returning();
     return u;
   });
+  if (!admin) return { error: t.setup.errors.done };
   await createSession(admin.id);
   redirect("/settings/brand");
 }

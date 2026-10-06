@@ -1,5 +1,6 @@
 "use server";
 
+import { isSharedDemo } from "@/lib/platform";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -58,8 +59,10 @@ async function setClientTeam(orgId: string, clientId: string, ids: string[]) {
         .from(users)
         .where(and(eq(users.orgId, orgId), inArray(users.id, ids), ne(users.role, "client")))
     : [];
-  await db.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
-  if (valid.length) await db.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  await db.transaction(async (tx) => {
+    await tx.delete(clientTeam).where(eq(clientTeam.clientId, clientId));
+    if (valid.length) await tx.insert(clientTeam).values(valid.map((u) => ({ clientId, userId: u.id })));
+  });
 }
 
 export async function createClient(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -172,7 +175,11 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
   if (target.id === admin.id && (role !== "admin" || !active))
     return { error: (await msg()).ownAdmin };
   const clientId = role === "client" ? optId(fd, "clientId") : null;
-  if (role === "client" && !clientId) return { error: (await msg()).clientUserNeedsClient };
+  if (role === "client") {
+    if (!clientId) return { error: (await msg()).clientUserNeedsClient };
+    const c = await db.query.clients.findFirst({ where: and(eq(clients.id, clientId), eq(clients.orgId, admin.orgId)) });
+    if (!c) return { error: (await msg()).invalidClient };
+  }
 
   const password = str(fd, "password");
   if (password && password.length < 8) return { error: (await msg()).passwordLength };
@@ -185,6 +192,10 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
 
   const email = str(fd, "email")?.toLowerCase() ?? target.email;
   const emailChanged = email !== target.email;
+  // Public demo (demo logins shown on the sign-in page): visitors share these accounts, so nobody
+  // may lock the others out by changing credentials, roles or account status.
+  if (isSharedDemo() && (password || emailChanged || !active || role !== target.role))
+    return { error: (await msg()).demoLocked };
   if (emailChanged || password) {
     // Email and password belong to the person, not to this agency: an admin may only change them
     // when this is the person's one and only workspace.

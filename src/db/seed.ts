@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
 import { db } from "./index";
 import * as s from "./schema";
-import { populateDemoAgency } from "./demo-data";
+import { resetDemoDatabase } from "./demo-data";
 
 /**
  * Local / single-agency demo: WIPES the database and loads the Northwind Studio sample agency.
@@ -19,10 +19,7 @@ async function main() {
     }
   }
   console.log("Resetting database…");
-  await db.execute(sql`TRUNCATE organizations, accounts, sessions, file_blobs RESTART IDENTITY CASCADE`);
-
-  const [org] = await db.insert(s.organizations).values({ name: "Northwind Studio", nameAr: "نورثويند", slug: "northwind", showcaseClients: ["Bloom Café", "Atlas Fitness", "Verde Real Estate", "Nimbus Tech"], contactEmail: "hello@northwind.agency" }).returning();
-  await populateDemoAgency(org.id, { passwordHash: await bcrypt.hash("password", 10) });
+  await resetDemoDatabase(await bcrypt.hash("password", 10));
 
   console.log("✓ Seed complete");
   console.log("  Log in with any of these (password: password):");

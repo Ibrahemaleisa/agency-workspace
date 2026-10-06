@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { createHash } from "node:crypto";
 import type { Organization } from "@/db/schema";
 import { getCurrentUser } from "./auth";
 import { getOrgById, getPublicTenant } from "./tenant";
@@ -14,6 +15,7 @@ import type { Lang } from "./i18n";
 export type Brand = {
   orgId: string | null;
   name: { en: string; ar: string };
+  /** URL of the uploaded logo (/brand-logo/{orgId}, cache-busted by content), or null. */
   logo: string | null;
   primary: string;
   accent: string;
@@ -55,7 +57,8 @@ export function orgBrand(org: Organization): Brand {
   return {
     orgId: org.id,
     name: { en: org.name, ar: org.nameAr || org.name },
-    logo: org.logo,
+    // Pages link to the logo instead of inlining its data URL (up to 300 KB) into every page.
+    logo: org.logo ? `/brand-logo/${org.id}?v=${createHash("sha1").update(org.logo).digest("hex").slice(0, 12)}` : null,
     primary: HEX.test(org.primaryColor) ? org.primaryColor : DEFAULT_BRAND.primary,
     accent: HEX.test(org.accentColor) ? org.accentColor : DEFAULT_BRAND.accent,
     defaultLang: org.defaultLang === "en" ? "en" : "ar",
@@ -65,6 +68,12 @@ export function orgBrand(org: Organization): Brand {
     social: { instagram: org.instagram ?? "", x: org.xHandle ?? "", linkedin: org.linkedin ?? "" },
     showcaseClients: org.showcaseClients ?? [],
   };
+}
+
+/** A workspace's logo as stored (a data: URL), for /brand-logo and the tab icon. */
+export async function getLogoDataUrl(orgId: string | null): Promise<string | null> {
+  if (!orgId) return null;
+  return (await getOrgById(orgId))?.logo ?? null;
 }
 
 /**

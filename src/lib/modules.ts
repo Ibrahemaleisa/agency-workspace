@@ -1,9 +1,11 @@
 import { eq, max } from "drizzle-orm";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import { projectModules, tasks, type ModuleTemplate, type TaskStatus } from "@/db/schema";
 
-type DB = PostgresJsDatabase<typeof schema>;
+/** The database or a transaction on it. */
+type DB = PgDatabase<PostgresJsQueryResultHKT, typeof schema>;
 
 /**
  * Attach a module template to a project: snapshot its workflow and fields,

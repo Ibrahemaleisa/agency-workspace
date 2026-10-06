@@ -13,6 +13,7 @@ const PUBLIC = [
   /^\/welcome$/,
   /^\/setup$/,
   /^\/lang$/,
+  /^\/brand-logo\//, // agency logos (public, like the sign-in page that shows them)
   /^\/signup(\/|$)/,
   /^\/preview(\/|$)/,
   /^\/invite\//,

@@ -31,7 +31,7 @@ import {
 import { nt } from "@/lib/notify-text";
 import { bool, idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { taskStatusLabel } from "@/lib/constants";
-import { MAX_UPLOAD_BYTES, removeFile, saveFile } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, attachmentKeysForTasks, removeFile, removeFiles, saveFile } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
 
 const msg = async () => (await getT()).t.actions;
@@ -146,7 +146,8 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
     changes.stage = stage && mod?.stages.some((s) => s.name === stage) ? stage : null;
   }
   if (can(user, "tasks.setClientVisibility")) {
-    changes.requiresApproval = bool(fd, "requiresApproval");
+    // Once a task needs client approval, only admins can drop that (otherwise it's a way around it).
+    changes.requiresApproval = bool(fd, "requiresApproval") || (task.requiresApproval && !can(user, "approvals.override"));
     changes.clientVisible = changes.requiresApproval || bool(fd, "clientVisible");
     if (!changes.requiresApproval && task.approvalStatus === "pending") changes.approvalStatus = "none";
   }
@@ -202,7 +203,10 @@ export async function deleteTask(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.delete");
   const { task } = await getAccessibleTask(user, idOf(fd, "taskId"));
+  // Stored files don't go away with the rows, so collect them first and remove them after.
+  const fileKeys = await attachmentKeysForTasks([task.id]);
   await db.delete(tasks).where(eq(tasks.id, task.id));
+  await removeFiles(fileKeys);
   await logActivity(user, {
     action: "task.deleted",
     summary: `deleted task "${task.title}"`,
@@ -221,8 +225,16 @@ export async function updateTaskStatus(fd: FormData) {
   const user = await requireUser();
   assertCan(user, "tasks.updateStatus");
   const { task, project } = await getAccessibleTask(user, idOf(fd, "taskId"));
-  const status = parseStatus(str(fd, "status"));
+  let status = parseStatus(str(fd, "status"));
   if (!status || status === task.status) return;
+
+  // Tasks that need the client's approval can't be closed by staff on their own: "Completed"
+  // sends them to the client instead (list, board and task page alike). Admins may override.
+  const skipsClient = status === "completed" && task.requiresApproval && task.approvalStatus !== "approved";
+  if (skipsClient && !can(user, "approvals.override")) {
+    status = "waiting_client";
+    if (task.status === status) return;
+  }
 
   let approvalStatus = task.approvalStatus;
   let clientVisible = task.clientVisible;
@@ -246,7 +258,9 @@ export async function updateTaskStatus(fd: FormData) {
 
   await logActivity(user, {
     action: "task.status",
-    summary: `moved "${task.title}" from ${taskStatusLabel(task.status)} to ${taskStatusLabel(status)}`,
+    summary:
+      `moved "${task.title}" from ${taskStatusLabel(task.status)} to ${taskStatusLabel(status)}` +
+      (skipsClient && status === "completed" ? " without client approval" : ""),
     params: { title: task.title, from: task.status, to: status },
     projectId: task.projectId,
     taskId: task.id,
