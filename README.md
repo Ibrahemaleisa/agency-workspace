@@ -76,6 +76,10 @@ npm run db:migrate                # empty database → first-run setup screen
 npm run dev                       # http://localhost:3000
 ```
 
+Tests: `npm test` runs the unit tests and, with `DATABASE_URL` set, database tests that create and remove
+their own throw-away agencies (safe on a development database; never point it at a customer's).
+`npm run verify:isolation` checks that tenants can't see each other's data.
+
 Want sample data to explore? `npm run demo` loads a demo agency ("Northwind Studio") with
 projects, tasks and users — every demo account uses the password `password`.
 **Never run the demo seed against a customer's database: it wipes it.**
@@ -92,6 +96,8 @@ projects, tasks and users — every demo account uses the password `password`.
 | `BLOB_READ_WRITE_TOKEN` | optional | Store uploads in Vercel Blob instead of the database |
 | `SHOW_DEMO_ACCOUNTS` | optional | `true` lists demo logins on the sign-in page (demo sites only) |
 | `SEED_DEMO` | optional | `true` loads the demo agency on the first build of an **empty** database (demo sites only) |
+| `LEGAL_ENTITY_NAME` / `LEGAL_CONTACT_EMAIL` | recommended | Fill the `/terms` and `/privacy` pages (default: the agency's name and contact email) |
+| `ALERT_WEBHOOK_URL` | optional | Post unexpected server errors to a Slack / Discord / Teams webhook |
 
 Platform mode adds `OPERRA_PLATFORM`, `APP_SECRET`, `APP_ROOT_DOMAIN`, `CRON_SECRET`, `SEED_PREVIEW`,
 `BILLING_PROVIDER`, `STRIPE_*` and more — all in [DEPLOYMENT.md](DEPLOYMENT.md) and `.env.example`.
