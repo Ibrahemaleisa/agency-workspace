@@ -194,7 +194,7 @@ async function OverviewTab({
   allTasks: { moduleId: string | null; stage: string | null; status: (typeof TASK_STATUSES)[number]["value"] }[];
 }) {
   const { t: tr } = await getT();
-  const visible = await listTasks(user, { projectId: project.id });
+  const visible = await listTasks(user, { projectId: project.id, limit: 5000 });
   const general = visible.filter((t) => !t.moduleId);
   const templates = can(user, "projects.manage")
     ? await db.select().from(moduleTemplates).where(eq(moduleTemplates.orgId, user.orgId)).orderBy(asc(moduleTemplates.name))
@@ -253,7 +253,7 @@ async function TasksTab({
   view: "board" | "list";
 }) {
   const { t: tr } = await getT();
-  const all = await listTasks(user, { projectId: project.id });
+  const all = await listTasks(user, { projectId: project.id, limit: 5000 });
   const shown =
     status === "all" ? all : status === "open" ? all.filter((t) => t.status !== "completed") : all.filter((t) => t.status === status);
   const people = can(user, "tasks.create") ? await listInternalUsers(user.orgId) : [];

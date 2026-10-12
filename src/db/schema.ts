@@ -578,7 +578,7 @@ export const notifications = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("notifications_user_idx").on(t.userId, t.readAt)],
+  (t) => [index("notifications_user_idx").on(t.userId, t.readAt), index("notifications_created_idx").on(t.createdAt)],
 );
 
 export const activityLog = pgTable(
