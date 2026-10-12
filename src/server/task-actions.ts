@@ -34,6 +34,7 @@ import { taskStatusLabel } from "@/lib/constants";
 import { MAX_UPLOAD_BYTES, attachmentKeysForTasks, removeFile, removeFiles, saveFile, statFile } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
 import { storageLimitError } from "@/lib/limits";
+import { parseRecurrence, spawnNextIfRecurring } from "@/lib/recurrence";
 
 const msg = async () => (await getT()).t.actions;
 
@@ -105,6 +106,7 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
       dueDate: str(fd, "dueDate"),
       clientVisible: requiresApproval || bool(fd, "clientVisible"),
       requiresApproval,
+      recurrence: parseRecurrence(str(fd, "recurrence")),
       createdById: user.id,
     })
     .returning();
@@ -142,6 +144,7 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
     description: str(fd, "description"),
     priority: parsePriority(str(fd, "priority")),
     dueDate: str(fd, "dueDate"),
+    recurrence: parseRecurrence(str(fd, "recurrence")),
     updatedAt: new Date(),
   };
   if (task.moduleId) {
@@ -285,6 +288,7 @@ export async function updateTaskStatus(fd: FormData) {
       link: taskLink(task.id),
     });
   }
+  if (status === "completed") await spawnNextIfRecurring(user, task.id);
   refresh();
 }
 
@@ -384,6 +388,7 @@ export async function decideApproval(_prev: ActionState, fd: FormData): Promise<
     body: feedback,
     link: taskLink(task.id),
   });
+  if (approved) await spawnNextIfRecurring(user, task.id);
   refresh();
   return { ok: true };
 }

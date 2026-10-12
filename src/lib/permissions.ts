@@ -31,6 +31,8 @@ export const PERMISSIONS = [
   "leads.manage", // landing-page project requests
   "brand.manage", // white-label brand settings
   "billing.manage", // plan, subscription and payment
+  "time.log", // log time on tasks
+  "reports.view", // time and task reports, CSV exports
   "users.invite", // email invitations
   "dashboard.admin",
   "dashboard.employee",
@@ -42,6 +44,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: PERMISSIONS.filter((p) => p !== "dashboard.employee" && p !== "dashboard.client"),
   employee: [
+    "time.log",
     "tasks.create",
     "tasks.edit",
     "tasks.updateStatus",

@@ -21,6 +21,7 @@ const NAV: Entry[] = [
   { href: "/chat", key: "teamChat", icon: "teamChat", permission: "chat.internal" },
   { href: "/clients", key: "clients", icon: "clients", permission: "clients.view", section: "sectionAgency" },
   { href: "/leads", key: "leads", icon: "leads", permission: "leads.manage", section: "sectionAgency" },
+  { href: "/reports", key: "reports", icon: "reports", permission: "reports.view", section: "sectionAgency" },
   { href: "/activity", key: "activity", icon: "activity", permission: "activity.viewAll", section: "sectionAgency" },
   { href: "/team", key: "team", icon: "team", permission: "users.manage", section: "sectionSettings" },
   { href: "/templates", key: "templates", icon: "templates", permission: "templates.manage", section: "sectionSettings" },

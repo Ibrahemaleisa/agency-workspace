@@ -35,6 +35,18 @@ export const GUIDE: Record<"ar" | "en", GuideSection[]> = {
    "html": "<h2>دليل الموظف</h2>\n      <h3>يومك في المنصّة</h3>\n      <ol class=\"steps\">\n        <li><div><b>ابدأ من الرئيسية</b><span>مهامك المفتوحة، المستحق اليوم، المتأخر، وما ينتظرك للمراجعة.</span></div></li>\n        <li><div><b>حدّث الحالة</b><span>من القائمة مباشرة أو من صفحة المهمة: للتنفيذ ← قيد التنفيذ ← مراجعة ← بانتظار العميل ← مكتملة. كل تغيير يُبلَّغ للمدراء وفريق المشروع.</span></div></li>\n        <li><div><b>علّق واذكر زملاءك</b><span>اكتب تعليقاً في المهمة واستخدم @الاسم لتنبيه شخص. التعليق داخلي افتراضياً؛ إذا كانت المهمة مشاركة مع العميل يمكنك اختيار «رد على العميل».</span></div></li>\n        <li><div><b>أضف صوراً وملفات</b><span>في المهمة ← «أضف صوراً أو ملفات» ← اختر عدة ملفات ← رفع. فعّل «مشاركة مع العميل» إذا كانت تسليماً (الحد 4 ميجابايت لكل رفعة).</span></div></li>\n        <li><div><b>اطلب موافقة العميل</b><span>في المهمة ← بطاقة «موافقة العميل» ← «طلب موافقة العميل». شارك الملفات مع العميل أولاً (أيقونة العين) ليراها. إذا طلب تعديلات، عدّل ثم «اطلب الموافقة مرة أخرى».</span></div></li><li><div><b>أنشئ مهمة</b><span>من المشروع ← تبويب المهام. يمكنك إرفاق صور وقت الإنشاء.</span></div></li>\n      </ol>\n      <h3>المحادثات</h3>\n      <p><b>محادثة المشروع:</b> تبويب «المحادثة» داخل المشروع. قناة «الفريق» داخلية ويصل إشعارها لكل فريق المشروع. قناة «العميل» يراها العميل ويصله إشعار بكل رسالة.</p>\n      <p><b>الشات العام:</b> من القائمة. للتواصل العام بين كل الفريق. يصل إشعار فقط لمن تذكره بـ @الاسم، أو للجميع بـ <code>@all</code> أو <code>@الكل</code>.</p>"
   },
   {
+   "id": "work",
+   "audience": "staff",
+   "label": "الخطوات والوقت والتكرار",
+   "html": "<h2>الخطوات والوقت والتكرار</h2>\n<ol class=\"steps\">\n<li><div><b>قائمة الخطوات</b><span>في صفحة المهمة ← «قائمة الخطوات»: أضف خطوات صغيرة وعلّمها عند إنجازها. يظهر التقدم بجانب العنوان. الخطوات داخلية ولا يراها العميل.</span></div></li>\n<li><div><b>تسجيل الوقت</b><span>في المهمة ← بطاقة «الوقت»: الساعات والدقائق والتاريخ وملاحظة اختيارية. يمكنك حذف سجلاتك، والمدير يحذف أي سجل.</span></div></li>\n<li><div><b>المهام المتكررة</b><span>«تعديل التفاصيل» ← «التكرار»: يومياً أو أسبوعياً أو شهرياً. عند إنجاز المهمة تُنشأ التالية تلقائياً بموعد تسليم لاحق ونفس المسؤول والخطوات.</span></div></li>\n<li><div><b>التقويم في هاتفك</b><span>«التقويم» ← «إنشاء رابط التقويم» ثم أضفه في تقويم Google أو Outlook أو Apple (إضافة تقويم ← من رابط). الرابط خاص بك؛ أنشئ رابطاً جديداً إن شاركته بالخطأ.</span></div></li>\n</ol>"
+  },
+  {
+   "id": "data",
+   "audience": "admin",
+   "label": "التقارير والبيانات",
+   "html": "<h2>التقارير والبيانات</h2>\n<ol class=\"steps\">\n<li><div><b>التقارير</b><span>من القائمة ← «التقارير»: الوقت حسب المشروع وحسب الشخص لأي فترة، والمهام المنجزة والمتأخرة. نزّل سجلات الوقت أو كل المهام بصيغة CSV للفوترة أو الجداول.</span></div></li>\n<li><div><b>الحذف</b><span>يمكن حذف المشروع أو العميل من صفحته (منطقة الخطر) بكتابة اسمه للتأكيد، وحذف القوالب والطلبات، وإزالة شخص من مساحة العمل من «الفريق والمستخدمون».</span></div></li>\n<li><div><b>تصدير البيانات</b><span>الإعدادات ← «تصدير بياناتك»: ملف JSON بكل محتوى مساحة العمل. ويمكن لكل شخص حذف حسابه من الإعدادات.</span></div></li>\n</ol>"
+  },
+  {
    "id": "client",
    "audience": "all",
    "label": "دليل العميل",
@@ -113,6 +125,18 @@ export const GUIDE: Record<"ar" | "en", GuideSection[]> = {
    "audience": "staff",
    "label": "Employee guide",
    "html": "<h2>Employee guide</h2>\n      <h3>Your day in the workspace</h3>\n      <ol class=\"steps\">\n        <li><div><b>Start on the dashboard</b><span>Your open tasks, what's due today, what's overdue, and what's waiting for your review.</span></div></li>\n        <li><div><b>Update status</b><span>Right from the list or on the task page: To Do → In Progress → Review → Waiting for Client → Completed. Every change notifies the admins and the project team.</span></div></li>\n        <li><div><b>Comment and mention</b><span>Write a comment on the task and use @name to notify someone. Comments are internal by default; on client-visible tasks you can choose \"Reply to client\".</span></div></li>\n        <li><div><b>Add images and files</b><span>On the task → \"Add images or files\" → pick several → Upload. Tick \"Share with client\" for deliverables (4 MB per upload).</span></div></li>\n        <li><div><b>Request client approval</b><span>On the task → the \"Client approval\" card → \"Request client approval\". Share files with the client first (eye icon) so they can see them. If they ask for changes, update the work and \"Request approval again\".</span></div></li><li><div><b>Create a task</b><span>Project → Tasks tab. You can attach images while creating it.</span></div></li>\n      </ol>\n      <h3>Chat</h3>\n      <p><b>Project chat:</b> the Chat tab inside a project. The \"Team\" channel is internal and notifies the whole project team. The \"Client\" channel is visible to the client, who is notified of every message.</p>\n      <p><b>Team chat:</b> in the sidebar, for everyday talk across the agency. It only notifies people you @mention, or everyone with <code>@all</code> / <code>@الكل</code>.</p>"
+  },
+  {
+   "id": "work",
+   "audience": "staff",
+   "label": "Steps, time and repeats",
+   "html": "<h2>Steps, time and repeating tasks</h2>\n<ol class=\"steps\">\n<li><div><b>Checklist</b><span>On a task → “Checklist”: add small steps and tick them off. Progress shows next to the title. Steps are internal; clients don’t see them.</span></div></li>\n<li><div><b>Log time</b><span>On a task → “Time”: hours, minutes, the date and an optional note. You can remove your own entries; admins can remove any.</span></div></li>\n<li><div><b>Repeating tasks</b><span>“Edit details” → “Repeats”: every day, week or month. When the task is completed the next one is created with its due date moved on, the same assignee and the same checklist.</span></div></li>\n<li><div><b>Deadlines in your phone’s calendar</b><span>“Calendar” → “Create my calendar link”, then add it in Google Calendar, Outlook or Apple Calendar (Add calendar → From URL). The link is yours alone; make a new one if you shared it by mistake.</span></div></li>\n</ol>"
+  },
+  {
+   "id": "data",
+   "audience": "admin",
+   "label": "Reports and your data",
+   "html": "<h2>Reports and your data</h2>\n<ol class=\"steps\">\n<li><div><b>Reports</b><span>Menu → “Reports”: time by project and by person for any period, plus tasks completed and overdue. Download time entries or every task as CSV for invoicing or spreadsheets.</span></div></li>\n<li><div><b>Deleting</b><span>Delete a project or client from its page (Danger zone) by typing its name, delete templates and leads, and remove someone from the workspace in “Team & Users”.</span></div></li>\n<li><div><b>Export</b><span>Settings → “Export your data”: one JSON file with everything in the workspace. Anyone can delete their own account from Settings.</span></div></li>\n</ol>"
   },
   {
    "id": "client",

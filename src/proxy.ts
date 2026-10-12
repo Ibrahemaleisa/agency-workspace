@@ -26,6 +26,7 @@ const PUBLIC = [
   /^\/api\/health$/,
   /^\/api\/t$/, // marketing-site page views
   /^\/api\/plans$/, // public plan list
+  /^\/api\/calendar\/[A-Za-z0-9_.-]+$/, // private calendar feeds (the secret in the URL is the credential)
 ];
 
 /**
