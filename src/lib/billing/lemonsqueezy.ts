@@ -77,6 +77,7 @@ export function verifyLemonSqueezySignature(payload: string, header: string | nu
 
 type LsSubscription = {
   status: string;
+  variant_id?: number | null;
   customer_id: number;
   renews_at: string | null;
   ends_at: string | null;
@@ -137,6 +138,7 @@ export function normalizeLemonSqueezyEvent(event: {
       customerId: String(s.customer_id),
       subscriptionId: String(event.data.id),
       ...mapStatus(s),
+      planRef: { variantId: s.variant_id != null ? String(s.variant_id) : null, code: event.meta.custom_data?.plan ?? null },
       raw: event,
     };
   }

@@ -13,6 +13,12 @@ export type BillingEvent = {
   status?: "trialing" | "active" | "past_due" | "canceled" | "incomplete" | "unpaid";
   currentPeriodEnd?: Date | null;
   cancelAtPeriodEnd?: boolean;
+  /**
+   * What the provider says is being paid for now: a Stripe Price id, a Lemon Squeezy variant id, or
+   * the plan code from our own metadata (least reliable: it isn't updated when the customer switches
+   * plan in the provider's portal). Resolved to one of our plans by applyBillingEvent.
+   */
+  planRef?: { priceId?: string | null; variantId?: string | null; code?: string | null };
   /** A successful payment: recorded once as an invoice and emailed to the agency's admins. */
   invoice?: {
     providerInvoiceId: string;

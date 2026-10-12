@@ -55,6 +55,8 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
   if (!plan || !org || org.isDemo) return null;
   const existing = await pendingRequest(orgId);
   const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) });
+  // Any request before this one (pending, dismissed or activated) already had its chance at grace.
+  const earlier = !!existing || !!(await db.query.planRequests.findFirst({ where: eq(planRequests.orgId, orgId), columns: { id: true } }));
 
   await db.transaction(async (tx) => {
     const paid = transfer
@@ -74,9 +76,9 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
     if (sub && !sub.providerSubscriptionId && sub.status !== "active") {
       // The trial continues on the chosen plan; a trial that has ended (or ends within the grace
       // period) gets a few days so the agency is never locked out while staff activate the plan.
-      // Only the first request earns grace.
+      // Grace is given once per workspace: a dismissed request followed by a new one earns no more days.
       const graceUntil = new Date(Date.now() + GRACE_DAYS * DAY);
-      const needsGrace = !existing && (!sub.trialEndsAt || sub.trialEndsAt < graceUntil);
+      const needsGrace = !earlier && (!sub.trialEndsAt || sub.trialEndsAt < graceUntil);
       await tx
         .update(subscriptions)
         .set({
