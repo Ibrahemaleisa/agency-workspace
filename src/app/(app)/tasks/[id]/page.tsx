@@ -19,9 +19,12 @@ import {
   requestClientApproval,
   toggleAttachmentVisibility,
   updateTask,
+  registerDirectUploads,
   updateTaskStatus,
   uploadAttachment,
 } from "@/server/task-actions";
+import { DirectUpload } from "@/components/direct-upload";
+import { MAX_DIRECT_UPLOAD_BYTES, directUploadsEnabled } from "@/lib/uploads";
 import { deleteComment, editComment } from "@/server/lifecycle-actions";
 import { ActivityFeed } from "@/components/lists";
 import { Highlight } from "@/components/project-chat";
@@ -264,7 +267,26 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                 ))}
               </ul>
             )}
-            {can(user, "files.upload") && (
+            {can(user, "files.upload") && directUploadsEnabled() && (
+              <DirectUpload
+                taskId={task.id}
+                orgId={user.orgId}
+                canShare={can(user, "tasks.setClientVisibility")}
+                maxBytes={MAX_DIRECT_UPLOAD_BYTES}
+                register={registerDirectUploads}
+                labels={{
+                  choose: tr.media.choose,
+                  hint: tr.media.dropHint,
+                  chosen: tr.media.chosen,
+                  upload: tr.media.upload,
+                  uploading: k.uploading,
+                  share: k.shareWithClient,
+                  tooLarge: tr.actions.fileTooLarge(MAX_DIRECT_UPLOAD_BYTES / 1024 / 1024),
+                  failed: tr.errors.generic,
+                }}
+              />
+            )}
+            {can(user, "files.upload") && !directUploadsEnabled() && (
               <ActionForm action={uploadAttachment} resetOnSuccess className="flex flex-wrap items-center gap-3 border-t border-zinc-100 px-4 py-3">
                 <input type="hidden" name="taskId" value={task.id} />
                 <FilePicker

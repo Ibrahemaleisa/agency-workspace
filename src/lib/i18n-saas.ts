@@ -83,6 +83,7 @@ const en = {
   limits: {
     members: (n: number) => `Your plan includes up to ${n} team members. Upgrade to the Full package in Plan & billing to add more.`,
     clients: (n: number) => `Your plan includes up to ${n} clients. Upgrade to the Full package in Plan & billing to add more.`,
+    storage: (gb: number) => `Your plan includes ${gb} GB of files and this would go over it. Remove old files, or upgrade in Plan & billing.`,
   },
   pay: {
     title: "Complete your subscription",
@@ -168,6 +169,7 @@ const en = {
     },
   },
   billing: {
+    storage: "Files stored",
     noPlan: "No plan yet. Choose one below to keep your workspace open after the trial.",
     noPlanDemo: "This sample agency has no subscription. In your own workspace you'll see your plan, trial days left and invoices here.",
     title: "Plan & billing",
@@ -502,6 +504,7 @@ const ar: SaasDict = {
   limits: {
     members: (n: number) => `باقتك تشمل حتى ${n} أعضاء في الفريق. انتقل إلى الحزمة الكاملة من «الخطة والفوترة» لإضافة المزيد.`,
     clients: (n: number) => `باقتك تشمل حتى ${n} عملاء. انتقل إلى الحزمة الكاملة من «الخطة والفوترة» لإضافة المزيد.`,
+    storage: (gb: number) => `باقتك تشمل ${gb} غيغابايت من الملفات وهذا سيتجاوزها. احذف ملفات قديمة أو رقِّ باقتك من «الخطة والفوترة».`,
   },
   pay: {
     title: "أكمل اشتراكك",
@@ -587,6 +590,7 @@ const ar: SaasDict = {
     },
   },
   billing: {
+    storage: "الملفات المخزّنة",
     noPlan: "لا توجد خطة بعد. اختر خطة أدناه لتبقى مساحة عملك مفتوحة بعد الفترة التجريبية.",
     noPlanDemo: "هذه الوكالة النموذجية بلا اشتراك. في مساحة عملك سترى هنا خطتك والأيام المتبقية من التجربة وفواتيرك.",
     title: "الخطة والفوترة",

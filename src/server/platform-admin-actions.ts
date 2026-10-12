@@ -128,6 +128,17 @@ function planFields(fd: FormData): { error: string } | { values: Omit<typeof pla
   const stripePriceId = str(fd, "stripePriceId") ?? null;
   if (stripePriceId && !/^(price_[A-Za-z0-9]+|\d{1,12})$/.test(stripePriceId)) return { error: "Use a Lemon Squeezy variant ID (digits) or a Stripe price ID (price_…)." };
   const sort = Number(str(fd, "sort") ?? 0);
+  // Limits: blank = unlimited.
+  const limit = (key: string, scale = 1) => {
+    const raw = str(fd, key);
+    if (raw === null) return null;
+    const n = Math.round(Number(raw) * scale);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 100_000 * scale) : NaN;
+  };
+  const maxMembers = limit("maxMembers");
+  const maxClients = limit("maxClients");
+  const maxStorageMb = limit("maxStorageGb", 1024);
+  if ([maxMembers, maxClients, maxStorageMb].some((n) => Number.isNaN(n))) return { error: "Limits must be positive numbers, or blank for unlimited." };
   return {
     values: {
       name,
@@ -143,6 +154,9 @@ function planFields(fd: FormData): { error: string } | { values: Omit<typeof pla
       interval,
       stripePriceId,
       sort: Number.isInteger(sort) ? Math.max(-100, Math.min(100, sort)) : 0,
+      maxMembers,
+      maxClients,
+      maxStorageMb,
       active: str(fd, "active") === "on",
     },
   };
