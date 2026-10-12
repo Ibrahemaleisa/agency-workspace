@@ -65,7 +65,11 @@ export async function spawnNextIfRecurring(actor: SessionUser, taskId: string) {
       await tx.insert(checklistItems).values(steps.map((s) => ({ orgId: s.orgId, taskId: created.id, title: s.title, position: s.position })));
     }
     return created;
-  }).catch(() => null);
+  }).catch((err) => {
+    // A rollback means another request already created this round; anything else is a real failure.
+    if (!/rollback/i.test(String(err?.message ?? err))) console.error("[recurrence] could not create the next task", { taskId, err });
+    return null;
+  });
   if (!next) return null;
 
   await logActivity(actor, {
