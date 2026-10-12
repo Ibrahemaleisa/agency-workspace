@@ -11,6 +11,7 @@ const PUBLIC = [
   /^\/verify-email$/,
   /^\/(forgot|reset)-password$/,
   /^\/welcome$/,
+  /^\/(terms|privacy)$/,
   /^\/setup$/,
   /^\/lang$/,
   /^\/brand-logo\//, // agency logos (public, like the sign-in page that shows them)

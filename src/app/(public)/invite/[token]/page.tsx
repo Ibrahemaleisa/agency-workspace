@@ -1,3 +1,4 @@
+import { LegalNote } from "@/components/legal-links";
 import type { Metadata } from "next";
 import { getBrand, orgBrand } from "@/lib/brand";
 import { getSaasT } from "@/lib/i18n-saas";
@@ -57,6 +58,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
         <SubmitButton className={`${authButton} mt-2`}>
           {iv.accept}
         </SubmitButton>
+        <LegalNote labels={t.legal} className="text-xs text-[#5B606B]" />
       </ActionForm>
     </AuthShell>
   );

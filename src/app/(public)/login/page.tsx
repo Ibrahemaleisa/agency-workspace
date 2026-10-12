@@ -1,3 +1,4 @@
+import { LegalNote } from "@/components/legal-links";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -95,6 +96,8 @@ export default async function LoginPage() {
           </p>
         </div>
       )}
+
+      <LegalNote labels={st.legal} className="mt-8 text-xs text-[#5B606B]" />
 
       {showDemo && (
         <div className="mt-8 rounded-lg border border-dashed border-[#D6D7D2] p-4 text-xs text-[#5B606B]" dir="ltr">

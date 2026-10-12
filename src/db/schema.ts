@@ -141,6 +141,9 @@ export const accounts = pgTable("accounts", {
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   loginCount: integer("login_count").notNull().default(0),
+  /** When (and which version of) the Terms of Service and Privacy Policy this person accepted. */
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -792,6 +795,8 @@ export const signups = pgTable(
     emailCodeExpiresAt: timestamp("email_code_expires_at", { withTimezone: true }),
     emailCodeAttempts: integer("email_code_attempts").notNull().default(0),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    termsVersion: text("terms_version"),
   },
   (t) => [index("signups_email_idx").on(t.email), index("signups_created_idx").on(t.createdAt)],
 );

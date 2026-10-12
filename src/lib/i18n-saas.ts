@@ -313,6 +313,14 @@ const en = {
       ],
     } as Record<"admin" | "account" | "production" | "client", TourStepCopy[]>,
   },
+  legal: {
+    terms: "Terms of Service",
+    privacy: "Privacy Policy",
+    agreeBefore: "I agree to the",
+    and: "and the",
+    joinNote: "By continuing you agree to the",
+    required: "Please accept the Terms of Service and Privacy Policy to continue.",
+  },
   signup: {
     steps: ["Account", "Company", "Brand", "Start"],
     back: "Back",
@@ -732,6 +740,14 @@ const ar: SaasDict = {
         { title: "هذا كل شيء", body: "يُبلَّغ فريقك كلما علّقت أو اتخذت قراراً. ويمكنك إعادة هذه الجولة من الدليل." },
       ],
     },
+  },
+  legal: {
+    terms: "شروط الخدمة",
+    privacy: "سياسة الخصوصية",
+    agreeBefore: "أوافق على",
+    and: "و",
+    joinNote: "بالمتابعة فإنك توافق على",
+    required: "يُرجى قبول شروط الخدمة وسياسة الخصوصية للمتابعة.",
   },
   signup: {
     steps: ["الحساب", "الوكالة", "الهوية", "البدء"],

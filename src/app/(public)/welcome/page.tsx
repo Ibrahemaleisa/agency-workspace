@@ -374,6 +374,12 @@ export default async function LandingPage() {
             <Link href={portalHref} className="hover:text-white">
               {portalLabel}
             </Link>
+            <Link href="/privacy" className="hover:text-white">
+              {lang === "ar" ? "الخصوصية" : "Privacy"}
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              {lang === "ar" ? "الشروط" : "Terms"}
+            </Link>
           </nav>
           <div className="flex items-center gap-4 text-sm text-zinc-500">
             {social.map(([name, url]) => (

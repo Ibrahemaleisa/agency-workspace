@@ -23,6 +23,7 @@ import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
 import { OPERRA_BRAND } from "@/lib/brand";
 import { requestCountry, track, trackLogin, visitorId } from "@/lib/analytics";
 import { requestPlan } from "@/lib/billing/manual";
+import { TERMS_VERSION } from "@/lib/legal";
 
 const SIGNUP_COOKIE = "operra_signup";
 const SIGNUP_HOURS = 24;
@@ -94,6 +95,7 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
   if (!name) return { error: e.name };
   if (!isEmail(email)) return { error: e.email };
   if (password.length < 8) return { error: e.password };
+  if (str(fd, "acceptTerms") !== "1") return { error: (await getSaasT()).t.legal.required };
   if (!(await rateLimit(`signup:${await clientIp()}`, 10, 3600))) return { error: e.rate };
 
   // An existing Operra account can add another agency — with that account's own password.
@@ -117,6 +119,8 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
     name,
     email,
     passwordHash,
+    termsAcceptedAt: new Date(),
+    termsVersion: TERMS_VERSION,
     // An existing account proved itself with its password; a new address needs the emailed code.
     emailVerifiedAt: account ? new Date() : sameEmail ? existingSignup.emailVerifiedAt : null,
     lang: await getLang(),

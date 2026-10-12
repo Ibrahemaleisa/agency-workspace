@@ -85,9 +85,20 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
       if (!account)
         [account] = await tx
           .insert(accounts)
-          .values({ email: signup.email, passwordHash: signup.passwordHash, emailVerifiedAt: signup.emailVerifiedAt })
+          .values({
+            email: signup.email,
+            passwordHash: signup.passwordHash,
+            emailVerifiedAt: signup.emailVerifiedAt,
+            termsAcceptedAt: signup.termsAcceptedAt,
+            termsVersion: signup.termsVersion,
+          })
           .returning();
       else if (account.passwordHash !== signup.passwordHash) throw new ProvisioningError("emailTaken");
+      else if (signup.termsAcceptedAt)
+        await tx
+          .update(accounts)
+          .set({ termsAcceptedAt: signup.termsAcceptedAt, termsVersion: signup.termsVersion })
+          .where(eq(accounts.id, account.id));
       let admin = await tx.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.accountId, account.id)) });
       if (!admin) {
         [admin] = await tx

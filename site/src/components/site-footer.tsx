@@ -1,5 +1,6 @@
 import { getContent } from "@/i18n/server";
 import { site } from "@/lib/site";
+import { appUrl } from "@/lib/app-links";
 import { Container } from "./section";
 import { LocalLink } from "./local-link";
 import { Wordmark } from "./logo";
@@ -44,7 +45,19 @@ export async function SiteFooter() {
           ))}
         </div>
         <div className="mt-14 flex flex-col gap-2 border-t border-line pt-6 text-[12px] leading-4 text-muted sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} Operra</p>
+          <p className="flex flex-wrap gap-x-4 gap-y-1">
+            <span>© {new Date().getFullYear()} Operra</span>
+            {appUrl && (
+              <>
+                <a href={`${appUrl}/lang?to=${locale}&next=/terms`} className="hover:text-ink">
+                  {UI.terms}
+                </a>
+                <a href={`${appUrl}/lang?to=${locale}&next=/privacy`} className="hover:text-ink">
+                  {UI.privacy}
+                </a>
+              </>
+            )}
+          </p>
           <p>{UI.footerNote}</p>
         </div>
       </Container>

@@ -19,6 +19,8 @@ export const UI: Ui = {
   language: "اللغة",
   otherLanguage: "English",
   otherLanguageCode: "en",
+  terms: "شروط الخدمة",
+  privacy: "سياسة الخصوصية",
   footerNote: "صور المنتج من مساحة العمل التجريبية ببيانات نموذجية",
   cta: {
     title: "أدِر وكالتك كلها من مكان واحد",

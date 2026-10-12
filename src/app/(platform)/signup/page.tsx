@@ -9,6 +9,7 @@ import { currentSignup, signupAccount } from "@/server/signup-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Field, Input } from "@/components/ui";
 import { SignupShell } from "@/components/platform/signup-shell";
+import { LegalConsent } from "@/components/legal-links";
 
 export const metadata: Metadata = { title: "Start your Operra workspace" };
 
@@ -69,6 +70,7 @@ export default async function SignupAccountPage({ searchParams }: PageProps<"/si
         <Field label={s.account.password} hint={s.account.passwordHint}>
           <Input name="password" type="password" required minLength={8} autoComplete="new-password" dir="ltr" />
         </Field>
+        <LegalConsent labels={t.legal} />
         <SubmitButton className="w-full">{s.continue}</SubmitButton>
         <p className="text-center text-sm text-zinc-500">
           {s.account.haveAccount}{" "}
