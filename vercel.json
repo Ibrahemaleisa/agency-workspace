@@ -1,18 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/cron/cleanup",
-      "schedule": "17 3 * * *"
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "nextjs"
     },
+    "site": {
+      "root": "site",
+      "framework": "nextjs"
+    }
+  },
+  "rewrites": [
     {
-      "path": "/api/cron/reset-demo",
-      "schedule": "0 3 * * *"
+      "source": "/(.*)",
+      "destination": {
+        "service": "app"
+      }
     }
-  ],
-  "git": {
-    "deploymentEnabled": {
-      "claude/**": false
-    }
-  }
+  ]
 }
