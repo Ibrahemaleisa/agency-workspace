@@ -16,6 +16,8 @@ export function ControlHeader({ name }: { name: string }) {
           <Link href="/operra/people" className="hover:underline">People</Link>
           <Link href="/operra/plans" className="hover:underline">Plans</Link>
           <Link href="/operra/payments" className="hover:underline">Payments</Link>
+          <Link href="/operra/audit" className="hover:underline">Audit log</Link>
+          <Link href="/operra/security" className="hover:underline">Security</Link>
         </nav>
         <div className="ms-auto flex items-center gap-4 text-sm">
           <span className="text-[#5B606B]">{name}</span>

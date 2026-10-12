@@ -1,3 +1,4 @@
+import { emailEnabled } from "@/lib/email";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSaasT } from "@/lib/i18n-saas";
@@ -12,6 +13,7 @@ export default async function SignupBrandPage() {
   const signup = await currentSignup();
   if (!signup) redirect("/signup?expired=1");
   if (signup.orgId) redirect("/signup/provisioning");
+  if (emailEnabled() && !signup.emailVerifiedAt) redirect("/signup/verify");
   if (signup.step < 2) redirect("/signup/company");
   const [{ t, lang }, { t: app }] = await Promise.all([getSaasT(), getT()]);
   const s = t.signup;

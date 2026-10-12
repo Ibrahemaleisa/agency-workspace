@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, plans, sessions, subscriptions, users } from "@/db/schema";
-import { createPlatformSession, destroyPlatformSession, requirePlatformAdmin, verifyPlatformAdmin } from "@/lib/platform-admin";
+import { organizations, plans, platformAdmins, sessions, subscriptions, users } from "@/db/schema";
+import { completeSecondFactor, createPlatformSession, destroyPlatformSession, getPlatformSession, requirePlatformAdmin, verifyPlatformAdmin } from "@/lib/platform-admin";
+import { verifyTotp } from "@/lib/totp";
 import { idOf, str, type ActionState } from "@/lib/action-state";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
@@ -22,8 +23,42 @@ export async function platformLogin(_prev: ActionState, fd: FormData): Promise<A
   if (!(await rateLimit(`operra-login:${await clientIp()}`, 10, 900))) return { error: "Too many attempts. Try again later." };
   const admin = email && password ? await verifyPlatformAdmin(email, password) : null;
   if (!admin) return { error: "Invalid email or password." };
+  if (admin.totpEnabledAt) {
+    // Password proven; the authenticator code comes next.
+    await createPlatformSession(admin.id, { pending2fa: true });
+    redirect("/operra/login/2fa");
+  }
+  // No authenticator yet: the only page this session opens is the set-up page.
   await createPlatformSession(admin.id);
-  console.info("[control-center] sign-in", { admin: admin.email });
+  await audit({ adminEmail: admin.email, action: "staff.sign_in", meta: { secondFactor: false } });
+  redirect("/operra/security");
+}
+
+/** Second step of signing in: the 6-digit code from the authenticator app. */
+export async function verifySecondFactor(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const s = await getPlatformSession();
+  if (!s) redirect("/operra/login");
+  if (!s.pending2fa) redirect("/operra");
+  if (!(await rateLimit(`operra-2fa:${s.admin.id}`, 8, 900))) return { error: "Too many attempts. Sign in again later." };
+  const row = await db.query.platformAdmins.findFirst({ where: eq(platformAdmins.id, s.admin.id) });
+  const step = row?.totpSecret ? verifyTotp(row.totpSecret, str(fd, "code") ?? "", row.totpLastStep) : null;
+  if (!row || step === null) return { error: "That code isn’t right. Use the current code from your authenticator app." };
+  await db.update(platformAdmins).set({ totpLastStep: step }).where(eq(platformAdmins.id, row.id));
+  await completeSecondFactor(s.tokenHash);
+  await audit({ adminEmail: row.email, action: "staff.sign_in", meta: { secondFactor: true } });
+  redirect("/operra");
+}
+
+/** Turns the authenticator on, once the person proves their app shows the right code. */
+export async function confirmTotpEnrollment(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin({ enrolling: true });
+  if (!(await rateLimit(`operra-2fa-enroll:${admin.id}`, 10, 900))) return { error: "Too many attempts. Try again later." };
+  const row = await db.query.platformAdmins.findFirst({ where: eq(platformAdmins.id, admin.id) });
+  if (!row?.totpSecret || row.totpEnabledAt) redirect("/operra");
+  const step = verifyTotp(row.totpSecret, str(fd, "code") ?? "");
+  if (step === null) return { error: "That code isn’t right. Check the time on your phone and try the current code." };
+  await db.update(platformAdmins).set({ totpEnabledAt: new Date(), totpLastStep: step }).where(eq(platformAdmins.id, row.id));
+  await audit({ adminEmail: row.email, action: "staff.2fa_enabled" });
   redirect("/operra");
 }
 

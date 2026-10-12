@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getPlatformAdmin } from "@/lib/platform-admin";
+import { getPlatformSession } from "@/lib/platform-admin";
 import { platformLogin } from "@/server/platform-admin-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Field, Input } from "@/components/ui";
 import { OperraWordmark } from "@/components/platform/operra-mark";
 
 export default async function ControlLogin() {
-  if (await getPlatformAdmin()) redirect("/operra");
+  if (await getPlatformSession()) redirect("/operra");
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5">
       <OperraWordmark />
