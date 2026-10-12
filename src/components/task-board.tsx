@@ -12,6 +12,8 @@ export type BoardTask = {
   status: TaskStatus;
   priority: string;
   dueDate: string | null;
+  /** The due date as shown elsewhere in the app ("Oct 7"), formatted in the page's language. */
+  dueLabel: string | null;
   projectName: string;
   clientName: string | null;
   assigneeName: string | null;
@@ -69,7 +71,7 @@ export function TaskBoard({
   };
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid="task-board">
+    <div className="relative -mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid="task-board">
       <div className="flex min-w-max gap-3">
         {columns.map((col) => {
           const items = optimistic.filter((t) => t.status === col.value);
@@ -139,7 +141,7 @@ export function TaskBoard({
                         {t.dueDate && (
                           <span className={cn("inline-flex items-center gap-1", overdue ? "font-medium text-red-700" : "text-zinc-500")}>
                             <CalendarClock aria-hidden className="size-3.5" />
-                            {t.dueDate}
+                            {t.dueLabel ?? t.dueDate}
                             {overdue && <span className="sr-only"> ({labels.overdue})</span>}
                           </span>
                         )}

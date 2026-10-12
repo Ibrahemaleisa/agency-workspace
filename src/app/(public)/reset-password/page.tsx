@@ -18,21 +18,21 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
         <ActionForm action={setNewPassword} className="mt-7 space-y-4" successMessage={r.done}>
           <input type="hidden" name="token" value={token} />
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-zinc-400">{r.newPassword}</span>
+            <span className="mb-1.5 block text-sm font-medium text-[#15171C]">{r.newPassword}</span>
             <input name="password" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={`${authField} text-start`} />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-zinc-400">{r.confirm}</span>
+            <span className="mb-1.5 block text-sm font-medium text-[#15171C]">{r.confirm}</span>
             <input name="confirm" type="password" required minLength={8} autoComplete="new-password" dir="ltr" className={`${authField} text-start`} />
           </label>
           <SubmitButton className={authButton}>{r.save}</SubmitButton>
         </ActionForm>
       ) : (
-        <p role="alert" className="mt-4 text-sm text-zinc-400">
+        <p role="alert" className="mt-4 text-sm text-[#5B606B]">
           {r.invalid}
         </p>
       )}
-      <Link href="/login" className="mt-6 inline-block text-sm text-zinc-400 underline underline-offset-4 hover:text-white">
+      <Link href="/login" className="mt-6 inline-block text-sm text-[#5B606B] underline underline-offset-4 hover:text-[#15171C]">
         {r.signIn}
       </Link>
     </AuthCard>

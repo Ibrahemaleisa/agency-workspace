@@ -34,14 +34,6 @@ export const PILLARS: { title: string; body: string }[] = [
   { title: "مصمَّم لهنا", body: "عربي وإنجليزي بتخطيط أصيل من اليمين إلى اليسار، باسم وكالتك وعلى عنوانها." },
 ];
 
-export const FACTS: { value: string; label: string }[] = [
-  { value: "3", label: "أدوار" },
-  { value: "4", label: "وحدات جاهزة" },
-  { value: "5", label: "حالات للمهمة" },
-  { value: "2", label: "قناتا محادثة لكل مشروع" },
-  { value: "2", label: "لغتان، واليمين لليسار أصيل" },
-];
-
 /** جدول الأسبوع في الواجهة: أسبوع عمل حقيقي من الأحد إلى الخميس. */
 export const CALL_SHEET: typeof import("../en/home").CALL_SHEET = {
   title: "بلوم كافيه · إطلاق الخريف",

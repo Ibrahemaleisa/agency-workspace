@@ -7,7 +7,6 @@ import { HeroShot } from "@/components/hero-shot";
 import { Icon } from "@/components/icon";
 import { PlatformGrid } from "@/components/platform-grid";
 import { ProductFrame } from "@/components/product-frame";
-import { Schematic } from "@/components/schematic";
 import { Container, Section, SectionHeader } from "@/components/section";
 import { StatusDot } from "@/components/status-dot";
 import { WorkflowSection } from "@/components/workflow-section";
@@ -30,16 +29,11 @@ export async function generateMetadata() {
 const label = "text-[13px] leading-5 font-medium";
 
 export default async function HomePage() {
-  const { THEMES, FACTS, PILLARS, THREAD_VS_OPERRA, AUDIENCES, SOLUTIONS, WORKFLOW, PAGES, UI, locale } = await getContent();
+  const { THEMES, PILLARS, THREAD_VS_OPERRA, AUDIENCES, SOLUTIONS, PAGES, UI, locale } = await getContent();
   const t = PAGES.home;
   const ar = locale === "ar";
   const links = appLinks(locale);
   const theme = (id: string) => THEMES.find((x) => x.id === id)!;
-  /* One job in motion: everything up to review is done, the approval is live, delivery is next. */
-  const job = WORKFLOW.map((s) => ({
-    label: s.label,
-    state: s.id === "approval" ? ("live" as const) : s.id === "delivery" ? ("draft" as const) : ("done" as const),
-  }));
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -145,11 +139,7 @@ export default async function HomePage() {
             title={t.workflow.title}
             lead={t.workflow.lead}
           />
-          <div className="mt-10 rounded-lg border border-line bg-surface p-5 sm:p-6">
-            <p className={`mb-5 text-muted ${label}`}>{t.workflow.job}</p>
-            <Schematic nodes={job} label={t.workflow.jobLabel} />
-          </div>
-          <div className="mt-14">
+          <div className="mt-12">
             <WorkflowSection />
           </div>
         </Container>
@@ -174,14 +164,6 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
-          <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-line-panel pt-8 sm:grid-cols-5">
-            {FACTS.map((f) => (
-              <div key={f.label} className="flex flex-col-reverse gap-1">
-                <dt className={`text-on-panel-muted ${label}`}>{f.label}</dt>
-                <dd className="font-mono text-[32px] leading-[38px] font-medium">{f.value}</dd>
-              </div>
-            ))}
-          </dl>
           <div className="mt-14 grid gap-6 lg:grid-cols-2">
             <figure>
               <figcaption className={`mb-3 text-on-panel-muted ${label}`}>{t.proof.teamSends}</figcaption>

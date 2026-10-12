@@ -168,6 +168,8 @@ const en = {
     },
   },
   billing: {
+    noPlan: "No plan yet. Choose one below to keep your workspace open after the trial.",
+    noPlanDemo: "This sample agency has no subscription. In your own workspace you'll see your plan, trial days left and invoices here.",
     title: "Plan & billing",
     sub: "Your subscription, trial and instance details.",
     instance: "Instance ID",
@@ -570,6 +572,8 @@ const ar: SaasDict = {
     },
   },
   billing: {
+    noPlan: "لا توجد خطة بعد. اختر خطة أدناه لتبقى مساحة عملك مفتوحة بعد الفترة التجريبية.",
+    noPlanDemo: "هذه الوكالة النموذجية بلا اشتراك. في مساحة عملك سترى هنا خطتك والأيام المتبقية من التجربة وفواتيرك.",
     title: "الخطة والفوترة",
     sub: "اشتراكك وفترتك التجريبية وبيانات مساحة العمل.",
     instance: "رقم مساحة العمل",

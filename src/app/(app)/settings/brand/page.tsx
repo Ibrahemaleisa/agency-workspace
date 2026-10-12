@@ -1,10 +1,11 @@
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { updateBrand } from "@/server/brand-actions";
+import { FilePicker } from "@/components/file-picker";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { BrandColors } from "@/components/brand-colors";
 import { BrandMark } from "@/components/site/brand";
-import { Card, Checkbox, FILE_INPUT, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Card, Checkbox, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -35,7 +36,7 @@ export default async function BrandSettingsPage() {
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <Field label={b.logo} hint={b.logoHint}>
-                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" className={FILE_INPUT} />
+                <FilePicker name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" labels={{ choose: t.media.chooseOne, hint: t.media.dropHintOne, chosen: t.media.chosen }} />
               </Field>
               {brand.logo && <Checkbox name="removeLogo" label={b.removeLogo} />}
             </div>

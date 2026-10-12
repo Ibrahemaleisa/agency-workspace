@@ -24,11 +24,11 @@ export default async function VerifyEmailPage({ searchParams }: PageProps<"/veri
           <SubmitButton className={authButton}>{v.confirm}</SubmitButton>
         </ActionForm>
       ) : (
-        <p role="alert" className="mt-3 text-sm text-zinc-400">
+        <p role="alert" className="mt-3 text-sm text-[#5B606B]">
           {v.invalid}
         </p>
       )}
-      <Link href="/" className="mt-6 inline-block text-sm text-zinc-400 underline underline-offset-4 hover:text-white">
+      <Link href="/" className="mt-6 inline-block text-sm text-[#5B606B] underline underline-offset-4 hover:text-[#15171C]">
         {v.continue}
       </Link>
     </AuthCard>

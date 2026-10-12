@@ -71,7 +71,7 @@ export const DEFAULT_TEMPLATES: {
   {
     name: "Account Management",
     description: "Client relationship, meetings and reporting.",
-    color: "amber",
+    color: "slate",
     stages: [
       { name: "Onboarding" },
       { name: "Kickoff" },

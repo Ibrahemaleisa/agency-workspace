@@ -12,6 +12,7 @@ import { AutoSubmitSelect } from "@/components/forms";
 import { Card, PageHeader } from "@/components/ui";
 import type { TaskStatus } from "@/db/schema";
 import { getT } from "@/lib/lang";
+import { format, parseISO } from "date-fns";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -28,7 +29,7 @@ function withoutOldCompleted<T extends { status: string; updatedAt: Date }>(list
 
 export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   const user = await requirePermission("tasks.updateStatus");
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const sp = await searchParams;
   const get = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
 
@@ -128,6 +129,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
             status: x.status,
             priority: x.priority,
             dueDate: x.dueDate,
+            dueLabel: x.dueDate ? format(parseISO(x.dueDate), "MMM d", { locale }) : null,
             projectName: x.projectName,
             clientName: x.clientName,
             assigneeName: x.assigneeName,

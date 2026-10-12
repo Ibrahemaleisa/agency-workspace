@@ -17,8 +17,6 @@ export const PAGES = {
       marker: "How work moves",
       title: "From client brief to approved delivery, on one path",
       lead: "Every job follows the same chain. Step through it — each step is a real screen from the product.",
-      job: "One job, in motion",
-      jobLabel: "A job at the approval stage",
     },
     proof: {
       marker: "Why it holds",
