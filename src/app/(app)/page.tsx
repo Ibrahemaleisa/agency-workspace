@@ -193,7 +193,7 @@ async function EmployeeDashboard({ user, t, lang }: Props) {
       <PageHeader title={d.greeting(greetingPart(), firstName(user))} description={`${today(lang)} · ${d.needsAttention}`} />
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <Stat label={d.myOpenTasks} value={mine.length} href="/tasks" tone="slate" icon={<ListTodo className="size-4" />} />
-        <Stat label={d.dueToday} value={dueToday.length} tone={dueToday.length ? "amber" : "slate"} href="/tasks?view=today" icon={<AlarmClock className="size-4" />} />
+        <Stat label={d.dueToday} value={dueToday.length} tone="slate" href="/tasks?view=today" icon={<AlarmClock className="size-4" />} />
         <Stat label={d.overdue} value={overdue.length} tone={overdue.length ? "red" : "slate"} href="/tasks?view=overdue" icon={<AlertTriangle className="size-4" />} />
         <Stat label={d.waitingForMe} value={waitingForMe.length} tone="violet" hint={d.waitingHint} icon={<Inbox className="size-4" />} />
       </div>
@@ -290,11 +290,17 @@ async function ClientDashboard({ user, t, lang }: Props) {
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
         <Stat label={d.activeProjects} value={upcoming.length} tone="slate" icon={<FolderKanban className="size-4" />} />
         <Stat label={d.pendingApprovals} value={approvals.length} tone={approvals.length ? "amber" : "slate"} href="/approvals" icon={<BadgeCheck className="size-4" />} />
+        {/* Counts only the work shared with this client, so say so rather than show a bare 0%. */}
         <Stat
-          label={d.overallProgress}
+          label={d.sharedDone}
+          hint={d.sharedDoneHint}
           tone="slate"
           icon={<Percent className="size-4" />}
-          value={`${myProjects.length ? Math.round(myProjects.reduce((s, p) => s + p.progress, 0) / myProjects.length) : 0}%`}
+          value={
+            <bdi className="tabular-nums">
+              {myProjects.reduce((s, p) => s + p.done, 0)} / {myProjects.reduce((s, p) => s + p.total, 0)}
+            </bdi>
+          }
         />
       </div>
 

@@ -36,15 +36,6 @@ export const PILLARS: { title: string; body: string }[] = [
   { title: "Built for here", body: "Arabic and English with a native right-to-left layout, on your own brand and domain." },
 ];
 
-/** Numbers over adjectives — every figure is a fact about the product. */
-export const FACTS: { value: string; label: string }[] = [
-  { value: "3", label: "Roles" },
-  { value: "4", label: "Starter modules" },
-  { value: "5", label: "Task statuses" },
-  { value: "2", label: "Chat channels per project" },
-  { value: "2", label: "Languages, RTL native" },
-];
-
 /**
  * The hero's call sheet: one real agency week, Sunday to Thursday (Friday and Saturday are the
  * weekend). `start` and `span` are day columns (0 = Sunday). One row waits on the client.

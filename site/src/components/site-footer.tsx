@@ -43,8 +43,8 @@ export async function SiteFooter() {
             </nav>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-2 border-t border-line pt-6 font-mono text-[11px] leading-4 tracking-[0.04em] text-muted sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} OPERRA</p>
+        <div className="mt-14 flex flex-col gap-2 border-t border-line pt-6 text-[12px] leading-4 text-muted sm:flex-row sm:justify-between">
+          <p>© {new Date().getFullYear()} Operra</p>
           <p>{UI.footerNote}</p>
         </div>
       </Container>

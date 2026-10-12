@@ -19,8 +19,10 @@ export async function StatusBadge({ status }: { status: TaskStatus }) {
 export async function PriorityBadge({ priority }: { priority: Priority }) {
   const { t } = await getT();
   const p = PRIORITIES.find((x) => x.value === priority)!;
+  // Only urgent work gets a filled badge; high is red text; the rest stays quiet.
   if (priority === "medium" || priority === "low")
     return <span className="text-xs text-zinc-500">{t.priority[priority]}</span>;
+  if (priority === "high") return <span className="text-xs font-medium text-red-700">{t.priority[priority]}</span>;
   return <Badge tone={p.tone}>{t.priority[priority]}</Badge>;
 }
 
@@ -64,7 +66,7 @@ export async function DueDate({ date, status }: { date: string | null; status?: 
     <span
       className={cn(
         "whitespace-nowrap text-xs tabular-nums",
-        overdue ? "font-medium text-red-600" : today ? "font-medium text-amber-700" : "text-zinc-600",
+        overdue ? "font-medium text-red-600" : today ? "font-semibold text-zinc-900" : "text-zinc-600",
       )}
     >
       {overdue ? `${t.common.overdue} · ` : today ? `${t.common.today} · ` : ""}

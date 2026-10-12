@@ -24,6 +24,7 @@ import {
 } from "@/server/task-actions";
 import { ActivityFeed } from "@/components/lists";
 import { Highlight } from "@/components/project-chat";
+import { FilePicker } from "@/components/file-picker";
 import { ActionForm, AutoSubmitSelect, ConfirmSubmit, SubmitButton } from "@/components/forms";
 import {
   Avatar,
@@ -36,7 +37,6 @@ import {
   PageHeader,
   Select,
   Textarea,
-  FILE_INPUT,
   cn,
   isImageType,
 } from "@/components/ui";
@@ -264,7 +264,13 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
             {can(user, "files.upload") && (
               <ActionForm action={uploadAttachment} resetOnSuccess className="flex flex-wrap items-center gap-3 border-t border-zinc-100 px-4 py-3">
                 <input type="hidden" name="taskId" value={task.id} />
-                <input type="file" name="files" multiple required aria-label={tr.media.addFiles} className={cn(FILE_INPUT, "w-auto flex-1")} />
+                <FilePicker
+                  name="files"
+                  multiple
+                  required
+                  labels={{ choose: tr.media.choose, hint: tr.media.dropHint, chosen: tr.media.chosen }}
+                  className="min-w-56 flex-1"
+                />
                 {can(user, "tasks.setClientVisibility") && <Checkbox name="clientVisible" label={k.shareWithClient} />}
                 <SubmitButton size="sm" variant="secondary" pendingText={k.uploading}>
                   {tr.media.upload}

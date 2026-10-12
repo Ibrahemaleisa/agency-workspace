@@ -406,7 +406,4 @@ export function Td({ children, className }: { children?: ReactNode; className?: 
   return <td className={cn("border-b border-zinc-100 px-4 py-2.5 align-middle", className)}>{children}</td>;
 }
 
-export const FILE_INPUT =
-  "block w-full text-sm text-zinc-600 file:me-3 file:rounded-full file:border-0 file:bg-ink file:px-3.5 file:py-1.5 file:text-sm file:font-medium file:text-sand-100 hover:file:bg-zinc-800";
-
 export const isImageType = (mime: string) => /^image\/(png|jpe?g|gif|webp|avif)$/.test(mime);

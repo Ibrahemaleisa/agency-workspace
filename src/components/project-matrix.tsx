@@ -27,10 +27,11 @@ export function projectHealth(r: MatrixRow, today = new Date()) {
 
 const HEALTH_STYLE: Record<Health, string> = {
   onTrack: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  atRisk: "bg-amber-50 text-amber-800 ring-amber-600/25",
+  // Orange, not amber: amber is kept for work waiting on the client.
+  atRisk: "bg-orange-50 text-orange-800 ring-orange-600/25",
   offTrack: "bg-red-50 text-red-700 ring-red-600/20",
 };
-const HEALTH_DOT: Record<Health, string> = { onTrack: "bg-emerald-500", atRisk: "bg-amber-500", offTrack: "bg-red-500" };
+const HEALTH_DOT: Record<Health, string> = { onTrack: "bg-emerald-500", atRisk: "bg-orange-500", offTrack: "bg-red-500" };
 
 export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
   const m = t.matrix;
@@ -51,7 +52,33 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto">
+      {/* Phones: one line per project with what matters most; the full matrix needs a wide screen. */}
+      <ul className="divide-y divide-zinc-100 md:hidden">
+        {data.map(({ r, progress, health }) => (
+          <li key={r.id}>
+            <Link href={`/projects/${r.id}`} className="block px-4 py-3 hover:bg-zinc-50/60">
+              <span className="flex items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{r.name}</span>
+                  <span className="block truncate text-xs text-zinc-500">{r.clientName}</span>
+                </span>
+                <HealthPill health={health} label={m[health]} />
+              </span>
+              <span className="mt-2 flex items-center gap-3">
+                <span className="min-w-0 flex-1">
+                  <Meter value={progress} className="bg-ink" />
+                </span>
+                {r.overdue > 0 && (
+                  <span className="shrink-0 text-xs font-medium text-red-600 tabular-nums">
+                    {r.overdue} {m.overdue}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="relative hidden overflow-x-auto md:block">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-zinc-100 text-xs text-zinc-500">
@@ -83,7 +110,7 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
                           "flex h-9 items-center justify-center rounded-md text-sm font-semibold tabular-nums transition hover:ring-2 hover:ring-sand-300",
                           v === 0 ? "bg-zinc-50 text-zinc-300" : a > 0.5 ? "text-white" : "text-ink",
                         )}
-                        style={v ? { backgroundColor: `rgb(28 27 25 / ${a.toFixed(2)})` } : undefined}
+                        style={v ? { backgroundColor: `color-mix(in oklab, var(--color-ink) ${Math.round(a * 100)}%, transparent)` } : undefined}
                       >
                         {v}
                       </Link>
@@ -111,10 +138,7 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
                   )}
                 </td>
                 <td className="px-4 py-2">
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset", HEALTH_STYLE[health])}>
-                    <span className={cn("size-1.5 rounded-full", HEALTH_DOT[health])} />
-                    {m[health]}
-                  </span>
+                  <HealthPill health={health} label={m[health]} />
                 </td>
               </tr>
             ))}
@@ -123,6 +147,15 @@ export function ProjectMatrix({ rows, t }: { rows: MatrixRow[]; t: AppDict }) {
       </div>
       <p className="border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-500">{m.legend}</p>
     </div>
+  );
+}
+
+function HealthPill({ health, label }: { health: Health; label: string }) {
+  return (
+    <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset", HEALTH_STYLE[health])}>
+      <span className={cn("size-1.5 rounded-full", HEALTH_DOT[health])} />
+      {label}
+    </span>
   );
 }
 

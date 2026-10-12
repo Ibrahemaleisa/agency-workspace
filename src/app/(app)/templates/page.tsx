@@ -2,11 +2,12 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { moduleTemplates, type ModuleTemplate } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
-import { TONES } from "@/lib/constants";
+import { MODULE_TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { saveTemplate } from "@/server/admin-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { Badge, Card, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { TemplateEditor } from "@/components/template-editor";
+import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -45,34 +46,42 @@ export default async function TemplatesPage() {
 async function TemplateForm({ template }: { template?: ModuleTemplate }) {
   const { t } = await getT();
   const m = t.templates;
-  const stages = template?.stages.map((s) => s.name + (s.clientApproval ? " *" : "")).join("\n") ?? "";
-  const fields =
-    template?.fields
-      .map((f) => [f.label, f.type, f.options?.join(", ")].filter(Boolean).join(" | "))
-      .join("\n") ?? "";
   return (
-    <ActionForm action={saveTemplate} className="space-y-3" successMessage={m.saved}>
+    <ActionForm action={saveTemplate} className="space-y-4" successMessage={m.saved}>
       {template && <input type="hidden" name="templateId" value={template.id} />}
-      <div className="grid grid-cols-3 gap-3">
-        <Field label={m.name} className="col-span-2">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={m.name}>
           <Input name="name" dir="auto" defaultValue={template?.name} required />
         </Field>
-        <Field label={m.color}>
-          <Select name="color" defaultValue={template?.color ?? "slate"} options={TONES.map((t) => ({ value: t, label: t }))} />
+        <Field label={m.description}>
+          <Input name="description" dir="auto" defaultValue={template?.description ?? ""} />
         </Field>
       </div>
-      <Field label={m.description}>
-        <Input name="description" dir="auto" defaultValue={template?.description ?? ""} />
-      </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={m.stages} hint={m.stagesHint}>
-          <Textarea name="stages" dir="auto" rows={8} defaultValue={stages} className="font-mono text-xs" />
-        </Field>
-        <Field label={m.fields} hint={m.fieldsHint}>
-          <Textarea name="fields" dir="auto" rows={8} defaultValue={fields} className="font-mono text-xs" />
-        </Field>
-      </div>
-      <div className="flex justify-end">
+      <TemplateEditor
+        tones={MODULE_TONES}
+        initial={{ color: template?.color ?? "slate", stages: template?.stages ?? [], fields: template?.fields ?? [] }}
+        labels={{
+          color: m.color,
+          stages: m.stages,
+          stagesHint: m.stagesHint,
+          fields: m.fields,
+          fieldsHint: m.fieldsHint,
+          stagePlaceholder: m.stagePlaceholder,
+          clientApproves: m.clientApproves,
+          addStage: m.addStage,
+          fieldLabel: m.fieldLabel,
+          fieldType: m.fieldType,
+          optionsPlaceholder: m.optionsPlaceholder,
+          addField: m.addField,
+          noFields: m.noFields,
+          moveUp: m.moveUp,
+          moveDown: m.moveDown,
+          remove: m.remove,
+          types: m.types,
+          colors: m.colors,
+        }}
+      />
+      <div className="flex justify-end border-t border-zinc-100 pt-4">
         <SubmitButton size="sm">{template ? m.save : m.create}</SubmitButton>
       </div>
     </ActionForm>

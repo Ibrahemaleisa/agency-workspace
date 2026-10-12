@@ -11,14 +11,14 @@ export const TASK_STATUSES: { value: TaskStatus; label: string; tone: Tone }[] =
 export const PRIORITIES: { value: Priority; label: string; tone: Tone }[] = [
   { value: "low", label: "Low", tone: "slate" },
   { value: "medium", label: "Medium", tone: "blue" },
-  { value: "high", label: "High", tone: "amber" },
+  { value: "high", label: "High", tone: "red" },
   { value: "urgent", label: "Urgent", tone: "red" },
 ];
 
 export const PROJECT_STATUSES: { value: ProjectStatus; label: string; tone: Tone }[] = [
   { value: "planning", label: "Planning", tone: "slate" },
   { value: "active", label: "Active", tone: "green" },
-  { value: "on_hold", label: "On Hold", tone: "amber" },
+  { value: "on_hold", label: "On Hold", tone: "slate" },
   { value: "completed", label: "Completed", tone: "blue" },
   { value: "cancelled", label: "Cancelled", tone: "red" },
 ];
@@ -26,6 +26,12 @@ export const PROJECT_STATUSES: { value: ProjectStatus; label: string; tone: Tone
 export type Tone = "slate" | "blue" | "violet" | "amber" | "green" | "red" | "pink" | "teal";
 
 export const TONES: Tone[] = ["slate", "blue", "violet", "amber", "green", "red", "pink", "teal"];
+
+/**
+ * Colours an admin can give a module. Amber is left out on purpose: across the product it means
+ * "waiting on the client", so a module tag in amber would read as a status.
+ */
+export const MODULE_TONES: Tone[] = ["slate", "blue", "violet", "teal", "green", "pink"];
 
 export const taskStatusLabel = (s: TaskStatus) => TASK_STATUSES.find((x) => x.value === s)!.label;
 export const priorityLabel = (p: Priority) => PRIORITIES.find((x) => x.value === p)!.label;

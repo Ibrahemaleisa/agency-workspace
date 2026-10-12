@@ -48,8 +48,9 @@ export async function CallSheet({ className }: { className?: string }) {
         {t.rows.map((r, i) => (
           <div key={r.task} role="row" className={cn("relative grid items-center border-b border-line last:border-b-0", cols)}>
             <span role="cell" className="min-w-0 py-2.5 ps-4 pe-2">
-              <span className="block truncate text-[13px] leading-[18px] font-medium text-ink">{r.task}</span>
-              <span className="block truncate text-muted">{r.who}</span>
+              {/* Wrap rather than cut: "Client appr…" hid the one row the graphic is about. */}
+              <span className="block text-[13px] leading-[18px] font-medium text-pretty text-ink">{r.task}</span>
+              <span className="block text-pretty text-muted">{r.who}</span>
             </span>
             {/* weekend hatch */}
             <span

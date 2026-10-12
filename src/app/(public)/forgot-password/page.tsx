@@ -16,17 +16,17 @@ export default async function ForgotPasswordPage() {
       {emailEnabled() ? (
         <ActionForm action={forgotPassword} className="mt-7 space-y-4" successMessage={r.sent} resetOnSuccess>
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-zinc-400">{t.invite.email}</span>
+            <span className="mb-1.5 block text-sm font-medium text-[#15171C]">{t.invite.email}</span>
             <input name="email" type="email" required autoComplete="email" dir="ltr" className={`${authField} text-start`} />
           </label>
           <SubmitButton className={authButton}>{r.send}</SubmitButton>
         </ActionForm>
       ) : (
-        <p role="status" className="mt-6 text-sm leading-relaxed text-zinc-300">
+        <p role="status" className="mt-6 text-sm leading-relaxed text-[#5B606B]">
           {r.noEmail}
         </p>
       )}
-      <Link href="/login" className="mt-6 inline-block text-sm text-zinc-400 underline underline-offset-4 hover:text-white">
+      <Link href="/login" className="mt-6 inline-block text-sm text-[#5B606B] underline underline-offset-4 hover:text-[#15171C]">
         {r.signIn}
       </Link>
     </AuthCard>

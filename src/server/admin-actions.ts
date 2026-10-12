@@ -246,36 +246,68 @@ export async function updateUser(_prev: ActionState, fd: FormData): Promise<Acti
 /* Module templates                                                    */
 /* ------------------------------------------------------------------ */
 
+const FIELD_TYPES: ModuleField["type"][] = ["text", "number", "date", "url", "select", "textarea"];
+const FIELD_KEY = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
+
+/** A stable key from a label ("Shoot date" → "shootDate"); empty for labels without Latin letters. */
+const keyFromLabel = (label: string) =>
+  label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""))
+    .replace(/^[^a-z]+/, "");
+
+function parseJsonList(fd: FormData, name: string): unknown[] | null {
+  const raw = str(fd, name);
+  if (raw === null) return null;
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Stages: one per line; suffix with " *" to mark a client-approval stage.
- * Fields: one per line as "Label | type | option1, option2".
+ * The template editor posts stages and fields as JSON (stagesJson / fieldsJson). The older text
+ * format is still read: stages one per line (" *" marks client approval), fields as "Label | type | a, b".
+ * Fields keep the key they were saved with, so values already filled in survive a rename.
  */
 function parseTemplateForm(fd: FormData) {
   const name = str(fd, "name");
-  const stages: WorkflowStage[] = (str(fd, "stages") ?? "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => {
-      const clientApproval = l.endsWith("*");
-      return { name: l.replace(/\*$/, "").trim(), ...(clientApproval ? { clientApproval } : {}) };
+
+  const stageRows = parseJsonList(fd, "stagesJson");
+  const stages: WorkflowStage[] = (
+    stageRows ??
+    (str(fd, "stages") ?? "").split("\n").map((l) => ({ name: l.trim().replace(/\*$/, ""), clientApproval: l.trim().endsWith("*") }))
+  )
+    .map((r) => (r && typeof r === "object" ? (r as Record<string, unknown>) : {}))
+    .map((r) => ({ name: String(r.name ?? "").trim().slice(0, 120), clientApproval: r.clientApproval === true }))
+    .filter((r) => r.name)
+    .map((r) => ({ name: r.name, ...(r.clientApproval ? { clientApproval: true } : {}) }));
+
+  const fieldRows =
+    parseJsonList(fd, "fieldsJson") ??
+    (str(fd, "fields") ?? "")
+      .split("\n")
+      .map((l) => l.split("|").map((p) => p.trim()))
+      .map(([label, type, options]) => ({ label, type, options: (options ?? "").split(",") }));
+  const used = new Set<string>();
+  const fields: ModuleField[] = fieldRows
+    .map((r) => (r && typeof r === "object" ? (r as Record<string, unknown>) : {}))
+    .map((r) => ({
+      key: typeof r.key === "string" ? r.key : "",
+      label: String(r.label ?? "").trim().slice(0, 120),
+      type: FIELD_TYPES.includes(r.type as ModuleField["type"]) ? (r.type as ModuleField["type"]) : "text",
+      options: Array.isArray(r.options) ? r.options.map((o) => String(o).trim()).filter(Boolean).slice(0, 50) : [],
+    }))
+    .filter((r) => r.label)
+    .map((r, i) => {
+      let key = FIELD_KEY.test(r.key) ? r.key : keyFromLabel(r.label) || `field${i + 1}`;
+      while (used.has(key)) key = `${key}${i + 1}`;
+      used.add(key);
+      return { key, label: r.label, type: r.type, ...(r.type === "select" ? { options: r.options } : {}) };
     });
-  const types = ["text", "number", "date", "url", "select", "textarea"];
-  const fields: ModuleField[] = (str(fd, "fields") ?? "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => {
-      const [label, rawType, rawOptions] = l.split("|").map((p) => p.trim());
-      const type = (types.includes(rawType) ? rawType : "text") as ModuleField["type"];
-      const key = label.toLowerCase().replace(/[^a-z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""));
-      return {
-        key,
-        label,
-        type,
-        ...(type === "select" ? { options: (rawOptions ?? "").split(",").map((o) => o.trim()).filter(Boolean) } : {}),
-      };
-    });
+
   const color = TONES.includes(str(fd, "color") as never) ? str(fd, "color")! : "slate";
   return { name, description: str(fd, "description"), color, stages, fields };
 }

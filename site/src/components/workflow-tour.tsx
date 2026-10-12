@@ -5,11 +5,11 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import type { WorkflowStep } from "@/content/en/workflow";
 import { useLocale } from "@/i18n/provider";
 import { cn } from "@/lib/cn";
-import { StatusDot } from "./status-dot";
 
 /**
  * Client → Project → Module → Task → Review → Approval → Delivery, one real screen per step.
- * The step track is drawn as a schematic: done steps ink, the current step signal, next steps hollow.
+ * The tabs are the stage bars (BRAND.md): done and current in lapis, still to come in line grey,
+ * and the approval step in amber while it is the live one, because that is the client's turn.
  * WAI-ARIA tabs: arrow keys / Home / End move between steps.
  * Frames are rendered on the server and passed in, so images stay optimised by next/image.
  */
@@ -46,7 +46,7 @@ export function WorkflowTour({ steps, frames }: { steps: WorkflowStep[]; frames:
   return (
     <div>
       <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-        <div role="tablist" aria-label={t.label} className="flex min-w-max border-b border-line sm:min-w-0">
+        <div role="tablist" aria-label={t.label} className="flex min-w-max gap-1 sm:min-w-0">
           {steps.map((s, i) => (
             <button
               key={s.id}
@@ -63,14 +63,16 @@ export function WorkflowTour({ steps, frames }: { steps: WorkflowStep[]; frames:
               onKeyDown={onKeyDown}
               className={cn(
                 "group relative flex flex-1 flex-col items-start gap-2 px-1 pt-1 pb-4 text-start transition-colors sm:min-w-0",
-                "min-w-[112px] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5",
-                i === active ? "after:bg-ink" : "after:bg-transparent",
+                "min-w-[112px] sm:px-1.5",
               )}
             >
-              <span className="flex w-full items-center">
-                <StatusDot state={i < active ? "done" : i === active ? "live" : "draft"} pulse={false} />
-                {i < steps.length - 1 && <span aria-hidden className="ms-2 h-px flex-1 bg-line-strong" />}
-              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  "block h-2 w-full rounded-full transition-colors",
+                  i > active ? "bg-line group-hover:bg-line-strong" : i === active && s.id === "approval" ? "bg-client" : "bg-signal",
+                )}
+              />
               <span className="tabular text-[12px] leading-4 text-muted">{String(i + 1).padStart(2, "0")}</span>
               <span className={cn("text-[14px] leading-5", i === active ? "font-semibold text-ink" : "text-muted group-hover:text-ink")}>
                 {s.label}

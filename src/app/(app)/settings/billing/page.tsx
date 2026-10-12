@@ -124,7 +124,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
               </div>
             </dl>
           ) : (
-            <p className="text-sm text-zinc-500">—</p>
+            <p className="text-sm leading-relaxed text-zinc-500">{org.isDemo ? b.noPlanDemo : b.noPlan}</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             {provider && sub?.providerCustomerId && provider.name !== "test" && (
@@ -144,11 +144,11 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
           <dl className="divide-y divide-zinc-100 text-sm">
             <div className="flex justify-between gap-4 py-2.5">
               <dt className="text-zinc-500">{b.instance}</dt>
-              <dd className="font-mono font-medium" data-testid="billing-serial">{org.serial}</dd>
+              <dd className="font-medium tabular-nums" data-testid="billing-serial">{org.serial}</dd>
             </div>
             <div className="flex justify-between gap-4 py-2.5">
               <dt className="text-zinc-500">{b.address}</dt>
-              <dd className="font-mono text-xs" dir="ltr">{tenantEntryUrl(org).replace(/^https?:\/\//, "")}</dd>
+              <dd className="text-sm" dir="ltr">{tenantEntryUrl(org).replace(/^https?:\/\//, "")}</dd>
             </div>
           </dl>
         </Card>
@@ -224,7 +224,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
                   const p = offered.find((x) => x.code === inv.planCode);
                   return (
                     <tr key={inv.id}>
-                      <td className="px-4 py-2.5 font-mono">{inv.number}</td>
+                      <td className="px-4 py-2.5 tabular-nums">{inv.number}</td>
                       <td className="px-4 py-2.5">{fmt(inv.createdAt)}</td>
                       <td className="px-4 py-2.5">{p ? planName(p) : inv.planCode}</td>
                       <td className="px-4 py-2.5 tabular-nums">{formatMoney(inv.amountCents, inv.currency, lang)}</td>
