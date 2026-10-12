@@ -83,6 +83,7 @@ const en = {
   limits: {
     members: (n: number) => `Your plan includes up to ${n} team members. Upgrade to the Full package in Plan & billing to add more.`,
     clients: (n: number) => `Your plan includes up to ${n} clients. Upgrade to the Full package in Plan & billing to add more.`,
+    storage: (gb: number) => `Your plan includes ${gb} GB of files and this would go over it. Remove old files, or upgrade in Plan & billing.`,
   },
   pay: {
     title: "Complete your subscription",
@@ -168,6 +169,7 @@ const en = {
     },
   },
   billing: {
+    storage: "Files stored",
     noPlan: "No plan yet. Choose one below to keep your workspace open after the trial.",
     noPlanDemo: "This sample agency has no subscription. In your own workspace you'll see your plan, trial days left and invoices here.",
     title: "Plan & billing",
@@ -311,6 +313,14 @@ const en = {
       ],
     } as Record<"admin" | "account" | "production" | "client", TourStepCopy[]>,
   },
+  legal: {
+    terms: "Terms of Service",
+    privacy: "Privacy Policy",
+    agreeBefore: "I agree to the",
+    and: "and the",
+    joinNote: "By continuing you agree to the",
+    required: "Please accept the Terms of Service and Privacy Policy to continue.",
+  },
   signup: {
     steps: ["Account", "Company", "Brand", "Start"],
     back: "Back",
@@ -330,6 +340,21 @@ const en = {
       haveAccount: "Already have a workspace?",
       signIn: "Sign in",
       preview: "Or explore the preview first",
+    },
+    emailCode: {
+      title: "Check your email",
+      sub: (email: string) => `We sent a 6-digit code to ${email}. Enter it to confirm the address is yours.`,
+      code: "Code",
+      verify: "Confirm",
+      resend: "Send a new code",
+      resent: "A new code is on its way.",
+      changeEmail: "Use another email",
+      emailTitle: "Your Operra sign-up code",
+      emailBody: (code: string) => `Your code is ${code}. It works for 30 minutes. If you didn’t start an Operra sign-up, ignore this email.`,
+      wrong: "That code isn’t right.",
+      expired: "That code has expired. Send a new one.",
+      tooMany: "Too many tries. Send a new code.",
+      rate: "Please wait a little before asking for another code.",
     },
     company: {
       title: "Your agency",
@@ -487,6 +512,7 @@ const ar: SaasDict = {
   limits: {
     members: (n: number) => `باقتك تشمل حتى ${n} أعضاء في الفريق. انتقل إلى الحزمة الكاملة من «الخطة والفوترة» لإضافة المزيد.`,
     clients: (n: number) => `باقتك تشمل حتى ${n} عملاء. انتقل إلى الحزمة الكاملة من «الخطة والفوترة» لإضافة المزيد.`,
+    storage: (gb: number) => `باقتك تشمل ${gb} غيغابايت من الملفات وهذا سيتجاوزها. احذف ملفات قديمة أو رقِّ باقتك من «الخطة والفوترة».`,
   },
   pay: {
     title: "أكمل اشتراكك",
@@ -572,6 +598,7 @@ const ar: SaasDict = {
     },
   },
   billing: {
+    storage: "الملفات المخزّنة",
     noPlan: "لا توجد خطة بعد. اختر خطة أدناه لتبقى مساحة عملك مفتوحة بعد الفترة التجريبية.",
     noPlanDemo: "هذه الوكالة النموذجية بلا اشتراك. في مساحة عملك سترى هنا خطتك والأيام المتبقية من التجربة وفواتيرك.",
     title: "الخطة والفوترة",
@@ -714,6 +741,14 @@ const ar: SaasDict = {
       ],
     },
   },
+  legal: {
+    terms: "شروط الخدمة",
+    privacy: "سياسة الخصوصية",
+    agreeBefore: "أوافق على",
+    and: "و",
+    joinNote: "بالمتابعة فإنك توافق على",
+    required: "يُرجى قبول شروط الخدمة وسياسة الخصوصية للمتابعة.",
+  },
   signup: {
     steps: ["الحساب", "الوكالة", "الهوية", "البدء"],
     back: "رجوع",
@@ -733,6 +768,21 @@ const ar: SaasDict = {
       haveAccount: "لديك مساحة عمل؟",
       signIn: "سجّل الدخول",
       preview: "أو استكشف المعاينة أولاً",
+    },
+    emailCode: {
+      title: "تحقق من بريدك",
+      sub: (email: string) => `أرسلنا رمزاً من 6 أرقام إلى ${email}. أدخله لتأكيد أن العنوان لك.`,
+      code: "الرمز",
+      verify: "تأكيد",
+      resend: "إرسال رمز جديد",
+      resent: "رمز جديد في الطريق.",
+      changeEmail: "استخدام بريد آخر",
+      emailTitle: "رمز التسجيل في Operra",
+      emailBody: (code: string) => `رمزك هو ${code}. صالح لمدة 30 دقيقة. إن لم تبدأ التسجيل في Operra فتجاهل هذه الرسالة.`,
+      wrong: "الرمز غير صحيح.",
+      expired: "انتهت صلاحية الرمز. اطلب رمزاً جديداً.",
+      tooMany: "محاولات كثيرة. اطلب رمزاً جديداً.",
+      rate: "انتظر قليلاً قبل طلب رمز آخر.",
     },
     company: {
       title: "وكالتك",

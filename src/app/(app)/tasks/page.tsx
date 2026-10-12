@@ -9,7 +9,7 @@ import { LayoutList, Columns3 } from "lucide-react";
 import { TaskTable } from "@/components/lists";
 import { FilterTabs, SearchBox } from "@/components/filters";
 import { AutoSubmitSelect } from "@/components/forms";
-import { Card, PageHeader } from "@/components/ui";
+import { Card, PageHeader, Pager, pageParam } from "@/components/ui";
 import type { TaskStatus } from "@/db/schema";
 import { getT } from "@/lib/lang";
 import { format, parseISO } from "date-fns";
@@ -20,6 +20,9 @@ export async function generateMetadata() {
 }
 
 const VIEWS = ["mine", "all", "today", "overdue", "blocked", "unassigned"] as const;
+const PAGE = 100;
+/** The board shows this many at most; narrow it with the filters beyond that. */
+const BOARD_MAX = 1000;
 
 /** On the board, completed work stays visible for two weeks. */
 function withoutOldCompleted<T extends { status: string; updatedAt: Date }>(list: T[]) {
@@ -50,8 +53,18 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   else if (!filter.status && view !== "overdue" && view !== "today" && !board) filter.status = "open";
   if (assignee) filter.assigneeId = assignee === "none" ? null : assignee;
 
+  const page = pageParam(sp.page);
+  if (board) filter.limit = BOARD_MAX;
+  else Object.assign(filter, { limit: PAGE + 1, offset: (page - 1) * PAGE });
   const [allTasks, people] = await Promise.all([listTasks(user, filter), listInternalUsers(user.orgId)]);
-  const tasks = board ? withoutOldCompleted(allTasks) : allTasks;
+  const hasMore = !board && allTasks.length > PAGE;
+  const tasks = board ? withoutOldCompleted(allTasks) : allTasks.slice(0, PAGE);
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries({ view: get("view"), status, assignee, q })) if (v) params.set(k, v);
+    params.set("page", String(p));
+    return `/tasks?${params}`;
+  };
   const layoutHref = (l: "list" | "board") => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries({ view: get("view"), status, assignee, q })) if (v) p.set(k, v);
@@ -143,6 +156,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
       ) : (
         <Card padded={false}>
           <TaskTable tasks={tasks} editableStatus showAssignee={view !== "mine"} empty={t.tasks.empty} />
+          <Pager page={page} hasMore={hasMore} hrefFor={pageHref} labels={t.paging} />
         </Card>
       )}
     </>

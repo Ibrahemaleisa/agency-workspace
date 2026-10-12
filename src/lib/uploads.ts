@@ -1,6 +1,6 @@
 import path from "node:path";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { del, get, put } from "@vercel/blob";
+import { del, get, head, put } from "@vercel/blob";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { attachments, fileBlobs } from "@/db/schema";
@@ -21,6 +21,20 @@ export const UPLOAD_DIR = process.env.UPLOAD_DIR
 
 // Vercel functions reject request bodies over 4.5 MB.
 export const MAX_UPLOAD_BYTES = (process.env.VERCEL ? 4 : 20) * 1024 * 1024;
+
+/**
+ * With Vercel Blob, the browser sends files straight to the store (lib: @vercel/blob/client), so
+ * they aren't limited by the 4.5 MB request size — up to this size per file.
+ */
+export const directUploadsEnabled = () => blobEnabled();
+export const MAX_DIRECT_UPLOAD_BYTES = 500 * 1024 * 1024;
+
+/** Size and type of a stored file, read from the store itself (null when it isn't there). */
+export async function statFile(key: string): Promise<{ size: number; contentType: string } | null> {
+  if (!blobEnabled()) return null;
+  const info = await head(key).catch(() => null);
+  return info ? { size: info.size, contentType: info.contentType } : null;
+}
 
 export async function saveFile(key: string, data: Buffer, contentType: string) {
   if (blobEnabled()) {

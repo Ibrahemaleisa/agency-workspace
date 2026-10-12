@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  BarChart3,
   Activity,
   BadgeCheck,
   Bell,
@@ -50,6 +51,7 @@ const ICONS = {
   billing: CreditCard,
   settings: Settings,
   calendar: CalendarDays,
+  reports: BarChart3,
 };
 
 export type NavItem = {

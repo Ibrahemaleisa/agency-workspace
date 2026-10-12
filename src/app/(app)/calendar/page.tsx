@@ -5,7 +5,9 @@ import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getT } from "@/lib/lang";
 import { listTasks, todayISO } from "@/server/queries";
-import { PageHeader, cn } from "@/components/ui";
+import { PageHeader, buttonClass, cn } from "@/components/ui";
+import { ActionForm, SubmitButton } from "@/components/forms";
+import { createCalendarFeed, disableCalendarFeed } from "@/server/work-actions";
 import { FilterTabs } from "@/components/filters";
 
 export async function generateMetadata() {
@@ -139,6 +141,24 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         </div>
       </div>
       {inMonth === 0 && <p className="mt-3 text-sm text-zinc-500">{c.empty}</p>}
+      {!user.readOnly && (
+        <section className="mt-8 rounded-xl border border-zinc-200/80 bg-white p-4 md:p-5">
+          <h2 className="text-sm font-semibold">{t.calFeed.title}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{user.calendarTokenHash ? t.calFeed.on : t.calFeed.sub}</p>
+          <div className="mt-3 flex flex-wrap items-start gap-2">
+            <ActionForm action={createCalendarFeed} linkLabels={{ note: t.calFeed.linkNote, copy: t.calFeed.copy, copied: t.calFeed.copied }}>
+              <SubmitButton size="sm" variant="secondary">
+                {user.calendarTokenHash ? t.calFeed.regenerate : t.calFeed.create}
+              </SubmitButton>
+            </ActionForm>
+            {user.calendarTokenHash && (
+              <form action={disableCalendarFeed}>
+                <button className={buttonClass("ghost", "sm")}>{t.calFeed.disable}</button>
+              </form>
+            )}
+          </div>
+        </section>
+      )}
     </>
   );
 }

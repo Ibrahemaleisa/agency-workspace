@@ -15,6 +15,8 @@ export const UI = {
   /** Shown on the switcher: the name of the *other* language, in that language. */
   otherLanguage: "العربية",
   otherLanguageCode: "ar",
+  terms: "Terms of Service",
+  privacy: "Privacy Policy",
   footerNote: "Product screenshots show the demo workspace with sample data",
   cta: {
     title: "Run the whole agency in one place",

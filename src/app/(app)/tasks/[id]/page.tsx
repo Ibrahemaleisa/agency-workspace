@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, Download, Eye, EyeOff, Hourglass, ImageIcon, Lock, Paperclip, Pencil, Send, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Download, Eye, EyeOff, Hourglass, ImageIcon, ListChecks, Lock, Paperclip, Pencil, Repeat, Send, Timer, Trash2, X } from "lucide-react";
 import { db } from "@/db";
-import { attachments, projectModules, taskComments, users } from "@/db/schema";
+import { attachments, checklistItems, projectModules, taskComments, timeEntries, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getAccessibleTask } from "@/lib/access";
 import { getT } from "@/lib/lang";
@@ -19,9 +19,16 @@ import {
   requestClientApproval,
   toggleAttachmentVisibility,
   updateTask,
+  registerDirectUploads,
   updateTaskStatus,
   uploadAttachment,
 } from "@/server/task-actions";
+import { DirectUpload } from "@/components/direct-upload";
+import { MAX_DIRECT_UPLOAD_BYTES, directUploadsEnabled } from "@/lib/uploads";
+import { deleteComment, editComment } from "@/server/lifecycle-actions";
+import { addChecklistItem, deleteTimeEntry, logTime, removeChecklistItem, toggleChecklistItem } from "@/server/work-actions";
+import { formatMinutes } from "@/lib/time";
+import { todayISO } from "@/server/queries";
 import { ActivityFeed } from "@/components/lists";
 import { Highlight } from "@/components/project-chat";
 import { FilePicker } from "@/components/file-picker";
@@ -38,6 +45,7 @@ import {
   Select,
   Textarea,
   cn,
+  formatDate,
   isImageType,
 } from "@/components/ui";
 import { ApprovalBadge, DueDate, Person, PriorityBadge, StatusBadge } from "@/components/labels";
@@ -50,6 +58,19 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
   const { t: tr, locale } = await getT();
   const k = tr.task;
 
+  const isStaff = !isClient;
+  const [steps, time] = isStaff
+    ? await Promise.all([
+        db.select().from(checklistItems).where(eq(checklistItems.taskId, task.id)).orderBy(asc(checklistItems.position), asc(checklistItems.createdAt)),
+        db
+          .select({ id: timeEntries.id, minutes: timeEntries.minutes, note: timeEntries.note, spentOn: timeEntries.spentOn, userId: timeEntries.userId, userName: users.name })
+          .from(timeEntries)
+          .leftJoin(users, eq(users.id, timeEntries.userId))
+          .where(eq(timeEntries.taskId, task.id))
+          .orderBy(desc(timeEntries.spentOn), desc(timeEntries.createdAt)),
+      ])
+    : [[], []];
+  const totalMinutes = time.reduce((n, e) => n + e.minutes, 0);
   const [mod, assignee, comments, files, history, people] = await Promise.all([
     task.moduleId ? db.query.projectModules.findFirst({ where: eq(projectModules.id, task.moduleId) }) : null,
     task.assigneeId ? db.query.users.findFirst({ where: eq(users.id, task.assigneeId) }) : null,
@@ -59,6 +80,8 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
         body: taskComments.body,
         internal: taskComments.internal,
         createdAt: taskComments.createdAt,
+        editedAt: taskComments.editedAt,
+        authorId: taskComments.authorId,
         authorName: users.name,
         authorRole: users.role,
       })
@@ -132,6 +155,11 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
             {task.stage && <span>{task.stage}</span>}
             <StatusBadge status={task.status} />
             <ApprovalBadge status={task.approvalStatus} />
+            {task.recurrence && !isClient && (
+              <Badge tone="blue">
+                <Repeat className="size-3" /> {tr.recurrence.badge[task.recurrence]}
+              </Badge>
+            )}
             {!isClient && task.clientVisible && (
               <Badge tone="amber">
                 <Eye className="size-3" /> {k.clientCanSee}
@@ -202,6 +230,63 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
             )}
           </Card>
 
+          {isStaff && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <ListChecks className="size-4" /> {tr.checklist.title}
+                  {steps.length > 0 && (
+                    <span className="text-xs font-normal text-zinc-500">{tr.checklist.progress(steps.filter((s) => s.done).length, steps.length)}</span>
+                  )}
+                </span>
+              }
+              padded={false}
+            >
+              {steps.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-zinc-500">{tr.checklist.empty}</p>
+              ) : (
+                <ul className="divide-y divide-zinc-100">
+                  {steps.map((s) => (
+                    <li key={s.id} className="flex items-center gap-3 px-4 py-2">
+                      <form action={toggleChecklistItem}>
+                        <input type="hidden" name="itemId" value={s.id} />
+                        <button
+                          disabled={!can(user, "tasks.updateStatus")}
+                          aria-pressed={s.done}
+                          aria-label={s.title}
+                          className={cn(
+                            "flex size-5 items-center justify-center rounded border",
+                            s.done ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-300 bg-white hover:border-zinc-500",
+                          )}
+                        >
+                          {s.done && <Check className="size-3.5" />}
+                        </button>
+                      </form>
+                      <span dir="auto" className={cn("min-w-0 flex-1 text-sm", s.done && "text-zinc-400 line-through")}>
+                        {s.title}
+                      </span>
+                      {can(user, "tasks.edit") && (
+                        <form action={removeChecklistItem}>
+                          <input type="hidden" name="itemId" value={s.id} />
+                          <button className="rounded p-1 text-zinc-400 hover:text-red-600" title={tr.checklist.remove} aria-label={tr.checklist.remove}>
+                            <X className="size-3.5" />
+                          </button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {can(user, "tasks.edit") && (
+                <ActionForm action={addChecklistItem} resetOnSuccess className="flex gap-2 border-t border-zinc-100 px-4 py-3">
+                  <input type="hidden" name="taskId" value={task.id} />
+                  <Input name="title" required maxLength={300} placeholder={tr.checklist.placeholder} />
+                  <SubmitButton size="sm" variant="secondary">{tr.checklist.add}</SubmitButton>
+                </ActionForm>
+              )}
+            </Card>
+          )}
+
           <Card
             title={
               <span className="flex items-center gap-1.5">
@@ -261,7 +346,26 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                 ))}
               </ul>
             )}
-            {can(user, "files.upload") && (
+            {can(user, "files.upload") && directUploadsEnabled() && (
+              <DirectUpload
+                taskId={task.id}
+                orgId={user.orgId}
+                canShare={can(user, "tasks.setClientVisibility")}
+                maxBytes={MAX_DIRECT_UPLOAD_BYTES}
+                register={registerDirectUploads}
+                labels={{
+                  choose: tr.media.choose,
+                  hint: tr.media.dropHint,
+                  chosen: tr.media.chosen,
+                  upload: tr.media.upload,
+                  uploading: k.uploading,
+                  share: k.shareWithClient,
+                  tooLarge: tr.actions.fileTooLarge(MAX_DIRECT_UPLOAD_BYTES / 1024 / 1024),
+                  failed: tr.errors.generic,
+                }}
+              />
+            )}
+            {can(user, "files.upload") && !directUploadsEnabled() && (
               <ActionForm action={uploadAttachment} resetOnSuccess className="flex flex-wrap items-center gap-3 border-t border-zinc-100 px-4 py-3">
                 <input type="hidden" name="taskId" value={task.id} />
                 <FilePicker
@@ -301,11 +405,34 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                               <Eye className="size-3" /> {k.clientVisible}
                             </span>
                           ))}
-                        <span className="text-xs text-zinc-500">{formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}</span>
+                        <span className="text-xs text-zinc-500">
+                          {formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}
+                          {c.editedAt && <> · {tr.lifecycle.edited}</>}
+                        </span>
+                        {(c.authorId === user.id || user.role === "admin") && (
+                          <form action={deleteComment} className="ms-auto">
+                            <input type="hidden" name="commentId" value={c.id} />
+                            <ConfirmSubmit message={tr.lifecycle.deleteCommentConfirm} variant="ghost">
+                              <Trash2 className="size-3.5" aria-label={tr.lifecycle.deleteComment} />
+                            </ConfirmSubmit>
+                          </form>
+                        )}
                       </div>
                       <p dir="auto" className="mt-1 text-sm whitespace-pre-wrap text-zinc-700">
                         <Highlight text={c.body} />
                       </p>
+                      {c.authorId === user.id && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer list-none text-xs font-medium text-zinc-500 hover:text-zinc-900">{tr.lifecycle.editComment}</summary>
+                          <ActionForm action={editComment} className="mt-2 space-y-2">
+                            <input type="hidden" name="commentId" value={c.id} />
+                            <Textarea name="body" rows={3} required defaultValue={c.body} />
+                            <div className="flex justify-end">
+                              <SubmitButton size="sm" variant="secondary">{tr.lifecycle.save}</SubmitButton>
+                            </div>
+                          </ActionForm>
+                        </details>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -338,6 +465,63 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
               </div>
             </ActionForm>
           </Card>
+
+          {isStaff && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <Timer className="size-4" /> {tr.time.title}
+                  {totalMinutes > 0 && <span className="text-xs font-normal text-zinc-500">{tr.time.total(formatMinutes(totalMinutes))}</span>}
+                </span>
+              }
+              padded={false}
+            >
+              {time.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-zinc-500">{tr.time.empty}</p>
+              ) : (
+                <ul className="divide-y divide-zinc-100">
+                  {time.map((e) => (
+                    <li key={e.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                      <span className="w-14 font-medium tabular-nums" dir="ltr">{formatMinutes(e.minutes)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="text-zinc-700">{e.userName ?? tr.common.deletedUser}</span>
+                        <span className="text-zinc-500"> · {formatDate(e.spentOn, "d MMM", locale)}</span>
+                        {e.note && <span dir="auto" className="block truncate text-xs text-zinc-500">{e.note}</span>}
+                      </span>
+                      {(e.userId === user.id || user.role === "admin") && (
+                        <form action={deleteTimeEntry}>
+                          <input type="hidden" name="entryId" value={e.id} />
+                          <button className="rounded p-1 text-zinc-400 hover:text-red-600" title={tr.time.remove} aria-label={tr.time.remove}>
+                            <X className="size-3.5" />
+                          </button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {can(user, "time.log") && (
+                <ActionForm action={logTime} resetOnSuccess className="grid grid-cols-2 gap-2 border-t border-zinc-100 px-4 py-3 sm:grid-cols-5">
+                  <input type="hidden" name="taskId" value={task.id} />
+                  <Field label={tr.time.hours}>
+                    <Input name="hours" type="number" min={0} max={24} step={1} defaultValue={0} />
+                  </Field>
+                  <Field label={tr.time.minutes}>
+                    <Input name="minutes" type="number" min={0} max={59} step={5} defaultValue={30} />
+                  </Field>
+                  <Field label={tr.time.date}>
+                    <Input name="spentOn" type="date" defaultValue={todayISO()} required />
+                  </Field>
+                  <Field label={tr.time.note} className="col-span-2 sm:col-span-1">
+                    <Input name="note" maxLength={500} />
+                  </Field>
+                  <div className="col-span-2 flex items-end sm:col-span-1">
+                    <SubmitButton size="sm" variant="secondary" className="w-full">{tr.time.log}</SubmitButton>
+                  </div>
+                </ActionForm>
+              )}
+            </Card>
+          )}
 
           <Card title={k.history} padded={false}>
             <ActivityFeed items={history} showProject={false} empty={k.noHistory} />
@@ -433,6 +617,18 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                     <Input type="date" name="dueDate" defaultValue={task.dueDate ?? ""} />
                   </Field>
                 </div>
+                <Field label={tr.recurrence.label} hint={tr.recurrence.hint}>
+                  <Select
+                    name="recurrence"
+                    defaultValue={task.recurrence ?? ""}
+                    options={[
+                      { value: "", label: tr.recurrence.none },
+                      { value: "daily", label: tr.recurrence.daily },
+                      { value: "weekly", label: tr.recurrence.weekly },
+                      { value: "monthly", label: tr.recurrence.monthly },
+                    ]}
+                  />
+                </Field>
                 {can(user, "tasks.setClientVisibility") && (
                   <div className="space-y-2">
                     <Checkbox name="clientVisible" defaultChecked={task.clientVisible} label={tr.taskForm.visibleToClient} />

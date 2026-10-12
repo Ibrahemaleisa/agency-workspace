@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { format, isToday } from "date-fns";
 import { db } from "@/db";
@@ -5,8 +7,9 @@ import { teamMessages, users } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { sendTeamMessage } from "@/server/team-chat-actions";
+import { deleteTeamMessage } from "@/server/lifecycle-actions";
 import { ActionForm, AutoRefresh, SubmitButton } from "@/components/forms";
-import { Avatar, Badge, EmptyState, PageHeader, Textarea, cn } from "@/components/ui";
+import { Avatar, Badge, EmptyState, PageHeader, Textarea, cn, pageParam } from "@/components/ui";
 import { Highlight } from "@/components/project-chat";
 
 export async function generateMetadata() {
@@ -14,9 +17,12 @@ export async function generateMetadata() {
   return { title: t.teamChat.title };
 }
 
-export default async function TeamChatPage() {
+const PAGE = 100;
+
+export default async function TeamChatPage({ searchParams }: PageProps<"/chat">) {
   const user = await requirePermission("chat.internal");
   const { t, locale } = await getT();
+  const pages = Math.min(pageParam((await searchParams).more), 40);
 
   const recent = await db
     .select({
@@ -31,9 +37,10 @@ export default async function TeamChatPage() {
     .from(teamMessages)
     .leftJoin(users, eq(users.id, teamMessages.authorId))
     .where(eq(teamMessages.orgId, user.orgId))
-    .orderBy(desc(teamMessages.createdAt))
-    .limit(200);
-  const messages = recent.reverse();
+    .orderBy(desc(teamMessages.createdAt), desc(teamMessages.id))
+    .limit(pages * PAGE + 1);
+  const hasOlder = recent.length > pages * PAGE;
+  const messages = recent.slice(0, pages * PAGE).reverse();
 
   // Opening the chat marks it as read.
   // Preview sessions never write (the demo tenant stays exactly as seeded).
@@ -49,6 +56,13 @@ export default async function TeamChatPage() {
             <EmptyState>{t.teamChat.empty}</EmptyState>
           ) : (
             <ul className="space-y-3">
+              {hasOlder && (
+                <li className="text-center">
+                  <Link href={`/chat?more=${pages + 1}`} scroll={false} className="text-xs font-medium text-indigo-600 hover:underline">
+                    {t.paging.loadOlder}
+                  </Link>
+                </li>
+              )}
               {messages.map((m, i) => {
                 const mine = m.authorId === user.id;
                 const grouped = messages[i - 1]?.authorId === m.authorId;
@@ -76,8 +90,16 @@ export default async function TeamChatPage() {
                       >
                         <Highlight text={m.body} />
                       </div>
-                      <span className="mt-1 px-1 text-[11px] text-zinc-500">
+                      <span className="mt-1 flex items-center gap-1 px-1 text-[11px] text-zinc-500">
                         {format(m.createdAt, isToday(m.createdAt) ? "h:mm a" : "MMM d, h:mm a", { locale })}
+                        {(mine || user.role === "admin") && (
+                          <form action={deleteTeamMessage}>
+                            <input type="hidden" name="messageId" value={m.id} />
+                            <button className="rounded p-0.5 text-zinc-400 hover:text-red-600" title={t.lifecycle.deleteComment} aria-label={t.lifecycle.deleteComment}>
+                              <Trash2 className="size-3" />
+                            </button>
+                          </form>
+                        )}
                       </span>
                     </div>
                   </li>

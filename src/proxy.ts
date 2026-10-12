@@ -11,6 +11,7 @@ const PUBLIC = [
   /^\/verify-email$/,
   /^\/(forgot|reset)-password$/,
   /^\/welcome$/,
+  /^\/(terms|privacy)$/,
   /^\/setup$/,
   /^\/lang$/,
   /^\/brand-logo\//, // agency logos (public, like the sign-in page that shows them)
@@ -25,6 +26,7 @@ const PUBLIC = [
   /^\/api\/health$/,
   /^\/api\/t$/, // marketing-site page views
   /^\/api\/plans$/, // public plan list
+  /^\/api\/calendar\/[A-Za-z0-9_.-]+$/, // private calendar feeds (the secret in the URL is the credential)
 ];
 
 /**
@@ -62,6 +64,34 @@ function newVisitorId(request: NextRequest) {
   return VISITOR_RE.test(fromSite) ? fromSite : crypto.randomUUID();
 }
 
+/**
+ * Content-Security-Policy with a fresh nonce per request. Next.js reads the nonce from the request's
+ * CSP header and puts it on its own scripts; any other script (injected through a bug) won't run.
+ * Styles stay 'unsafe-inline' (the brand theme and style attributes); they can't run code.
+ */
+function contentSecurityPolicy(nonce: string) {
+  const dev = process.env.NODE_ENV === "development";
+  const root = process.env.APP_ROOT_DOMAIN?.trim().toLowerCase();
+  // Pages may hand the browser over to a payment page or a tenant's own address after a form post.
+  const formTargets = ["'self'", "https://checkout.stripe.com", "https://billing.stripe.com", "https://*.lemonsqueezy.com"];
+  if (root) formTargets.push(`https://*.${root}`);
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    // Large files go straight from the browser to the file store.
+    "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
+    "media-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    `form-action ${formTargets.join(" ")}`,
+    "frame-ancestors 'none'",
+    ...(dev ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ");
+}
+
 function route(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -81,17 +111,26 @@ function route(request: NextRequest) {
     // Back from paying: a workspace still waiting for the provider's confirmation shows "confirming", not locked.
     if (request.nextUrl.searchParams.has("subscribed")) headers.set("x-subscribed", "1");
     else headers.delete("x-subscribed");
-    return NextResponse.next({ request: { headers } });
+    return withCsp(headers, (h) => NextResponse.next({ request: { headers: h } }));
   }
 
   const url = request.nextUrl.clone();
   if (pathname === "/") {
     url.pathname = "/welcome";
-    return NextResponse.rewrite(url);
+    return withCsp(new Headers(request.headers), (h) => NextResponse.rewrite(url, { request: { headers: h } }));
   }
   url.pathname = "/login";
   url.search = "";
   return NextResponse.redirect(url);
+}
+
+/** Adds the nonce CSP to the request (for Next.js to read) and to the response (for the browser). */
+function withCsp(headers: Headers, respond: (h: Headers) => NextResponse) {
+  const csp = contentSecurityPolicy(btoa(crypto.randomUUID()));
+  headers.set("Content-Security-Policy", csp);
+  const res = respond(headers);
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
 }
 
 export const config = {

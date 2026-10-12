@@ -100,6 +100,27 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
   agency (role, client link). One person can belong to several agencies and switch between them; sessions and
   every tenant query work on a membership.
 
+## Added 12 Oct 2026 (full-product pass)
+
+- **Data lifecycle:** delete projects / clients (typed confirmation), templates, leads; remove people from a
+  workspace; edit/delete own comments, delete own chat messages (admins: any); JSON export
+  (`/api/export`); delete my account; delete a workspace (customer: Settings → Danger zone; staff: control center).
+  Invoices survive a deletion (`invoices.org_id` → null, name/serial copied). `src/lib/lifecycle.ts`.
+- **Work tracking:** task checklists, time entries, repeating tasks (`src/lib/recurrence.ts`), Reports page with
+  CSV (`/reports`, `/api/reports/*`, permission `reports.view`), private iCalendar feed (`/api/calendar/{secret}`).
+- **Security:** control-center two-step sign-in (TOTP, `src/lib/totp.ts`) and audit log (`platform_audit`,
+  `/operra/audit`); nonce CSP in `proxy.ts`; sign-up email code (when email is set up); `src/instrumentation.ts`
+  error alerts (`ALERT_WEBHOOK_URL`).
+- **Billing:** webhooks follow plan switches made in the provider's portal (`resolvePlanCode`); grace period only
+  once per workspace; per-plan storage limit (`plans.max_storage_mb`, editable with member/client limits in the
+  control center); direct browser → Blob uploads up to 500 MB (`/api/uploads`).
+- **Legal:** `/terms`, `/privacy` (`src/content/legal.ts`, filled from `LEGAL_*` env) — a starting text that
+  **must be reviewed by a lawyer** before relying on it. Consent required at sign-up and stored.
+- **Lists are paged** (tasks, notifications, leads, chat history); old notifications are pruned by the cron.
+- **Tests:** `npm test` (`tests/unit.test.ts`, `tests/db.test.ts`); CI also runs the isolation check and a
+  schema-vs-migrations drift check.
+- `vercel.json` must keep the two crons and the `claude/**` deploy exclusion (an edit on 12 Oct had removed them).
+
 ## Marketing website (`site/`)
 
 The Operra marketing site is a **separate Next.js app in `site/`**, deployed as its own Vercel project

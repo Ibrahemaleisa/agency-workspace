@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   chatMessages,
@@ -27,7 +27,8 @@ import { ProjectChat } from "@/components/project-chat";
 import { ProjectForm } from "@/components/project-form";
 import { TaskCreateForm } from "@/components/task-create-form";
 import { FilterTabs } from "@/components/filters";
-import { ActionForm, ConfirmSubmit, SubmitButton } from "@/components/forms";
+import { ActionForm, ConfirmSubmit, DangerForm, SubmitButton } from "@/components/forms";
+import { deleteProject } from "@/server/lifecycle-actions";
 import {
   Avatar,
   Badge,
@@ -42,10 +43,13 @@ import {
   Textarea,
   cn,
   formatDate,
+  pageParam,
 } from "@/components/ui";
 import { ProjectStatusBadge } from "@/components/labels";
 
 type Tab = "overview" | "tasks" | "chat" | "activity" | "settings";
+
+const CHAT_PAGE = 100;
 
 export default async function ProjectPage({ params, searchParams }: PageProps<"/projects/[id]">) {
   const user = await requireUser();
@@ -147,7 +151,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           view={sp.view === "list" ? "list" : "board"}
         />
       )}
-      {tab === "chat" && <ChatTab user={user} project={project} channel={sp.channel === "internal" ? "internal" : sp.channel === "client" ? "client" : undefined} />}
+      {tab === "chat" && (
+        <ChatTab
+          user={user}
+          project={project}
+          channel={sp.channel === "internal" ? "internal" : sp.channel === "client" ? "client" : undefined}
+          pages={pageParam(sp.more)}
+        />
+      )}
       {tab === "activity" && (
         <Card padded={false}>
           <ActivityFeed items={await listActivity(user, { projectId: project.id, limit: 100 })} showProject={false} />
@@ -183,7 +194,7 @@ async function OverviewTab({
   allTasks: { moduleId: string | null; stage: string | null; status: (typeof TASK_STATUSES)[number]["value"] }[];
 }) {
   const { t: tr } = await getT();
-  const visible = await listTasks(user, { projectId: project.id });
+  const visible = await listTasks(user, { projectId: project.id, limit: 5000 });
   const general = visible.filter((t) => !t.moduleId);
   const templates = can(user, "projects.manage")
     ? await db.select().from(moduleTemplates).where(eq(moduleTemplates.orgId, user.orgId)).orderBy(asc(moduleTemplates.name))
@@ -242,7 +253,7 @@ async function TasksTab({
   view: "board" | "list";
 }) {
   const { t: tr } = await getT();
-  const all = await listTasks(user, { projectId: project.id });
+  const all = await listTasks(user, { projectId: project.id, limit: 5000 });
   const shown =
     status === "all" ? all : status === "open" ? all.filter((t) => t.status !== "completed") : all.filter((t) => t.status === status);
   const people = can(user, "tasks.create") ? await listInternalUsers(user.orgId) : [];
@@ -312,33 +323,40 @@ async function ChatTab({
   user,
   project,
   channel: requested,
+  pages,
 }: {
   user: SessionUser;
   project: Project;
   channel?: "internal" | "client";
+  /** How many pages of history to show (newest first; "show older" adds one). */
+  pages: number;
 }) {
   const channels = (["internal", "client"] as const).filter((c) => can(user, c === "internal" ? "chat.internal" : "chat.client"));
   const channel = requested && channels.includes(requested) ? requested : channels[0];
-  const messages = await db
+  const shown = Math.min(pages, 40) * CHAT_PAGE;
+  const newest = await db
     .select({
       id: chatMessages.id,
       body: chatMessages.body,
       createdAt: chatMessages.createdAt,
+      authorId: chatMessages.authorId,
       authorName: users.name,
       authorRole: users.role,
     })
     .from(chatMessages)
     .leftJoin(users, eq(users.id, chatMessages.authorId))
     .where(and(eq(chatMessages.projectId, project.id), eq(chatMessages.channel, channel)))
-    .orderBy(asc(chatMessages.createdAt))
-    .limit(300);
+    .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
+    .limit(shown + 1);
   return (
     <ProjectChat
       projectId={project.id}
       channel={channel}
       channels={[...channels]}
-      messages={messages}
-      currentUserName={user.name}
+      messages={newest.slice(0, shown).reverse()}
+      currentUserId={user.id}
+      canDeleteAny={user.role === "admin"}
+      olderHref={newest.length > shown ? `/projects/${project.id}?tab=chat&channel=${channel}&more=${pages + 1}` : undefined}
     />
   );
 }
@@ -365,9 +383,24 @@ async function SettingsTab({
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
-      <Card title={tr.projects.projectDetails} className="lg:col-span-3">
-        <ProjectForm action={updateProject} project={project} people={people} memberIds={memberIds} submitLabel={tr.projectForm.saveChanges} />
-      </Card>
+      <div className="min-w-0 space-y-4 lg:col-span-3">
+        <Card title={tr.projects.projectDetails}>
+          <ProjectForm action={updateProject} project={project} people={people} memberIds={memberIds} submitLabel={tr.projectForm.saveChanges} />
+        </Card>
+        <Card title={tr.lifecycle.dangerZone} className="border-red-200">
+          <DangerForm
+            action={deleteProject}
+            hidden={{ projectId: project.id }}
+            expected={project.name}
+            labels={{
+              title: tr.lifecycle.deleteProject,
+              body: tr.lifecycle.deleteProjectBody,
+              confirm: tr.lifecycle.typeToConfirm(project.name),
+              submit: tr.lifecycle.deleteProject,
+            }}
+          />
+        </Card>
+      </div>
       <div className="min-w-0 space-y-4 lg:col-span-2">
         {modules.length === 0 && (
           <Card>

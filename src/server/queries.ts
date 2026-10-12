@@ -71,6 +71,8 @@ export type TaskFilter = {
   dueFrom?: string;
   dueTo?: string;
   limit?: number;
+  /** Rows to skip (paging). */
+  offset?: number;
   orderBy?: "due" | "updated";
 };
 
@@ -138,9 +140,11 @@ export async function listTasks(user: SessionUser, f: TaskFilter = {}) {
             sql`${tasks.dueDate} asc nulls last`,
             asc(projectModules.position),
             asc(tasks.createdAt),
+            asc(tasks.id),
           ]),
     )
-    .limit(f.limit ?? 500);
+    .limit(f.limit ?? 500)
+    .offset(f.offset ?? 0);
 }
 
 export type TaskRow = Awaited<ReturnType<typeof listTasks>>[number];

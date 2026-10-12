@@ -50,6 +50,11 @@ export function configChecks(): ConfigCheck[] {
             : "None — no card payment yet: subscribing uses plan requests (and bank transfer if set in Payments)",
     },
     {
+      key: "ALERT_WEBHOOK_URL",
+      ok: process.env.ALERT_WEBHOOK_URL ? true : null,
+      note: process.env.ALERT_WEBHOOK_URL ? "Server errors are posted to your webhook" : "Not set — server errors are only in the hosting logs",
+    },
+    {
       key: "Storage (BLOB_READ_WRITE_TOKEN)",
       ok: process.env.BLOB_READ_WRITE_TOKEN ? true : null,
       note: process.env.BLOB_READ_WRITE_TOKEN ? "Vercel Blob (private)" : process.env.VERCEL ? "Postgres (4 MB per file)" : "Local disk (UPLOAD_DIR)",

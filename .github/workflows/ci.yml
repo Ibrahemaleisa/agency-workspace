@@ -33,6 +33,12 @@ jobs:
         run: npx eslint src
       - name: Typecheck
         run: npx next typegen && npx tsc --noEmit
+      - name: Tests (unit + database)
+        run: npm test
+      - name: Tenant isolation (two seeded tenants)
+        run: npm run db:seed && npm run db:seed-preview && npm run verify:isolation
+      - name: Schema matches the migrations
+        run: npx drizzle-kit generate --name ci-check && git diff --exit-code --stat -- drizzle && test -z "$(git status --porcelain drizzle)"
       - name: Build
         run: npm run build
 

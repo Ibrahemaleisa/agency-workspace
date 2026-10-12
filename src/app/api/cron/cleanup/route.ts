@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { emailVerifications, invitations, passwordResets, loginTokens, platformEvents, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
+import { emailVerifications, invitations, notifications, passwordResets, loginTokens, platformEvents, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
 import { expireTrials } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ export async function GET(req: Request) {
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const halfYearAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
   const yearAgo = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
+  const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const counts = await db.transaction(async (tx) => {
     const n = (rows: unknown[]) => rows.length;
@@ -51,6 +52,14 @@ export async function GET(req: Request) {
           .set({ passwordHash: "", logo: null })
           .where(and(lt(signups.expiresAt, now), sql`${signups.passwordHash} <> ''`))
           .returning({ id: signups.id }),
+      ),
+      // Notifications: read ones after 90 days, unread ones after about 13 months. (The activity
+      // log is the workspace's history and is kept; it goes with the workspace when that's deleted.)
+      notifications: n(
+        await tx
+          .delete(notifications)
+          .where(or(and(isNotNull(notifications.readAt), lt(notifications.createdAt, quarterAgo)), lt(notifications.createdAt, yearAgo)))
+          .returning({ id: notifications.id }),
       ),
       // Analytics events older than about 13 months.
       platformEvents: n(await tx.delete(platformEvents).where(lt(platformEvents.createdAt, yearAgo)).returning({ id: platformEvents.id })),

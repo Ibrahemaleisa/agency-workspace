@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, plans, sessions, subscriptions, users } from "@/db/schema";
-import { createPlatformSession, destroyPlatformSession, requirePlatformAdmin, verifyPlatformAdmin } from "@/lib/platform-admin";
+import { organizations, plans, platformAdmins, sessions, subscriptions, users } from "@/db/schema";
+import { completeSecondFactor, createPlatformSession, destroyPlatformSession, getPlatformSession, requirePlatformAdmin, verifyPlatformAdmin } from "@/lib/platform-admin";
+import { verifyTotp } from "@/lib/totp";
 import { idOf, str, type ActionState } from "@/lib/action-state";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
@@ -13,6 +14,8 @@ import { isUuid } from "@/lib/access";
 import { activatePlan, dismissRequest, saveBankDetails } from "@/lib/billing/manual";
 import { issueResetLink } from "@/lib/password-reset";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
+import { audit } from "@/lib/audit";
+import { ProviderCancelError, deleteOrganization } from "@/lib/lifecycle";
 
 export async function platformLogin(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const email = str(fd, "email")?.toLowerCase() ?? "";
@@ -20,8 +23,42 @@ export async function platformLogin(_prev: ActionState, fd: FormData): Promise<A
   if (!(await rateLimit(`operra-login:${await clientIp()}`, 10, 900))) return { error: "Too many attempts. Try again later." };
   const admin = email && password ? await verifyPlatformAdmin(email, password) : null;
   if (!admin) return { error: "Invalid email or password." };
+  if (admin.totpEnabledAt) {
+    // Password proven; the authenticator code comes next.
+    await createPlatformSession(admin.id, { pending2fa: true });
+    redirect("/operra/login/2fa");
+  }
+  // No authenticator yet: the only page this session opens is the set-up page.
   await createPlatformSession(admin.id);
-  console.info("[control-center] sign-in", { admin: admin.email });
+  await audit({ adminEmail: admin.email, action: "staff.sign_in", meta: { secondFactor: false } });
+  redirect("/operra/security");
+}
+
+/** Second step of signing in: the 6-digit code from the authenticator app. */
+export async function verifySecondFactor(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const s = await getPlatformSession();
+  if (!s) redirect("/operra/login");
+  if (!s.pending2fa) redirect("/operra");
+  if (!(await rateLimit(`operra-2fa:${s.admin.id}`, 8, 900))) return { error: "Too many attempts. Sign in again later." };
+  const row = await db.query.platformAdmins.findFirst({ where: eq(platformAdmins.id, s.admin.id) });
+  const step = row?.totpSecret ? verifyTotp(row.totpSecret, str(fd, "code") ?? "", row.totpLastStep) : null;
+  if (!row || step === null) return { error: "That code isn’t right. Use the current code from your authenticator app." };
+  await db.update(platformAdmins).set({ totpLastStep: step }).where(eq(platformAdmins.id, row.id));
+  await completeSecondFactor(s.tokenHash);
+  await audit({ adminEmail: row.email, action: "staff.sign_in", meta: { secondFactor: true } });
+  redirect("/operra");
+}
+
+/** Turns the authenticator on, once the person proves their app shows the right code. */
+export async function confirmTotpEnrollment(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin({ enrolling: true });
+  if (!(await rateLimit(`operra-2fa-enroll:${admin.id}`, 10, 900))) return { error: "Too many attempts. Try again later." };
+  const row = await db.query.platformAdmins.findFirst({ where: eq(platformAdmins.id, admin.id) });
+  if (!row?.totpSecret || row.totpEnabledAt) redirect("/operra");
+  const step = verifyTotp(row.totpSecret, str(fd, "code") ?? "");
+  if (step === null) return { error: "That code isn’t right. Check the time on your phone and try the current code." };
+  await db.update(platformAdmins).set({ totpEnabledAt: new Date(), totpLastStep: step }).where(eq(platformAdmins.id, row.id));
+  await audit({ adminEmail: row.email, action: "staff.2fa_enabled" });
   redirect("/operra");
 }
 
@@ -42,7 +79,7 @@ export async function setTenantStatus(fd: FormData) {
   if (status === "suspended") {
     await db.delete(sessions).where(sql`${sessions.userId} in (select ${users.id} from ${users} where ${users.orgId} = ${orgId})`);
   }
-  console.info("[control-center] tenant status", { admin: admin.email, serial: org.serial, status });
+  await audit({ adminEmail: admin.email, action: status === "suspended" ? "tenant.paused" : "tenant.restored", orgId, target: org.serial });
   revalidatePath(`/operra/customers/${orgId}`);
 }
 
@@ -60,7 +97,7 @@ export async function extendTrial(fd: FormData) {
     .update(subscriptions)
     .set({ status: "trialing", trialEndsAt: new Date(from + days * 86_400_000), updatedAt: new Date() })
     .where(eq(subscriptions.orgId, orgId));
-  console.info("[control-center] trial extended", { admin: admin.email, orgId, days });
+  await audit({ adminEmail: admin.email, action: "trial.extended", orgId, meta: { days } });
   revalidatePath(`/operra/customers/${orgId}`);
 }
 
@@ -91,6 +128,17 @@ function planFields(fd: FormData): { error: string } | { values: Omit<typeof pla
   const stripePriceId = str(fd, "stripePriceId") ?? null;
   if (stripePriceId && !/^(price_[A-Za-z0-9]+|\d{1,12})$/.test(stripePriceId)) return { error: "Use a Lemon Squeezy variant ID (digits) or a Stripe price ID (price_…)." };
   const sort = Number(str(fd, "sort") ?? 0);
+  // Limits: blank = unlimited.
+  const limit = (key: string, scale = 1) => {
+    const raw = str(fd, key);
+    if (raw === null) return null;
+    const n = Math.round(Number(raw) * scale);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 100_000 * scale) : NaN;
+  };
+  const maxMembers = limit("maxMembers");
+  const maxClients = limit("maxClients");
+  const maxStorageMb = limit("maxStorageGb", 1024);
+  if ([maxMembers, maxClients, maxStorageMb].some((n) => Number.isNaN(n))) return { error: "Limits must be positive numbers, or blank for unlimited." };
   return {
     values: {
       name,
@@ -106,6 +154,9 @@ function planFields(fd: FormData): { error: string } | { values: Omit<typeof pla
       interval,
       stripePriceId,
       sort: Number.isInteger(sort) ? Math.max(-100, Math.min(100, sort)) : 0,
+      maxMembers,
+      maxClients,
+      maxStorageMb,
       active: str(fd, "active") === "on",
     },
   };
@@ -119,7 +170,12 @@ export async function updatePlan(_prev: ActionState, fd: FormData): Promise<Acti
   const r = planFields(fd);
   if ("error" in r) return r;
   await db.update(plans).set(r.values).where(eq(plans.code, code));
-  console.info("[control-center] plan updated", { admin: admin.email, code, trialDays: r.values.trialDays, priceCents: r.values.priceCents, active: r.values.active });
+  await audit({
+    adminEmail: admin.email,
+    action: "plan.updated",
+    target: code,
+    meta: { trialDays: r.values.trialDays ?? null, priceCents: r.values.priceCents ?? null, active: r.values.active ?? null, maxStorageMb: r.values.maxStorageMb ?? null },
+  });
   revalidatePath("/operra/plans");
   return { ok: true };
 }
@@ -133,7 +189,7 @@ export async function createPlan(_prev: ActionState, fd: FormData): Promise<Acti
   const r = planFields(fd);
   if ("error" in r) return r;
   await db.insert(plans).values({ code, ...r.values });
-  console.info("[control-center] plan created", { admin: admin.email, code });
+  await audit({ adminEmail: admin.email, action: "plan.created", target: code });
   revalidatePath("/operra/plans");
   return { ok: true };
 }
@@ -154,7 +210,7 @@ export async function activatePlanAction(_prev: ActionState, fd: FormData): Prom
     staffEmail: admin.email,
   });
   if ("error" in r) return { error: r.error };
-  console.info("[control-center] plan activated", { admin: admin.email, orgId, plan: str(fd, "plan"), until: r.until.toISOString() });
+  await audit({ adminEmail: admin.email, action: "plan.activated", orgId, target: str(fd, "plan"), meta: { until: r.until.toISOString(), months: Number(str(fd, "months") ?? 1) || 1, amountCents: amount === null ? null : Math.round(amount * 100) } });
   revalidatePath(`/operra/customers/${orgId}`);
   revalidatePath("/operra");
   return { ok: true };
@@ -165,6 +221,7 @@ export async function dismissRequestAction(fd: FormData) {
   const id = idOf(fd, "requestId");
   if (!isUuid(id)) return;
   await dismissRequest(id, admin.email);
+  await audit({ adminEmail: admin.email, action: "plan_request.dismissed", target: id });
   revalidatePath("/operra");
 }
 
@@ -174,7 +231,7 @@ export async function resetLinkAction(_prev: ActionState, fd: FormData): Promise
   const accountId = idOf(fd, "accountId");
   if (!isUuid(accountId)) return { error: "Unknown person." };
   const link = await issueResetLink(accountId);
-  console.info("[control-center] reset link issued", { admin: admin.email, accountId });
+  await audit({ adminEmail: admin.email, action: "account.reset_link", target: accountId });
   return { ok: true, link };
 }
 
@@ -193,6 +250,25 @@ export async function saveBankAction(_prev: ActionState, fd: FormData): Promise<
     },
     admin.email,
   );
+  await audit({ adminEmail: admin.email, action: "bank_details.saved", meta: { ibanSet: !!iban } });
   revalidatePath("/operra/payments");
   return { ok: true };
+}
+
+/** Staff: delete a workspace for good (typed confirmation). Stops its payment-provider subscription first. */
+export async function deleteTenantAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin();
+  const orgId = idOf(fd, "orgId");
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) });
+  if (!org || org.isDemo) return { error: "Unknown workspace (or the preview tenant, which can't be deleted)." };
+  if ((str(fd, "confirm") ?? "") !== org.slug) return { error: "Type the workspace address exactly to confirm." };
+  try {
+    await deleteOrganization(org.id);
+  } catch (err) {
+    if (err instanceof ProviderCancelError) return { error: "The payment provider didn't confirm the cancellation, so nothing was deleted. Try again." };
+    throw err;
+  }
+  await audit({ adminEmail: admin.email, action: "tenant.deleted", target: `${org.serial} ${org.slug}`, meta: { name: org.name } });
+  revalidatePath("/operra");
+  redirect("/operra");
 }

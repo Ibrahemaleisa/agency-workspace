@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { randomInt } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
@@ -18,8 +19,11 @@ import { providerName } from "@/lib/billing";
 import { enterWorkspace } from "@/lib/handoff";
 import { getOrgById } from "@/lib/tenant";
 import { sendVerification } from "@/lib/verification";
+import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
+import { OPERRA_BRAND } from "@/lib/brand";
 import { requestCountry, track, trackLogin, visitorId } from "@/lib/analytics";
 import { requestPlan } from "@/lib/billing/manual";
+import { TERMS_VERSION } from "@/lib/legal";
 
 const SIGNUP_COOKIE = "operra_signup";
 const SIGNUP_HOURS = 24;
@@ -42,10 +46,40 @@ export async function currentSignup(): Promise<Signup | null> {
   );
 }
 
+/**
+ * With email set up, a new sign-up proves it owns its address (a 6-digit code) before anything else,
+ * so nobody can open a workspace — and take an address — in someone else's name.
+ */
+async function needsEmailCode(s: Signup) {
+  return emailEnabled() && !s.emailVerifiedAt;
+}
+
+const CODE_MINUTES = 30;
+const codeHash = (signupId: string, code: string) => hashToken(`${signupId}:${code}`);
+
+async function sendSignupCode(s: Pick<Signup, "id" | "email" | "lang">) {
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await db
+    .update(signups)
+    .set({ emailCodeHash: codeHash(s.id, code), emailCodeExpiresAt: new Date(Date.now() + CODE_MINUTES * 60_000), emailCodeAttempts: 0 })
+    .where(eq(signups.id, s.id));
+  const lang = s.lang === "ar" ? "ar" : "en";
+  const c = (await getSaasT(lang)).t.signup.emailCode;
+  try {
+    await sendEmail({
+      to: s.email,
+      ...notificationEmail({ lang, title: c.emailTitle, body: c.emailBody(code), link: "/signup/verify", brand: OPERRA_BRAND, cta: c.verify, footer: "Operra" }),
+    });
+  } catch (err) {
+    console.error("[signup code email failed]", err);
+  }
+}
+
 async function requireSignup(minStep: number): Promise<Signup> {
   const s = await currentSignup();
   if (!s) redirect("/signup?expired=1");
   if (s.orgId) redirect("/signup/provisioning");
+  if (await needsEmailCode(s)) redirect("/signup/verify");
   if (s.step < minStep) redirect(["/signup", "/signup/company", "/signup/brand", "/signup/start"][s.step] ?? "/signup");
   return s;
 }
@@ -61,6 +95,7 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
   if (!name) return { error: e.name };
   if (!isEmail(email)) return { error: e.email };
   if (password.length < 8) return { error: e.password };
+  if (str(fd, "acceptTerms") !== "1") return { error: (await getSaasT()).t.legal.required };
   if (!(await rateLimit(`signup:${await clientIp()}`, 10, 3600))) return { error: e.rate };
 
   // An existing Operra account can add another agency — with that account's own password.
@@ -78,17 +113,23 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
   const plan = await db.query.plans.findFirst({ where: and(eq(plans.code, planCode), eq(plans.active, true)) });
   if (!plan) return { error: e.billing };
 
+  const existingSignup = await currentSignup();
+  const sameEmail = existingSignup && !existingSignup.orgId && existingSignup.email === email;
   const values = {
     name,
     email,
     passwordHash,
+    termsAcceptedAt: new Date(),
+    termsVersion: TERMS_VERSION,
+    // An existing account proved itself with its password; a new address needs the emailed code.
+    emailVerifiedAt: account ? new Date() : sameEmail ? existingSignup.emailVerifiedAt : null,
     lang: await getLang(),
     planCode: plan.code,
     step: 1,
     updatedAt: new Date(),
     expiresAt: new Date(Date.now() + SIGNUP_HOURS * 3600_000),
   };
-  const existing = await currentSignup();
+  const existing = existingSignup;
   let signupId: string;
   if (existing && !existing.orgId) {
     await db.update(signups).set(values).where(eq(signups.id, existing.id));
@@ -109,7 +150,45 @@ export async function signupAccount(_prev: ActionState, fd: FormData): Promise<A
     });
   }
   await track("signup_step", { signupId, accountId: account?.id, meta: { step: 1 } });
+  if (emailEnabled() && !values.emailVerifiedAt) {
+    if (!sameEmail || !existingSignup?.emailCodeHash) {
+      if (!(await rateLimit(`signup-code:${email}`, 5, 3600))) return { error: e.rate };
+      await sendSignupCode({ id: signupId, email, lang: values.lang });
+    }
+    redirect("/signup/verify");
+  }
   redirect("/signup/company");
+}
+
+/* Step 1b — confirm the email address with the emailed code */
+export async function verifySignupCode(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  platformOnly();
+  const s = await currentSignup();
+  if (!s) redirect("/signup?expired=1");
+  if (!(await needsEmailCode(s))) redirect("/signup/company");
+  const c = (await getSaasT()).t.signup.emailCode;
+  if (!s.emailCodeHash || !s.emailCodeExpiresAt || s.emailCodeExpiresAt < new Date()) return { error: c.expired };
+  if (s.emailCodeAttempts >= 5) return { error: c.tooMany };
+  const code = (str(fd, "code") ?? "").replace(/\s/g, "");
+  if (codeHash(s.id, code) !== s.emailCodeHash) {
+    await db.update(signups).set({ emailCodeAttempts: s.emailCodeAttempts + 1 }).where(eq(signups.id, s.id));
+    return { error: s.emailCodeAttempts + 1 >= 5 ? c.tooMany : c.wrong };
+  }
+  await db.update(signups).set({ emailVerifiedAt: new Date(), emailCodeHash: null, updatedAt: new Date() }).where(eq(signups.id, s.id));
+  await track("signup_step", { signupId: s.id, meta: { step: "email" } });
+  redirect("/signup/company");
+}
+
+export async function resendSignupCode(_prev: ActionState, _fd: FormData): Promise<ActionState> {
+  void _fd;
+  platformOnly();
+  const s = await currentSignup();
+  if (!s) redirect("/signup?expired=1");
+  const c = (await getSaasT()).t.signup.emailCode;
+  if (!(await needsEmailCode(s))) redirect("/signup/company");
+  if (!(await rateLimit(`signup-code:${s.email}`, 5, 3600))) return { error: c.rate };
+  await sendSignupCode(s);
+  return { ok: true };
 }
 
 /* Step 2 — company */

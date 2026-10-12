@@ -55,6 +55,18 @@ export async function TaskCreateForm({
         <Field label={f.dueDate}>
           <Input type="date" name="dueDate" />
         </Field>
+        <Field label={t.recurrence.label} hint={t.recurrence.hint} className="sm:col-span-2">
+          <Select
+            name="recurrence"
+            defaultValue=""
+            options={[
+              { value: "", label: t.recurrence.none },
+              { value: "daily", label: t.recurrence.daily },
+              { value: "weekly", label: t.recurrence.weekly },
+              { value: "monthly", label: t.recurrence.monthly },
+            ]}
+          />
+        </Field>
         <Field label={f.description} className="sm:col-span-6">
           <Textarea name="description" rows={2} />
         </Field>

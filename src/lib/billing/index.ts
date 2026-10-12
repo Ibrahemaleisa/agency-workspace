@@ -2,11 +2,11 @@ import "server-only";
 import { cache } from "react";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
-import { billingEvents, invoices, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
+import { billingEvents, invoices, organizations, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
 import { appUrl, isPlatform } from "../platform";
 import { sign } from "../secret";
-import { stripeProvider } from "./stripe";
-import { lemonSqueezyProvider } from "./lemonsqueezy";
+import { priceFor, stripeProvider } from "./stripe";
+import { lemonSqueezyProvider, variantFor } from "./lemonsqueezy";
 import { sendInvoiceEmail } from "./invoice-email";
 import type { BillingEvent, BillingProvider, ProviderName } from "./types";
 
@@ -43,7 +43,13 @@ const testProvider: BillingProvider = {
   async portalUrl() {
     return null;
   },
+  async cancel() {},
 };
+
+/** A provider by name (for acting on an existing subscription, whichever provider is current). */
+export function providerByName(name: string | null | undefined): BillingProvider | null {
+  return name === "stripe" ? stripeProvider : name === "lemonsqueezy" ? lemonSqueezyProvider : name === "test" ? testProvider : null;
+}
 
 export function billingProvider(): BillingProvider | null {
   const name = providerName();
@@ -111,6 +117,24 @@ export function hasAccess(org: Pick<Organization, "isDemo">, sub: Subscription |
   return status === "active" || status === "past_due" || status === "trialing";
 }
 
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Which of our plans a provider reference points at: the Stripe Price / Lemon Squeezy variant first
+ * (they follow plan switches made in the provider's portal), then the plan code in our metadata.
+ * Null when nothing matches — the subscription then keeps the plan it has.
+ */
+export async function resolvePlanCode(tx: DbOrTx, ref: BillingEvent["planRef"]): Promise<string | null> {
+  if (!ref) return null;
+  const all = await tx.select().from(plans);
+  const byRef =
+    (ref.priceId && all.find((p) => priceFor(p) === ref.priceId)) ||
+    (ref.variantId && all.find((p) => variantFor(p) === ref.variantId)) ||
+    null;
+  if (byRef) return byRef.code;
+  return (ref.code && all.find((p) => p.code === ref.code)?.code) || null;
+}
+
 /**
  * Applies a billing event exactly once. Events without a known tenant are recorded and ignored.
  * Returns false when the event was already processed.
@@ -131,10 +155,12 @@ export async function applyBillingEvent(evt: BillingEvent): Promise<boolean> {
     if (existing.providerSubscriptionId && evt.subscriptionId && existing.providerSubscriptionId !== evt.subscriptionId && evt.type !== "checkout.session.completed") {
       return { applied: true, invoiceId: null };
     }
+    const planCode = await resolvePlanCode(tx, evt.planRef);
     await tx
       .update(subscriptions)
       .set({
         provider: evt.provider,
+        ...(planCode ? { planCode } : {}),
         ...(evt.status ? { status: evt.status } : {}),
         ...(evt.customerId ? { providerCustomerId: evt.customerId } : {}),
         ...(evt.subscriptionId ? { providerSubscriptionId: evt.subscriptionId } : {}),
@@ -146,11 +172,14 @@ export async function applyBillingEvent(evt: BillingEvent): Promise<boolean> {
 
     let invoiceId: string | null = null;
     if (evt.invoice && evt.invoice.amountCents > 0) {
+      const org = await tx.query.organizations.findFirst({ where: eq(organizations.id, evt.orgId), columns: { name: true, serial: true } });
       const [inv] = await tx
         .insert(invoices)
         .values({
           orgId: evt.orgId,
-          planCode: evt.invoice.planCode ?? existing.planCode,
+          orgName: org?.name ?? null,
+          orgSerial: org?.serial ?? null,
+          planCode: planCode ?? evt.invoice.planCode ?? existing.planCode,
           amountCents: evt.invoice.amountCents,
           currency: evt.invoice.currency.toUpperCase(),
           periodStart: evt.invoice.periodStart ?? null,

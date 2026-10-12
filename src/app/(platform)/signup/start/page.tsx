@@ -1,3 +1,4 @@
+import { emailEnabled } from "@/lib/email";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
@@ -19,6 +20,7 @@ export default async function SignupStartPage() {
   const signup = await currentSignup();
   if (!signup) redirect("/signup?expired=1");
   if (signup.orgId) redirect("/signup/provisioning");
+  if (emailEnabled() && !signup.emailVerifiedAt) redirect("/signup/verify");
   if (signup.step < 3) redirect("/signup/brand");
   const { t } = await getSaasT();
   const s = t.signup;

@@ -10,7 +10,8 @@ import { markAllNotificationsRead, markNotificationRead, sendTestEmail, setEmail
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { can } from "@/lib/permissions";
 import { emailEnabled } from "@/lib/email";
-import { Button, Card, EmptyState, Input, PageHeader, cn } from "@/components/ui";
+import { Button, Card, EmptyState, Input, PageHeader, Pager, cn, pageParam } from "@/components/ui";
+import { unreadNotificationCount } from "@/server/queries";
 import { getT } from "@/lib/lang";
 
 export async function generateMetadata() {
@@ -30,8 +31,11 @@ const ICONS: Record<string, typeof Bell> = {
   project: FolderKanban,
 };
 
-export default async function NotificationsPage() {
+const PAGE = 50;
+
+export default async function NotificationsPage({ searchParams }: PageProps<"/notifications">) {
   const user = await requireUser();
+  const page = pageParam((await searchParams).page);
   // The person behind this membership: verification status (platform mode; previews have no real address).
   const account = isPlatform() && !user.readOnly ? await getAccount(user.accountId) : null;
   const { t: st } = await getSaasT();
@@ -40,9 +44,12 @@ export default async function NotificationsPage() {
     .select()
     .from(notifications)
     .where(eq(notifications.userId, user.id))
-    .orderBy(desc(notifications.createdAt))
-    .limit(100);
-  const unread = items.filter((n) => !n.readAt).length;
+    .orderBy(desc(notifications.createdAt), desc(notifications.id))
+    .limit(PAGE + 1)
+    .offset((page - 1) * PAGE);
+  const hasMore = items.length > PAGE;
+  items.splice(PAGE);
+  const unread = await unreadNotificationCount(user.id);
 
   return (
     <>
@@ -124,6 +131,7 @@ export default async function NotificationsPage() {
             })}
           </ul>
         )}
+        <Pager page={page} hasMore={hasMore} hrefFor={(p) => `/notifications?page=${p}`} labels={t.paging} />
       </Card>
     </>
   );

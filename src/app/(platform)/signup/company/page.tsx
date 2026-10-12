@@ -1,3 +1,4 @@
+import { emailEnabled } from "@/lib/email";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -15,6 +16,7 @@ export default async function SignupCompanyPage() {
   const signup = await currentSignup();
   if (!signup) redirect("/signup?expired=1");
   if (signup.orgId) redirect("/signup/provisioning");
+  if (emailEnabled() && !signup.emailVerifiedAt) redirect("/signup/verify");
   const { t, lang } = await getSaasT();
   const s = t.signup;
   return (

@@ -220,7 +220,12 @@ period ends unless renewed. Nothing needs configuring for this mode.
 | `ALLOW_TEST_BILLING` | **never in production** | Staging only: lets `BILLING_PROVIDER=test` run on a production build. |
 | `RESEND_API_KEY` **or** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | strongly recommended | Invitations, email verification, password reset, notifications. Without it: invitations show a copy link, verification and reset emails can't be sent (nothing is faked). |
 | `EMAIL_FROM` | with email | e.g. `Operra <no-reply@operra.com>` (a sender your provider has verified). |
-| `BLOB_READ_WRITE_TOKEN` | recommended | Vercel Blob (private) for uploads. Without it uploads go to Postgres (4 MB per file on Vercel). |
+| `BLOB_READ_WRITE_TOKEN` | recommended | Vercel Blob (private) for uploads. With it, files go from the browser straight to the store (up to 500 MB each). Without it uploads go to Postgres (4 MB per file on Vercel). |
+| `LEGAL_ENTITY_NAME` | **yes** | Who provides the service, as named in the Terms and Privacy Policy (e.g. your registered business name). Defaults to "Operra". |
+| `LEGAL_CONTACT_EMAIL` | **yes** | Address for legal / privacy requests shown in `/terms` and `/privacy`. Falls back to `EMAIL_FROM`. |
+| `LEGAL_JURISDICTION` | optional | Governing law in the Terms (default: the Kingdom of Saudi Arabia). |
+| `LEGAL_EFFECTIVE_DATE` | optional | Date the current terms took effect (`2026-10-12` format); also the version recorded when someone accepts them. Change it when the terms change materially. |
+| `ALERT_WEBHOOK_URL` | recommended | Slack / Discord / Google Chat / Teams incoming-webhook URL. Unexpected server errors are posted there (at most once per 10 minutes per error); they are always logged as JSON lines. |
 
 Not needed in platform mode: `SEED_DEMO`, `SHOW_DEMO_ACCOUNTS`, `SITE_ORG_SLUG` (single-agency only).
 Local only: `UPLOAD_DIR`, `FILE_STORAGE`, `PLATFORM_ADMIN_PASSWORD` (read by `npm run platform:admin`).
@@ -251,7 +256,9 @@ Run after the first deploy and after any infrastructure change.
       2xx responses.
 - [ ] `npm run verify:isolation` against production (read-only) → "All isolation checks passed."
 - [ ] Tomorrow: Vercel → Cron Jobs shows `/api/cron/cleanup` succeeded.
-- [ ] Pause the test agency from the control center (there is no delete; remove it with SQL if needed).
+- [ ] Pause the test agency from the control center, then delete it (customer page → Delete workspace).
+- [ ] Control center → Audit log lists your sign-in, the pause and the deletion.
+- [ ] `/terms` and `/privacy` show your legal name and contact email (set `LEGAL_*`).
 
 ---
 
@@ -261,7 +268,14 @@ Run after the first deploy and after any infrastructure change.
   `[cron] cleanup`, `[checkout failed]`, `[stripe webhook]`, `[invite email failed]`,
   `[verification email failed]`, `[password reset email failed]`, `[email skipped …]`.
 - **Staff accounts:** `npm run platform:admin -- <email> <name>` creates or resets one (password from
-  `PLATFORM_ADMIN_PASSWORD`, 12+ characters).
+  `PLATFORM_ADMIN_PASSWORD`, 12+ characters). Every staff member must set up an authenticator app at their
+  first sign-in (two-step sign-in is required). Lost phone: run the same command with
+  `PLATFORM_ADMIN_RESET_2FA=true` and a new password; the next sign-in sets up a new authenticator.
+- **Audit log:** control center → Audit log — every staff change (plan activations, pauses, deletions, plan edits,
+  reset links, bank details) and workspaces deleted by their owners.
+- **Deleting an agency:** control center → customer → Delete workspace (type its address). A card subscription is
+  cancelled with the provider first; if that fails nothing is deleted. Invoices are kept. Agencies can also delete
+  their own workspace (Settings → Danger zone) and export their data first (Settings → Export your data).
 - **Pausing an agency:** control center → customer → Pause (ends its sessions). Restore the same way.
 - **Extending a trial:** control center → customer → Extend trial (free trials only).
 - **Changing the trial length or publishing a price:** control center → Plans.
@@ -291,7 +305,12 @@ Run after the first deploy and after any infrastructure change.
 - **Locked workspaces** (paused, or trial ended) can't change anything: pages show a gate, server actions and
   file downloads are refused; billing stays reachable for admins.
 - **Preview** sessions are read-only at the single choke point (`requireUser`).
-- **Control center:** its own staff accounts and cookie (path `/operra`, `SameSite=Strict`), only on the app host.
+- **Control center:** its own staff accounts and cookie (path `/operra`, `SameSite=Strict`), only on the app host;
+  password **and** an authenticator-app code (TOTP, replay-protected) on every sign-in; staff changes are audited.
+- **Sign-up:** with email configured, a new address must enter a 6-digit emailed code before its workspace is
+  created; sign-up also requires accepting the Terms and Privacy Policy (time and version stored).
+- **Content-Security-Policy:** a per-request nonce; only the app's own scripts run (`script-src 'nonce-…' 'strict-dynamic'`),
+  no framing, no plugins.
 - **Headers:** `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS; no CORS headers
   (nothing is meant to be called cross-origin; Stripe's webhook is server-to-server).
 - **Uploads:** size-limited, stored under random keys (private Blob), served only after an access check, with

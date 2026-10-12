@@ -82,8 +82,23 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
       // 3. The admin: their person account — new, or an existing Operra account whose password was
       //    proven at sign-up (the sign-up then carries that account's hash) — and a membership here.
       let account = await tx.query.accounts.findFirst({ where: eq(accounts.email, signup.email) });
-      if (!account) [account] = await tx.insert(accounts).values({ email: signup.email, passwordHash: signup.passwordHash }).returning();
+      if (!account)
+        [account] = await tx
+          .insert(accounts)
+          .values({
+            email: signup.email,
+            passwordHash: signup.passwordHash,
+            emailVerifiedAt: signup.emailVerifiedAt,
+            termsAcceptedAt: signup.termsAcceptedAt,
+            termsVersion: signup.termsVersion,
+          })
+          .returning();
       else if (account.passwordHash !== signup.passwordHash) throw new ProvisioningError("emailTaken");
+      else if (signup.termsAcceptedAt)
+        await tx
+          .update(accounts)
+          .set({ termsAcceptedAt: signup.termsAcceptedAt, termsVersion: signup.termsVersion })
+          .where(eq(accounts.id, account.id));
       let admin = await tx.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.accountId, account.id)) });
       if (!admin) {
         [admin] = await tx

@@ -55,6 +55,8 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
   if (!plan || !org || org.isDemo) return null;
   const existing = await pendingRequest(orgId);
   const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) });
+  // Any request before this one (pending, dismissed or activated) already had its chance at grace.
+  const earlier = !!existing || !!(await db.query.planRequests.findFirst({ where: eq(planRequests.orgId, orgId), columns: { id: true } }));
 
   await db.transaction(async (tx) => {
     const paid = transfer
@@ -74,9 +76,9 @@ export async function requestPlan(orgId: string, planCode: string, requestedById
     if (sub && !sub.providerSubscriptionId && sub.status !== "active") {
       // The trial continues on the chosen plan; a trial that has ended (or ends within the grace
       // period) gets a few days so the agency is never locked out while staff activate the plan.
-      // Only the first request earns grace.
+      // Grace is given once per workspace: a dismissed request followed by a new one earns no more days.
       const graceUntil = new Date(Date.now() + GRACE_DAYS * DAY);
-      const needsGrace = !existing && (!sub.trialEndsAt || sub.trialEndsAt < graceUntil);
+      const needsGrace = !earlier && (!sub.trialEndsAt || sub.trialEndsAt < graceUntil);
       await tx
         .update(subscriptions)
         .set({
@@ -126,7 +128,8 @@ async function notifyStaff(orgName: string, serial: string, planName: string, tr
 export async function activatePlan(input: { orgId: string; planCode: string; months: number; amountCents: number | null; staffEmail: string }) {
   const plan = await db.query.plans.findFirst({ where: eq(plans.code, input.planCode) });
   const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, input.orgId) });
-  if (!plan || !sub) return { error: "Unknown plan or workspace." };
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, input.orgId), columns: { name: true, serial: true } });
+  if (!plan || !sub || !org) return { error: "Unknown plan or workspace." };
   if (sub.providerSubscriptionId) return { error: "This workspace pays online; change its plan with the payment provider." };
   const months = Math.min(24, Math.max(1, Math.round(input.months)));
   const amountCents = input.amountCents ?? (plan.priceCents != null ? plan.priceCents * months : null);
@@ -156,6 +159,8 @@ export async function activatePlan(input: { orgId: string; planCode: string; mon
       .insert(invoices)
       .values({
         orgId: input.orgId,
+        orgName: org.name,
+        orgSerial: org.serial,
         planCode: plan.code,
         amountCents,
         currency: plan.currency,

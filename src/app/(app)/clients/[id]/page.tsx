@@ -9,6 +9,8 @@ import { can } from "@/lib/permissions";
 import { updateClient } from "@/server/admin-actions";
 import { listInternalUsers, listProjects } from "@/server/queries";
 import { ClientForm } from "@/components/client-form";
+import { DangerForm } from "@/components/forms";
+import { deleteClient } from "@/server/lifecycle-actions";
 import { ProjectTable } from "@/components/lists";
 import {
   Card,
@@ -65,6 +67,21 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
                 people={people}
                 teamIds={team.map((t) => t.id)}
                 submitLabel={t.clientForm.save}
+              />
+            </Card>
+          )}
+          {can(user, "clients.manage") && (
+            <Card title={t.lifecycle.dangerZone} className="border-red-200">
+              <DangerForm
+                action={deleteClient}
+                hidden={{ clientId: client.id }}
+                expected={client.name}
+                labels={{
+                  title: t.lifecycle.deleteClient,
+                  body: t.lifecycle.deleteClientBody,
+                  confirm: t.lifecycle.typeToConfirm(client.name),
+                  submit: t.lifecycle.deleteClient,
+                }}
               />
             </Card>
           )}

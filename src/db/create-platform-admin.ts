@@ -9,6 +9,7 @@ import { platformAdmins } from "./schema";
  * The password is read from the environment so it never lands in shell history as an argument.
  * On Vercel, set PLATFORM_ADMIN_EMAIL (+ optional PLATFORM_ADMIN_NAME) and PLATFORM_ADMIN_PASSWORD
  * and the build runs this too; remove them after the first sign-in.
+ * Lost phone: add PLATFORM_ADMIN_RESET_2FA=true to clear the authenticator; the next sign-in sets up a new one.
  */
 async function main() {
   const [argEmail, ...nameParts] = process.argv.slice(2);
@@ -18,10 +19,15 @@ async function main() {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Usage: npm run platform:admin -- <email> <name>");
   if (password.length < 12) throw new Error("Set PLATFORM_ADMIN_PASSWORD (12+ characters).");
   const passwordHash = await bcrypt.hash(password, 12);
+  const reset2fa = process.env.PLATFORM_ADMIN_RESET_2FA === "true";
   await db
     .insert(platformAdmins)
     .values({ email: email.toLowerCase(), name: name || email, passwordHash })
-    .onConflictDoUpdate({ target: platformAdmins.email, set: { passwordHash, active: true } });
+    .onConflictDoUpdate({
+      target: platformAdmins.email,
+      set: { passwordHash, active: true, ...(reset2fa ? { totpSecret: null, totpEnabledAt: null, totpLastStep: null } : {}) },
+    });
+  if (reset2fa) console.log("✓ Authenticator cleared — set up a new one at the next sign-in.");
   console.log(`✓ Control center account ready: ${email.toLowerCase()}`);
 }
 

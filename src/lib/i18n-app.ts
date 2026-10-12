@@ -74,6 +74,7 @@ const en = {
     billing: "Plan & billing",
     settings: "Settings",
     calendar: "Calendar",
+    reports: "Reports",
   },
   roles: { admin: "Admin / Manager", employee: "Employee", client: "Client" },
   taskStatus: {
@@ -681,6 +682,7 @@ const ar: AppDict = {
     billing: "الخطة والفوترة",
     settings: "الإعدادات",
     calendar: "التقويم",
+    reports: "التقارير",
   },
   roles: { admin: "مدير", employee: "موظف", client: "عميل" },
   taskStatus: {

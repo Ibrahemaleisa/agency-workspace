@@ -31,8 +31,10 @@ import {
 import { nt } from "@/lib/notify-text";
 import { bool, idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { taskStatusLabel } from "@/lib/constants";
-import { MAX_UPLOAD_BYTES, attachmentKeysForTasks, removeFile, removeFiles, saveFile } from "@/lib/uploads";
+import { MAX_UPLOAD_BYTES, attachmentKeysForTasks, removeFile, removeFiles, saveFile, statFile } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
+import { storageLimitError } from "@/lib/limits";
+import { parseRecurrence, spawnNextIfRecurring } from "@/lib/recurrence";
 
 const msg = async () => (await getT()).t.actions;
 
@@ -85,6 +87,9 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
 
   if (fd.getAll("files").some((f) => f instanceof File && f.size > MAX_UPLOAD_BYTES))
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
+  const newFiles = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  const overQuota = newFiles.length ? await storageLimitError(user.orgId, newFiles.reduce((n, f) => n + f.size, 0)) : null;
+  if (overQuota) return { error: overQuota };
 
   const requiresApproval = bool(fd, "requiresApproval");
   const [task] = await db
@@ -101,6 +106,7 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
       dueDate: str(fd, "dueDate"),
       clientVisible: requiresApproval || bool(fd, "clientVisible"),
       requiresApproval,
+      recurrence: parseRecurrence(str(fd, "recurrence")),
       createdById: user.id,
     })
     .returning();
@@ -138,6 +144,7 @@ export async function updateTask(_prev: ActionState, fd: FormData): Promise<Acti
     description: str(fd, "description"),
     priority: parsePriority(str(fd, "priority")),
     dueDate: str(fd, "dueDate"),
+    recurrence: parseRecurrence(str(fd, "recurrence")),
     updatedAt: new Date(),
   };
   if (task.moduleId) {
@@ -281,6 +288,7 @@ export async function updateTaskStatus(fd: FormData) {
       link: taskLink(task.id),
     });
   }
+  if (status === "completed") await spawnNextIfRecurring(user, task.id);
   refresh();
 }
 
@@ -380,6 +388,7 @@ export async function decideApproval(_prev: ActionState, fd: FormData): Promise<
     body: feedback,
     link: taskLink(task.id),
   });
+  if (approved) await spawnNextIfRecurring(user, task.id);
   refresh();
   return { ok: true };
 }
@@ -503,6 +512,8 @@ async function storeAttachments(
   assertCan(user, "files.upload");
   if (files.some((f) => f.size > MAX_UPLOAD_BYTES))
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
+  const overQuota = await storageLimitError(user.orgId, files.reduce((n, f) => n + f.size, 0));
+  if (overQuota) return { error: overQuota };
 
   for (const file of files) {
     const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(-100);
@@ -531,5 +542,57 @@ async function storeAttachments(
     taskId: task.id,
     clientVisible,
   });
+  return {};
+}
+
+/**
+ * After the browser put files straight into the store (/api/uploads), attach them to the task.
+ * Size and type come from the store, never from the browser; only keys in this workspace's folder.
+ */
+export async function registerDirectUploads(input: {
+  taskId: string;
+  clientVisible: boolean;
+  files: { key: string; name: string }[];
+}): Promise<{ error?: string }> {
+  const user = await requireUser();
+  assertCan(user, "files.upload");
+  const { task } = await getAccessibleTask(user, input.taskId);
+  const clientVisible = can(user, "tasks.setClientVisibility") && !!input.clientVisible;
+  const files: { key: string; name: string; size: number; type: string }[] = [];
+  for (const f of input.files.slice(0, 20)) {
+    if (typeof f.key !== "string" || !f.key.startsWith(`${user.orgId}/`) || f.key.includes("..")) continue;
+    if (await db.query.attachments.findFirst({ where: eq(attachments.storageKey, f.key), columns: { id: true } })) continue;
+    const stat = await statFile(f.key);
+    if (!stat) continue;
+    files.push({ key: f.key, name: String(f.name ?? "file").slice(0, 200), size: stat.size, type: stat.contentType || "application/octet-stream" });
+  }
+  if (files.length === 0) return { error: (await msg()).chooseFile };
+  const over = await storageLimitError(user.orgId, files.reduce((n, f) => n + f.size, 0));
+  if (over) {
+    await removeFiles(files.map((f) => f.key));
+    return { error: over };
+  }
+  for (const f of files) {
+    await db.insert(attachments).values({
+      orgId: user.orgId,
+      taskId: task.id,
+      uploaderId: user.id,
+      fileName: f.name,
+      storageKey: f.key,
+      mimeType: f.type,
+      size: f.size,
+      clientVisible,
+    });
+  }
+  if (clientVisible && !task.clientVisible) await db.update(tasks).set({ clientVisible: true }).where(eq(tasks.id, task.id));
+  await logActivity(user, {
+    action: "file.uploaded",
+    summary: `uploaded ${files.map((f) => f.name).join(", ")} to "${task.title}"`,
+    params: { file: files.map((f) => f.name).join("، "), title: task.title },
+    projectId: task.projectId,
+    taskId: task.id,
+    clientVisible,
+  });
+  refresh();
   return {};
 }

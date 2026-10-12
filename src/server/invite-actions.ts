@@ -19,6 +19,7 @@ import { parseFocus, startOnboarding } from "@/lib/onboarding";
 import { enterWorkspace } from "@/lib/handoff";
 import { getHostTenant } from "@/lib/tenant";
 import { teamLimitError } from "@/lib/limits";
+import { TERMS_VERSION } from "@/lib/legal";
 
 const INVITE_DAYS = 7;
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 200;
@@ -181,6 +182,8 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
     const { account } = await ensureAccount(tx, invite.email, passwordHash);
     // The account created or proven above must be the one we insert for (no swap in between).
     if (account.passwordHash !== passwordHash) return null;
+    // Joining shows the terms ("By continuing you agree…"): record the acceptance.
+    await tx.update(accounts).set({ termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION }).where(eq(accounts.id, account.id));
     if (invite.emailedAt && !account.emailVerifiedAt) {
       await tx.update(accounts).set({ emailVerifiedAt: new Date() }).where(eq(accounts.id, account.id));
     }

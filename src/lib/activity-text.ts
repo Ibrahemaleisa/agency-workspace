@@ -41,6 +41,12 @@ const EN: Record<string, Tpl> = {
   "billing.plan": (p) => `changed the plan to ${p.plan}`,
   "billing.request": (p) => `chose the ${p.plan} plan`,
   "billing.transfer": (p) => `sent a bank transfer receipt for ${p.plan}`,
+  "task.recurred": (p) => `scheduled the next ${q("en", p.title)} for ${p.due}`,
+  "time.logged": (p) => `logged ${p.duration} on ${q("en", p.title)}`,
+  "project.deleted": (p) => `deleted project ${q("en", p.name)}`,
+  "client.deleted": (p) => `deleted client ${p.name}`,
+  "template.deleted": (p) => `deleted module template ${p.name}`,
+  "user.removed": (p) => `removed ${p.name} from the workspace`,
 };
 
 const AR: Record<string, Tpl> = {
@@ -73,6 +79,12 @@ const AR: Record<string, Tpl> = {
   "billing.plan": (p) => `تغيير الباقة إلى ${p.planAr || p.plan}`,
   "billing.request": (p) => `اختيار باقة ${p.planAr || p.plan}`,
   "billing.transfer": (p) => `إرسال إيصال تحويل لباقة ${p.planAr || p.plan}`,
+  "task.recurred": (p) => `جدولة ${q("ar", p.title)} التالية في ${p.due}`,
+  "time.logged": (p) => `تسجيل ${p.duration} على ${q("ar", p.title)}`,
+  "project.deleted": (p) => `حذف المشروع ${q("ar", p.name)}`,
+  "client.deleted": (p) => `حذف العميل ${p.name}`,
+  "template.deleted": (p) => `حذف قالب الوحدة ${p.name}`,
+  "user.removed": (p) => `إزالة ${p.name} من مساحة العمل`,
 };
 
 function status(t: AppDict, s: string | undefined) {

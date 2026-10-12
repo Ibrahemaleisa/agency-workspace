@@ -65,6 +65,18 @@ function PlanFields({ p }: { p?: Plan }) {
         Payment provider ID (Lemon Squeezy variant or Stripe price)
         <input name="stripePriceId" defaultValue={p?.stripePriceId ?? ""} placeholder="123456 or price_…" className={`${field} font-mono`} />
       </label>
+      <label className={label}>
+        Team members (blank = unlimited)
+        <input name="maxMembers" type="number" min={1} max={100000} defaultValue={p?.maxMembers ?? ""} className={field} />
+      </label>
+      <label className={label}>
+        Clients (blank = unlimited)
+        <input name="maxClients" type="number" min={1} max={100000} defaultValue={p?.maxClients ?? ""} className={field} />
+      </label>
+      <label className={label}>
+        File storage in GB (blank = unlimited)
+        <input name="maxStorageGb" type="number" min={0.1} max={100000} step="0.1" defaultValue={p?.maxStorageMb == null ? "" : p.maxStorageMb / 1024} className={field} />
+      </label>
       <div className="flex flex-col justify-end gap-2 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" name="active" defaultChecked={p?.active ?? true} /> Shown and available for sign-up

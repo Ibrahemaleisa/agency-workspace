@@ -11,7 +11,7 @@ import type { BillingEvent, BillingProvider } from "./types";
  */
 const API = "https://api.stripe.com/v1";
 
-async function stripe<T>(path: string, method: "GET" | "POST", params?: Record<string, string>): Promise<T> {
+async function stripe<T>(path: string, method: "GET" | "POST" | "DELETE", params?: Record<string, string>): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method,
     headers: {
@@ -73,6 +73,15 @@ export const stripeProvider: BillingProvider = {
     const session = await stripe<{ url: string }>("/billing_portal/sessions", "POST", { customer: customerId, return_url: returnUrl });
     return session.url;
   },
+  async cancel(subscriptionId) {
+    try {
+      await stripe(`/subscriptions/${encodeURIComponent(subscriptionId)}`, "DELETE");
+    } catch (err) {
+      // Already cancelled (or never finished): nothing left to stop.
+      if (err instanceof Error && /Stripe 404/.test(err.message)) return;
+      throw err;
+    }
+  },
 };
 
 /** Verifies the Stripe-Signature header (HMAC-SHA256 over "timestamp.payload", 5-minute tolerance). */
@@ -96,9 +105,12 @@ type StripeSub = {
   customer: string;
   cancel_at_period_end: boolean;
   current_period_end?: number;
-  items?: { data?: { current_period_end?: number }[] };
+  items?: { data?: { current_period_end?: number; price?: { id?: string } }[] };
   metadata?: { org_id?: string; plan?: string };
 };
+
+/** The Price the subscription is on now (changes when the customer switches plan in the portal). */
+const planRef = (s: StripeSub) => ({ priceId: s.items?.data?.[0]?.price?.id ?? null, code: s.metadata?.plan ?? null });
 
 const periodEnd = (s: StripeSub) => {
   const ts = s.current_period_end ?? s.items?.data?.[0]?.current_period_end;
@@ -127,6 +139,7 @@ export async function normalizeStripeEvent(event: {
       status: sub.status,
       currentPeriodEnd: periodEnd(sub),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
+      planRef: planRef(sub),
       raw: event,
     };
   }
@@ -156,6 +169,7 @@ export async function normalizeStripeEvent(event: {
       status: sub.status,
       currentPeriodEnd: periodEnd(sub),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
+      planRef: planRef(sub),
       invoice: {
         providerInvoiceId: inv.id,
         amountCents: inv.amount_paid,
@@ -180,6 +194,7 @@ export async function normalizeStripeEvent(event: {
       status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
       currentPeriodEnd: periodEnd(sub),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
+      planRef: planRef(sub),
       raw: event,
     };
   }

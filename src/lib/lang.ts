@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { ar as arLocale, enUS } from "date-fns/locale";
 import { DICT, LANG_COOKIE, dirOf, isLang, type Lang } from "./i18n";
 import { APP_DICT } from "./i18n-app";
+import { MORE_DICT } from "./i18n-more";
 import { getBrand, withBrand } from "./brand";
 
 /** Visitor's chosen language (the agency's default language until they pick one). */
@@ -24,7 +25,7 @@ export const getT = cache(async () => {
   return {
     lang,
     brand,
-    t: withBrand(APP_DICT[lang], brand.name[lang]),
+    t: withBrand({ ...APP_DICT[lang], ...MORE_DICT[lang] }, brand.name[lang]),
     locale: lang === "ar" ? arLocale : enUS,
     dir: dirOf(lang),
   };

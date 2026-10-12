@@ -10,6 +10,7 @@ import { getSaasT } from "@/lib/i18n-saas";
 import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
 import { isPlatform, tenantEntryUrl } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
+import { storageLimitBytes, storageUsedBytes } from "@/lib/limits";
 import { openBillingPortal, startCheckout } from "@/server/billing-actions";
 import { pendingRequest } from "@/lib/billing/manual";
 import { formatMoney } from "@/lib/billing/invoice-email";
@@ -33,6 +34,8 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
   const paid = await db.select().from(invoices).where(eq(invoices.orgId, org.id)).orderBy(desc(invoices.createdAt)).limit(24);
   const offered = await db.select().from(plans).where(eq(plans.active, true)).orderBy(asc(plans.sort), asc(plans.code));
   const provider = billingProvider();
+  const [storageUsed, storageMax] = await Promise.all([storageUsedBytes(org.id), storageLimitBytes(org.id)]);
+  const gb = (bytes: number) => (Math.round((bytes / 1024 ** 3) * 100) / 100).toString();
   const status = sub ? effectiveStatus(sub) : null;
   const paidTrial = !!sub && subscribedInTrial(sub);
   const days = sub && !paidTrial ? trialDaysLeft(sub) : null;
@@ -116,6 +119,12 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
                   <dd />
                 </div>
               )}
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="text-zinc-500">{b.storage}</dt>
+                <dd className="tabular-nums" dir="ltr">
+                  {gb(storageUsed)} {storageMax !== null ? `/ ${gb(storageMax)} GB` : "GB"}
+                </dd>
+              </div>
               <div className="flex justify-between gap-4 py-2.5">
                 <dt className="text-zinc-500">{b.price}</dt>
                 <dd>

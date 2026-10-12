@@ -5,7 +5,8 @@ import { requirePermission } from "@/lib/auth";
 import { MODULE_TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { saveTemplate } from "@/server/admin-actions";
-import { ActionForm, SubmitButton } from "@/components/forms";
+import { ActionForm, ConfirmSubmit, SubmitButton } from "@/components/forms";
+import { deleteTemplate } from "@/server/lifecycle-actions";
 import { TemplateEditor } from "@/components/template-editor";
 import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
 
@@ -17,6 +18,7 @@ export async function generateMetadata() {
 export default async function TemplatesPage() {
   const user = await requirePermission("templates.manage");
   const { t } = await getT();
+  const dict = t;
   const templates = await db
     .select()
     .from(moduleTemplates)
@@ -31,7 +33,16 @@ export default async function TemplatesPage() {
       />
       <div className="grid gap-6 lg:grid-cols-2">
         {templates.map((t) => (
-          <Card key={t.id} title={<Badge tone={t.color}>{t.name}</Badge>}>
+          <Card
+            key={t.id}
+            title={<Badge tone={t.color}>{t.name}</Badge>}
+            actions={
+              <form action={deleteTemplate}>
+                <input type="hidden" name="templateId" value={t.id} />
+                <ConfirmSubmit message={dict.lifecycle.deleteTemplateConfirm(t.name)}>{dict.lifecycle.deleteTemplate}</ConfirmSubmit>
+              </form>
+            }
+          >
             <TemplateForm template={t} />
           </Card>
         ))}

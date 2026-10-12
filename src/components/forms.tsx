@@ -170,3 +170,54 @@ export function AutoRefresh({ intervalMs = 8000 }: { intervalMs?: number }) {
   }, [router, intervalMs]);
   return null;
 }
+
+/**
+ * Destructive action that needs a typed confirmation (the project's name, the workspace address…)
+ * and optionally the person's password. The button stays disabled until the text matches.
+ */
+export function DangerForm({
+  action,
+  hidden,
+  expected,
+  labels,
+  needsPassword,
+}: {
+  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  hidden?: Record<string, string>;
+  expected: string;
+  labels: { title: string; body: string; confirm: string; password?: string; submit: string };
+  needsPassword?: boolean;
+}) {
+  const [typed, setTyped] = useState("");
+  return (
+    <ActionForm action={action} className="space-y-3">
+      {Object.entries(hidden ?? {}).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
+      <div>
+        <h3 className="text-sm font-semibold text-red-700">{labels.title}</h3>
+        <p className="mt-1 text-sm text-zinc-600">{labels.body}</p>
+      </div>
+      <label className="block text-sm">
+        <span className="mb-1 block text-zinc-700">{labels.confirm}</span>
+        <input
+          name="confirm"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          autoComplete="off"
+          dir="auto"
+          className={inputClass}
+        />
+      </label>
+      {needsPassword && (
+        <label className="block text-sm">
+          <span className="mb-1 block text-zinc-700">{labels.password}</span>
+          <input name="password" type="password" required autoComplete="current-password" dir="ltr" className={inputClass} />
+        </label>
+      )}
+      <SubmitButton variant="danger" size="sm" disabled={typed.trim() !== expected.trim()}>
+        {labels.submit}
+      </SubmitButton>
+    </ActionForm>
+  );
+}
