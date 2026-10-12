@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
-import { billingEvents, invoices, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
+import { billingEvents, invoices, organizations, plans, subscriptions, type Organization, type Subscription } from "@/db/schema";
 import { appUrl, isPlatform } from "../platform";
 import { sign } from "../secret";
 import { priceFor, stripeProvider } from "./stripe";
@@ -43,7 +43,13 @@ const testProvider: BillingProvider = {
   async portalUrl() {
     return null;
   },
+  async cancel() {},
 };
+
+/** A provider by name (for acting on an existing subscription, whichever provider is current). */
+export function providerByName(name: string | null | undefined): BillingProvider | null {
+  return name === "stripe" ? stripeProvider : name === "lemonsqueezy" ? lemonSqueezyProvider : name === "test" ? testProvider : null;
+}
 
 export function billingProvider(): BillingProvider | null {
   const name = providerName();
@@ -166,10 +172,13 @@ export async function applyBillingEvent(evt: BillingEvent): Promise<boolean> {
 
     let invoiceId: string | null = null;
     if (evt.invoice && evt.invoice.amountCents > 0) {
+      const org = await tx.query.organizations.findFirst({ where: eq(organizations.id, evt.orgId), columns: { name: true, serial: true } });
       const [inv] = await tx
         .insert(invoices)
         .values({
           orgId: evt.orgId,
+          orgName: org?.name ?? null,
+          orgSerial: org?.serial ?? null,
           planCode: planCode ?? evt.invoice.planCode ?? existing.planCode,
           amountCents: evt.invoice.amountCents,
           currency: evt.invoice.currency.toUpperCase(),

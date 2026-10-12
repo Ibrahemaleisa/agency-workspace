@@ -134,6 +134,13 @@
       "when": 1790514510998,
       "tag": "0018_activity_params",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791825033386,
+      "tag": "0019_full_product",
+      "breakpoints": true
     }
   ]
 }

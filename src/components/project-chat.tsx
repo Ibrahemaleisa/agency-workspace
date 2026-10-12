@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { format, isToday } from "date-fns";
-import { Lock, Users } from "lucide-react";
+import { Lock, Trash2, Users } from "lucide-react";
 import { sendChatMessage } from "@/server/project-actions";
+import { deleteChatMessage } from "@/server/lifecycle-actions";
 import { ActionForm, AutoRefresh, SubmitButton } from "./forms";
 import { Avatar, Badge, EmptyState, Textarea, cn } from "./ui";
 import { getT } from "@/lib/lang";
@@ -10,6 +11,7 @@ export type ChatMessage = {
   id: string;
   body: string;
   createdAt: Date;
+  authorId: string | null;
   authorName: string | null;
   authorRole: string | null;
 };
@@ -19,13 +21,20 @@ export async function ProjectChat({
   channel,
   channels,
   messages,
-  currentUserName,
+  currentUserId,
+  canDeleteAny,
+  olderHref,
 }: {
   projectId: string;
   channel: "internal" | "client";
   channels: ("internal" | "client")[];
+  /** Oldest first. */
   messages: ChatMessage[];
-  currentUserName: string;
+  currentUserId: string;
+  /** Admins may delete anyone's message; everyone may delete their own. */
+  canDeleteAny: boolean;
+  /** Set when there are older messages than the ones shown. */
+  olderHref?: string;
 }) {
   const { t, locale } = await getT();
   return (
@@ -59,9 +68,16 @@ export async function ProjectChat({
           <EmptyState>{t.chat.empty}</EmptyState>
         ) : (
           <ul className="space-y-3">
+            {olderHref && (
+              <li className="text-center">
+                <Link href={olderHref} scroll={false} className="text-xs font-medium text-indigo-600 hover:underline">
+                  {t.paging.loadOlder}
+                </Link>
+              </li>
+            )}
             {messages.map((m, i) => {
-              const mine = m.authorName === currentUserName;
-              const grouped = messages[i - 1]?.authorName === m.authorName;
+              const mine = !!m.authorId && m.authorId === currentUserId;
+              const grouped = !!m.authorId && messages[i - 1]?.authorId === m.authorId;
               return (
                 <li key={m.id} className={cn("flex items-end gap-2", mine && "flex-row-reverse", grouped && "-mt-2")}>
                   <span className={cn("shrink-0", (mine || grouped) && "invisible")}>
@@ -83,8 +99,16 @@ export async function ProjectChat({
                     >
                       <Highlight text={m.body} />
                     </div>
-                    <span className="mt-1 px-1 text-[11px] text-zinc-500">
+                    <span className="mt-1 flex items-center gap-1 px-1 text-[11px] text-zinc-500">
                       {format(m.createdAt, isToday(m.createdAt) ? "h:mm a" : "MMM d, h:mm a", { locale })}
+                      {(mine || canDeleteAny) && (
+                        <form action={deleteChatMessage}>
+                          <input type="hidden" name="messageId" value={m.id} />
+                          <button className="rounded p-0.5 text-zinc-400 hover:text-red-600" title={t.lifecycle.deleteComment} aria-label={t.lifecycle.deleteComment}>
+                            <Trash2 className="size-3" />
+                          </button>
+                        </form>
+                      )}
                     </span>
                   </div>
                 </li>

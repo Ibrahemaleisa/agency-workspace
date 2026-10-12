@@ -7,6 +7,8 @@ import { createInvitation, revokeInvitation } from "@/server/invite-actions";
 import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { createUser, updateUser } from "@/server/admin-actions";
+import { removeMember } from "@/server/lifecycle-actions";
+import { isSharedDemo } from "@/lib/platform";
 import { listClientsForOrg } from "@/server/queries";
 import { ActionForm, ConfirmSubmit, SubmitButton } from "@/components/forms";
 import { Avatar, Badge, Card, Checkbox, Field, Input, PageHeader, Select, Table, Td, Th } from "@/components/ui";
@@ -110,6 +112,12 @@ export default async function TeamPage() {
                           <Checkbox name="active" defaultChecked={p.active} label={m.activeLabel} />
                           <div className="flex justify-end"><SubmitButton size="sm">{t.common.save}</SubmitButton></div>
                         </ActionForm>
+                        {p.id !== admin.id && !isSharedDemo() && (
+                          <form action={removeMember} className="mt-3 border-t border-zinc-100 pt-3 text-end">
+                            <input type="hidden" name="userId" value={p.id} />
+                            <ConfirmSubmit message={t.lifecycle.removeMemberConfirm(p.name)}>{t.lifecycle.removeMember}</ConfirmSubmit>
+                          </form>
+                        )}
                       </div>
                     </details>
                   </Td>

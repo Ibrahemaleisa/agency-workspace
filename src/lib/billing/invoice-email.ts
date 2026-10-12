@@ -23,7 +23,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
   if (!emailEnabled()) return;
   try {
     const inv = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
-    if (!inv || inv.emailedAt) return;
+    if (!inv || inv.emailedAt || !inv.orgId) return;
     const org = await db.query.organizations.findFirst({ where: eq(organizations.id, inv.orgId) });
     if (!org) return;
     const plan = inv.planCode ? await db.query.plans.findFirst({ where: eq(plans.code, inv.planCode) }) : null;

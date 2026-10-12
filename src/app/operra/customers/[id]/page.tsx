@@ -8,10 +8,10 @@ import { organizations, plans, provisionings, subscriptions, users } from "@/db/
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { isUuid } from "@/lib/access";
 import { tenantEntryUrl } from "@/lib/platform";
-import { extendTrial, setTenantStatus } from "@/server/platform-admin-actions";
+import { deleteTenantAction, extendTrial, setTenantStatus } from "@/server/platform-admin-actions";
 import { ControlHeader } from "@/components/platform/control-header";
 import { Badge } from "@/components/ui";
-import { ConfirmSubmit } from "@/components/forms";
+import { ConfirmSubmit, DangerForm } from "@/components/forms";
 import { ActivatePlanForm } from "@/components/platform/activate-plan-form";
 
 export default async function ControlCustomer({ params }: PageProps<"/operra/customers/[id]">) {
@@ -150,6 +150,21 @@ export default async function ControlCustomer({ params }: PageProps<"/operra/cus
             </tbody>
           </table>
         </section>
+        {!org.isDemo && (
+          <section className="mt-6 rounded-lg border border-red-200 bg-white p-5">
+            <DangerForm
+              action={deleteTenantAction}
+              hidden={{ orgId: org.id }}
+              expected={org.slug}
+              labels={{
+                title: "Delete workspace",
+                body: "Deletes the workspace, its people's memberships, data and files, and cancels any card subscription. Invoices are kept. This can't be undone.",
+                confirm: `Type “${org.slug}” to confirm.`,
+                submit: "Delete workspace",
+              }}
+            />
+          </section>
+        )}
       </main>
     </>
   );

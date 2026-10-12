@@ -22,6 +22,7 @@ import {
   updateTaskStatus,
   uploadAttachment,
 } from "@/server/task-actions";
+import { deleteComment, editComment } from "@/server/lifecycle-actions";
 import { ActivityFeed } from "@/components/lists";
 import { Highlight } from "@/components/project-chat";
 import { FilePicker } from "@/components/file-picker";
@@ -59,6 +60,8 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
         body: taskComments.body,
         internal: taskComments.internal,
         createdAt: taskComments.createdAt,
+        editedAt: taskComments.editedAt,
+        authorId: taskComments.authorId,
         authorName: users.name,
         authorRole: users.role,
       })
@@ -301,11 +304,34 @@ export default async function TaskPage({ params }: PageProps<"/tasks/[id]">) {
                               <Eye className="size-3" /> {k.clientVisible}
                             </span>
                           ))}
-                        <span className="text-xs text-zinc-500">{formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}</span>
+                        <span className="text-xs text-zinc-500">
+                          {formatDistanceToNow(c.createdAt, { addSuffix: true, locale })}
+                          {c.editedAt && <> · {tr.lifecycle.edited}</>}
+                        </span>
+                        {(c.authorId === user.id || user.role === "admin") && (
+                          <form action={deleteComment} className="ms-auto">
+                            <input type="hidden" name="commentId" value={c.id} />
+                            <ConfirmSubmit message={tr.lifecycle.deleteCommentConfirm} variant="ghost">
+                              <Trash2 className="size-3.5" aria-label={tr.lifecycle.deleteComment} />
+                            </ConfirmSubmit>
+                          </form>
+                        )}
                       </div>
                       <p dir="auto" className="mt-1 text-sm whitespace-pre-wrap text-zinc-700">
                         <Highlight text={c.body} />
                       </p>
+                      {c.authorId === user.id && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer list-none text-xs font-medium text-zinc-500 hover:text-zinc-900">{tr.lifecycle.editComment}</summary>
+                          <ActionForm action={editComment} className="mt-2 space-y-2">
+                            <input type="hidden" name="commentId" value={c.id} />
+                            <Textarea name="body" rows={3} required defaultValue={c.body} />
+                            <div className="flex justify-end">
+                              <SubmitButton size="sm" variant="secondary">{tr.lifecycle.save}</SubmitButton>
+                            </div>
+                          </ActionForm>
+                        </details>
+                      )}
                     </div>
                   </li>
                 ))}

@@ -212,6 +212,8 @@ export const users = pgTable(
     teamChatSeenAt: timestamp("team_chat_seen_at", { withTimezone: true }),
     /** Last request from a session of this membership (updated at most every few minutes). */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    /** sha256 of the secret in this person's private calendar feed URL (null = feed off). */
+    calendarTokenHash: text("calendar_token_hash").unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -384,6 +386,10 @@ export const tasks = pgTable(
     requiresApproval: boolean("requires_approval").notNull().default(false),
     approvalStatus: approvalStatusEnum("approval_status").notNull().default("none"),
     createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    /** Repeats when completed: the next copy is created with its due date moved on. */
+    recurrence: text("recurrence").$type<Recurrence>(),
+    /** The copy already created for the next round (so completing twice never makes two). */
+    nextTaskId: uuid("next_task_id"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -392,6 +398,56 @@ export const tasks = pgTable(
     index("tasks_org_idx").on(t.orgId),
     index("tasks_project_idx").on(t.projectId),
     index("tasks_assignee_idx").on(t.assigneeId),
+  ],
+);
+
+export const RECURRENCES = ["daily", "weekly", "monthly"] as const;
+export type Recurrence = (typeof RECURRENCES)[number];
+
+/** A task's checklist (sub-steps). */
+export const checklistItems = pgTable(
+  "checklist_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    done: boolean("done").notNull().default(false),
+    doneById: uuid("done_by_id").references(() => users.id, { onDelete: "set null" }),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("checklist_items_task_idx").on(t.taskId, t.position)],
+);
+
+/** Time logged by agency staff on a task. */
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    minutes: integer("minutes").notNull(),
+    note: text("note"),
+    spentOn: date("spent_on").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("time_entries_task_idx").on(t.taskId),
+    index("time_entries_org_day_idx").on(t.orgId, t.spentOn),
+    index("time_entries_project_idx").on(t.projectId),
   ],
 );
 
@@ -410,6 +466,7 @@ export const taskComments = pgTable(
     /** Internal notes are never shown to client users. */
     internal: boolean("internal").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
   },
   (t) => [index("task_comments_task_idx").on(t.taskId)],
 );
@@ -568,6 +625,8 @@ export const plans = pgTable("plans", {
   /** Limits; null = unlimited. Team members = admins and team (client users don't count). */
   maxMembers: integer("max_members"),
   maxClients: integer("max_clients"),
+  /** File storage per workspace in MB (null = unlimited). */
+  maxStorageMb: integer("max_storage_mb"),
   /** Look of the plan badge under the agency's logo: "standard" or "full". */
   tier: text("tier").notNull().default("standard"),
   /** Display price in minor units; null = priced on request. The payment provider holds the real price. */
@@ -593,9 +652,11 @@ export const invoices = pgTable(
       .notNull()
       .unique()
       .default(sql`'INV-' || lpad(nextval('invoice_number_seq')::text, 6, '0')`),
-    orgId: uuid("org_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Kept (as null) when the workspace is deleted: invoices are financial records. */
+    orgId: uuid("org_id").references(() => organizations.id, { onDelete: "set null" }),
+    /** Who was billed, copied at the time so the invoice stays readable after a deletion. */
+    orgName: text("org_name"),
+    orgSerial: text("org_serial"),
     planCode: text("plan_code"),
     amountCents: integer("amount_cents").notNull(),
     currency: text("currency").notNull(),
@@ -726,6 +787,11 @@ export const signups = pgTable(
     /** Anonymous visitor id (links the sign-up to site visits) and country, for the funnel. */
     visitorId: text("visitor_id"),
     country: text("country"),
+    /** Email ownership check at sign-up (when email is configured): a 6-digit code. */
+    emailCodeHash: text("email_code_hash"),
+    emailCodeExpiresAt: timestamp("email_code_expires_at", { withTimezone: true }),
+    emailCodeAttempts: integer("email_code_attempts").notNull().default(0),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   },
   (t) => [index("signups_email_idx").on(t.email), index("signups_created_idx").on(t.createdAt)],
 );
@@ -842,8 +908,29 @@ export const platformAdmins = pgTable("platform_admins", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   active: boolean("active").notNull().default(true),
+  /** Base32 TOTP secret (authenticator app). Pending until totpEnabledAt is set. */
+  totpSecret: text("totp_secret"),
+  totpEnabledAt: timestamp("totp_enabled_at", { withTimezone: true }),
+  /** Last accepted 30-second step, so a code can't be replayed. */
+  totpLastStep: integer("totp_last_step"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Every change Operra staff make in the control center (who, what, on which workspace). */
+export const platformAudit = pgTable(
+  "platform_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    adminEmail: text("admin_email").notNull(),
+    action: text("action").notNull(),
+    orgId: uuid("org_id").references(() => organizations.id, { onDelete: "set null" }),
+    /** Human-readable target (serial, plan code, email) — kept even if the row it names is gone. */
+    target: text("target"),
+    meta: jsonb("meta").$type<Record<string, string | number | boolean | null>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("platform_audit_created_idx").on(t.createdAt), index("platform_audit_org_idx").on(t.orgId)],
+);
 
 export const platformSessions = pgTable("platform_sessions", {
   id: text("id").primaryKey(), // sha256 of the cookie token
@@ -851,6 +938,8 @@ export const platformSessions = pgTable("platform_sessions", {
     .notNull()
     .references(() => platformAdmins.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  /** Password checked, waiting for the authenticator code. */
+  pending2fa: boolean("pending_2fa").notNull().default(false),
 });
 
 export type Organization = typeof organizations.$inferSelect;
@@ -861,6 +950,8 @@ export type PlanRequest = typeof planRequests.$inferSelect;
 export type Signup = typeof signups.$inferSelect;
 
 export type User = typeof users.$inferSelect;
+export type ChecklistItem = typeof checklistItems.$inferSelect;
+export type TimeEntry = typeof timeEntries.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type Role = (typeof roleEnum.enumValues)[number];
 export type TaskStatus = (typeof taskStatusEnum.enumValues)[number];

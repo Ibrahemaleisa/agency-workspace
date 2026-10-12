@@ -46,4 +46,6 @@ export interface BillingProvider {
   }): Promise<string>;
   /** Self-service billing (payment method, invoices, cancel). Null when the provider has none. */
   portalUrl(input: { customerId: string; subscriptionId?: string | null; returnUrl: string }): Promise<string | null>;
+  /** Stops the subscription now (the workspace is being deleted). Must throw if it couldn't. */
+  cancel(subscriptionId: string): Promise<void>;
 }

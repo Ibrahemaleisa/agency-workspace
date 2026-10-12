@@ -128,7 +128,8 @@ async function notifyStaff(orgName: string, serial: string, planName: string, tr
 export async function activatePlan(input: { orgId: string; planCode: string; months: number; amountCents: number | null; staffEmail: string }) {
   const plan = await db.query.plans.findFirst({ where: eq(plans.code, input.planCode) });
   const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, input.orgId) });
-  if (!plan || !sub) return { error: "Unknown plan or workspace." };
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, input.orgId), columns: { name: true, serial: true } });
+  if (!plan || !sub || !org) return { error: "Unknown plan or workspace." };
   if (sub.providerSubscriptionId) return { error: "This workspace pays online; change its plan with the payment provider." };
   const months = Math.min(24, Math.max(1, Math.round(input.months)));
   const amountCents = input.amountCents ?? (plan.priceCents != null ? plan.priceCents * months : null);
@@ -158,6 +159,8 @@ export async function activatePlan(input: { orgId: string; planCode: string; mon
       .insert(invoices)
       .values({
         orgId: input.orgId,
+        orgName: org.name,
+        orgSerial: org.serial,
         planCode: plan.code,
         amountCents,
         currency: plan.currency,

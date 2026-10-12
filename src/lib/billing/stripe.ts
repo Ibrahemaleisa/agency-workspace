@@ -11,7 +11,7 @@ import type { BillingEvent, BillingProvider } from "./types";
  */
 const API = "https://api.stripe.com/v1";
 
-async function stripe<T>(path: string, method: "GET" | "POST", params?: Record<string, string>): Promise<T> {
+async function stripe<T>(path: string, method: "GET" | "POST" | "DELETE", params?: Record<string, string>): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method,
     headers: {
@@ -72,6 +72,15 @@ export const stripeProvider: BillingProvider = {
   async portalUrl({ customerId, returnUrl }) {
     const session = await stripe<{ url: string }>("/billing_portal/sessions", "POST", { customer: customerId, return_url: returnUrl });
     return session.url;
+  },
+  async cancel(subscriptionId) {
+    try {
+      await stripe(`/subscriptions/${encodeURIComponent(subscriptionId)}`, "DELETE");
+    } catch (err) {
+      // Already cancelled (or never finished): nothing left to stop.
+      if (err instanceof Error && /Stripe 404/.test(err.message)) return;
+      throw err;
+    }
   },
 };
 

@@ -1,12 +1,13 @@
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { Building2, Mail, MessageSquareText, Phone, Sparkles } from "lucide-react";
 import { db } from "@/db";
 import { leads } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { updateLeadStatus } from "@/server/lead-actions";
-import { AutoSubmitSelect } from "@/components/forms";
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
+import { deleteLead } from "@/server/lifecycle-actions";
+import { AutoSubmitSelect, ConfirmSubmit } from "@/components/forms";
+import { Badge, Card, EmptyState, PageHeader, Pager, pageParam } from "@/components/ui";
 import { getT } from "@/lib/lang";
 
 export async function generateMetadata() {
@@ -21,11 +22,24 @@ const STATUS = [
   { value: "lost", tone: "slate" },
 ] as const;
 
-export default async function LeadsPage() {
+const PAGE = 50;
+
+export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   const user = await requirePermission("leads.manage");
   const { t, locale } = await getT();
-  const rows = await db.select().from(leads).where(eq(leads.orgId, user.orgId)).orderBy(desc(leads.createdAt)).limit(200);
-  const open = rows.filter((r) => r.status === "new").length;
+  const page = pageParam((await searchParams).page);
+  const fetched = await db
+    .select()
+    .from(leads)
+    .where(eq(leads.orgId, user.orgId))
+    .orderBy(desc(leads.createdAt), desc(leads.id))
+    .limit(PAGE + 1)
+    .offset((page - 1) * PAGE);
+  const rows = fetched.slice(0, PAGE);
+  const [{ n: open }] = await db
+    .select({ n: count() })
+    .from(leads)
+    .where(and(eq(leads.orgId, user.orgId), eq(leads.status, "new")));
 
   return (
     <>
@@ -79,15 +93,22 @@ export default async function LeadsPage() {
                       </p>
                     )}
                   </div>
-                  <form action={updateLeadStatus} className="shrink-0">
-                    <input type="hidden" name="leadId" value={l.id} />
-                    <AutoSubmitSelect name="status" defaultValue={l.status} options={STATUS.map((x) => ({ value: x.value, label: t.leads.status[x.value] }))} className="w-36" aria-label={t.common.status} />
-                  </form>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <form action={updateLeadStatus}>
+                      <input type="hidden" name="leadId" value={l.id} />
+                      <AutoSubmitSelect name="status" defaultValue={l.status} options={STATUS.map((x) => ({ value: x.value, label: t.leads.status[x.value] }))} className="w-36" aria-label={t.common.status} />
+                    </form>
+                    <form action={deleteLead}>
+                      <input type="hidden" name="leadId" value={l.id} />
+                      <ConfirmSubmit message={t.lifecycle.deleteLeadConfirm}>{t.lifecycle.deleteLead}</ConfirmSubmit>
+                    </form>
+                  </div>
                 </li>
               );
             })}
           </ul>
         )}
+        <Pager page={page} hasMore={fetched.length > PAGE} hrefFor={(p) => `/leads?page=${p}`} labels={t.paging} />
       </Card>
     </>
   );

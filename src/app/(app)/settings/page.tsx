@@ -3,10 +3,12 @@ import { ArrowLeft, ArrowRight, CreditCard, LayoutTemplate, Palette, Users } fro
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getT } from "@/lib/lang";
-import { isPlatform } from "@/lib/platform";
+import { isPlatform, isSharedDemo } from "@/lib/platform";
+import { getOrgById } from "@/lib/tenant";
+import { deleteMyAccount, deleteWorkspace } from "@/server/lifecycle-actions";
 import { changeOwnPassword, updateProfile } from "@/server/profile-actions";
-import { ActionForm, SubmitButton } from "@/components/forms";
-import { Card, Checkbox, Field, Input, PageHeader, Select } from "@/components/ui";
+import { ActionForm, DangerForm, SubmitButton } from "@/components/forms";
+import { Card, Checkbox, Field, Input, PageHeader, Select, buttonClass } from "@/components/ui";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -19,6 +21,11 @@ export default async function SettingsPage() {
   const { t, lang } = await getT();
   const st = t.settings;
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
+  const lc = t.lifecycle;
+  const org = await getOrgById(user.orgId);
+  const canExport = can(user, "users.manage") && !user.readOnly;
+  const canDeleteWorkspace = isPlatform() && can(user, "billing.manage") && can(user, "users.manage") && !user.readOnly && !!org && !org.isDemo;
+  const canDeleteAccount = !user.readOnly && !isSharedDemo();
 
   const cards = [
     { href: "/settings/brand", icon: Palette, text: st.cards.brand, show: can(user, "brand.manage") },
@@ -95,6 +102,54 @@ export default async function SettingsPage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {canExport && (
+        <section className="mt-8">
+          <Card title={lc.exportTitle}>
+            <p className="-mt-1 mb-4 text-sm text-zinc-500">{lc.exportBody}</p>
+            <a href="/api/export" className={buttonClass("secondary")} download>
+              {lc.exportCta}
+            </a>
+          </Card>
+        </section>
+      )}
+
+      {(canDeleteWorkspace || canDeleteAccount) && (
+        <section className="mt-8">
+          <Card title={lc.dangerZone} className="border-red-200">
+            <div className="grid gap-8 lg:grid-cols-2">
+              {canDeleteWorkspace && org && (
+                <DangerForm
+                  action={deleteWorkspace}
+                  expected={org.slug}
+                  needsPassword
+                  labels={{
+                    title: lc.deleteWorkspace,
+                    body: lc.deleteWorkspaceBody,
+                    confirm: lc.typeToConfirm(org.slug),
+                    password: lc.password,
+                    submit: lc.deleteWorkspace,
+                  }}
+                />
+              )}
+              {canDeleteAccount && (
+                <DangerForm
+                  action={deleteMyAccount}
+                  expected={user.email}
+                  needsPassword
+                  labels={{
+                    title: lc.deleteAccount,
+                    body: lc.deleteAccountBody,
+                    confirm: lc.typeToConfirm(user.email),
+                    password: lc.password,
+                    submit: lc.deleteAccount,
+                  }}
+                />
+              )}
+            </div>
+          </Card>
         </section>
       )}
     </>

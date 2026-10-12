@@ -13,6 +13,8 @@ import { isUuid } from "@/lib/access";
 import { activatePlan, dismissRequest, saveBankDetails } from "@/lib/billing/manual";
 import { issueResetLink } from "@/lib/password-reset";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/billing/defaults";
+import { audit } from "@/lib/audit";
+import { ProviderCancelError, deleteOrganization } from "@/lib/lifecycle";
 
 export async function platformLogin(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const email = str(fd, "email")?.toLowerCase() ?? "";
@@ -42,7 +44,7 @@ export async function setTenantStatus(fd: FormData) {
   if (status === "suspended") {
     await db.delete(sessions).where(sql`${sessions.userId} in (select ${users.id} from ${users} where ${users.orgId} = ${orgId})`);
   }
-  console.info("[control-center] tenant status", { admin: admin.email, serial: org.serial, status });
+  await audit({ adminEmail: admin.email, action: status === "suspended" ? "tenant.paused" : "tenant.restored", orgId, target: org.serial });
   revalidatePath(`/operra/customers/${orgId}`);
 }
 
@@ -60,7 +62,7 @@ export async function extendTrial(fd: FormData) {
     .update(subscriptions)
     .set({ status: "trialing", trialEndsAt: new Date(from + days * 86_400_000), updatedAt: new Date() })
     .where(eq(subscriptions.orgId, orgId));
-  console.info("[control-center] trial extended", { admin: admin.email, orgId, days });
+  await audit({ adminEmail: admin.email, action: "trial.extended", orgId, meta: { days } });
   revalidatePath(`/operra/customers/${orgId}`);
 }
 
@@ -119,7 +121,12 @@ export async function updatePlan(_prev: ActionState, fd: FormData): Promise<Acti
   const r = planFields(fd);
   if ("error" in r) return r;
   await db.update(plans).set(r.values).where(eq(plans.code, code));
-  console.info("[control-center] plan updated", { admin: admin.email, code, trialDays: r.values.trialDays, priceCents: r.values.priceCents, active: r.values.active });
+  await audit({
+    adminEmail: admin.email,
+    action: "plan.updated",
+    target: code,
+    meta: { trialDays: r.values.trialDays ?? null, priceCents: r.values.priceCents ?? null, active: r.values.active ?? null, maxStorageMb: r.values.maxStorageMb ?? null },
+  });
   revalidatePath("/operra/plans");
   return { ok: true };
 }
@@ -133,7 +140,7 @@ export async function createPlan(_prev: ActionState, fd: FormData): Promise<Acti
   const r = planFields(fd);
   if ("error" in r) return r;
   await db.insert(plans).values({ code, ...r.values });
-  console.info("[control-center] plan created", { admin: admin.email, code });
+  await audit({ adminEmail: admin.email, action: "plan.created", target: code });
   revalidatePath("/operra/plans");
   return { ok: true };
 }
@@ -154,7 +161,7 @@ export async function activatePlanAction(_prev: ActionState, fd: FormData): Prom
     staffEmail: admin.email,
   });
   if ("error" in r) return { error: r.error };
-  console.info("[control-center] plan activated", { admin: admin.email, orgId, plan: str(fd, "plan"), until: r.until.toISOString() });
+  await audit({ adminEmail: admin.email, action: "plan.activated", orgId, target: str(fd, "plan"), meta: { until: r.until.toISOString(), months: Number(str(fd, "months") ?? 1) || 1, amountCents: amount === null ? null : Math.round(amount * 100) } });
   revalidatePath(`/operra/customers/${orgId}`);
   revalidatePath("/operra");
   return { ok: true };
@@ -165,6 +172,7 @@ export async function dismissRequestAction(fd: FormData) {
   const id = idOf(fd, "requestId");
   if (!isUuid(id)) return;
   await dismissRequest(id, admin.email);
+  await audit({ adminEmail: admin.email, action: "plan_request.dismissed", target: id });
   revalidatePath("/operra");
 }
 
@@ -174,7 +182,7 @@ export async function resetLinkAction(_prev: ActionState, fd: FormData): Promise
   const accountId = idOf(fd, "accountId");
   if (!isUuid(accountId)) return { error: "Unknown person." };
   const link = await issueResetLink(accountId);
-  console.info("[control-center] reset link issued", { admin: admin.email, accountId });
+  await audit({ adminEmail: admin.email, action: "account.reset_link", target: accountId });
   return { ok: true, link };
 }
 
@@ -193,6 +201,25 @@ export async function saveBankAction(_prev: ActionState, fd: FormData): Promise<
     },
     admin.email,
   );
+  await audit({ adminEmail: admin.email, action: "bank_details.saved", meta: { ibanSet: !!iban } });
   revalidatePath("/operra/payments");
   return { ok: true };
+}
+
+/** Staff: delete a workspace for good (typed confirmation). Stops its payment-provider subscription first. */
+export async function deleteTenantAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requirePlatformAdmin();
+  const orgId = idOf(fd, "orgId");
+  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) });
+  if (!org || org.isDemo) return { error: "Unknown workspace (or the preview tenant, which can't be deleted)." };
+  if ((str(fd, "confirm") ?? "") !== org.slug) return { error: "Type the workspace address exactly to confirm." };
+  try {
+    await deleteOrganization(org.id);
+  } catch (err) {
+    if (err instanceof ProviderCancelError) return { error: "The payment provider didn't confirm the cancellation, so nothing was deleted. Try again." };
+    throw err;
+  }
+  await audit({ adminEmail: admin.email, action: "tenant.deleted", target: `${org.serial} ${org.slug}`, meta: { name: org.name } });
+  revalidatePath("/operra");
+  redirect("/operra");
 }

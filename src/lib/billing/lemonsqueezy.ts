@@ -13,7 +13,7 @@ import type { BillingEvent, BillingProvider } from "./types";
  */
 const API = "https://api.lemonsqueezy.com/v1";
 
-async function ls<T>(path: string, init?: { method?: "GET" | "POST"; body?: unknown }): Promise<T> {
+async function ls<T>(path: string, init?: { method?: "GET" | "POST" | "DELETE"; body?: unknown }): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: init?.method ?? "GET",
     headers: {
@@ -63,6 +63,14 @@ export const lemonSqueezyProvider: BillingProvider = {
     if (!subscriptionId) return null;
     const res = await ls<{ data: { attributes: { urls?: { customer_portal?: string } } } }>(`/subscriptions/${subscriptionId}`);
     return res.data.attributes.urls?.customer_portal ?? null;
+  },
+  async cancel(subscriptionId) {
+    try {
+      await ls(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
+    } catch (err) {
+      if (err instanceof Error && /Lemon Squeezy 404/.test(err.message)) return;
+      throw err;
+    }
   },
 };
 

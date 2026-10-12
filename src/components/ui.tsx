@@ -407,3 +407,48 @@ export function Td({ children, className }: { children?: ReactNode; className?: 
 }
 
 export const isImageType = (mime: string) => /^image\/(png|jpe?g|gif|webp|avif)$/.test(mime);
+
+/* ------------------------------------------------------------------ */
+/* Paging                                                              */
+/* ------------------------------------------------------------------ */
+
+/** The 1-based page number from a search param (anything invalid is page 1). */
+export function pageParam(v: string | string[] | undefined) {
+  const n = Number(Array.isArray(v) ? v[0] : v);
+  return Number.isInteger(n) && n > 1 ? Math.min(n, 10_000) : 1;
+}
+
+/** Previous / next links for a paged list. `hrefFor` builds the link for a page. */
+export function Pager({
+  page,
+  hasMore,
+  hrefFor,
+  labels,
+}: {
+  page: number;
+  hasMore: boolean;
+  hrefFor: (page: number) => string;
+  labels: { prev: string; next: string };
+}) {
+  if (page === 1 && !hasMore) return null;
+  const link = "rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-zinc-200 hover:bg-zinc-50";
+  return (
+    <nav className="flex items-center justify-between gap-2 border-t border-zinc-100 px-4 py-3" aria-label="Pages">
+      {page > 1 ? (
+        <Link href={hrefFor(page - 1)} className={link} rel="prev">
+          {labels.prev}
+        </Link>
+      ) : (
+        <span />
+      )}
+      <span className="text-xs text-zinc-500 tabular-nums">{page}</span>
+      {hasMore ? (
+        <Link href={hrefFor(page + 1)} className={link} rel="next">
+          {labels.next}
+        </Link>
+      ) : (
+        <span />
+      )}
+    </nav>
+  );
+}
