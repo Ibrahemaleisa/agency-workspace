@@ -208,19 +208,33 @@ export function Tour({
   );
 }
 
-/** Restart from the Guide page. Preview sessions restart locally (no write). */
-export function RestartTour({ label, persist, action }: { label: string; persist: boolean; action: () => Promise<void> }) {
+/** Restart from the Guide page (or the getting-started track). Preview sessions restart locally (no write). */
+export function RestartTour({
+  label,
+  persist,
+  action,
+  variant = "button",
+}: {
+  label: string;
+  persist: boolean;
+  action: () => Promise<void>;
+  variant?: "button" | "link";
+}) {
+  const cls =
+    variant === "link"
+      ? "text-xs font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-900"
+      : "rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800";
   if (persist) {
     return (
       <form action={action}>
-        <button className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800">{label}</button>
+        <button className={cls}>{label}</button>
       </form>
     );
   }
   return (
     <button
       type="button"
-      className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+      className={cls}
       onClick={() => {
         sessionStorage.setItem(PREVIEW_KEY, "0");
         window.dispatchEvent(new Event(RESTART_EVENT));
