@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, passwordResets, sessions, users } from "@/db/schema";
+import { accounts, organizations, passwordResets, sessions, users } from "@/db/schema";
 import { OPERRA_BRAND, orgBrand } from "./brand";
 import { hashPassword, hashToken, newToken } from "./auth";
 import { emailEnabled, notificationEmail, sendEmail } from "./email";
@@ -17,6 +17,16 @@ import { getPublicTenant } from "./tenant";
  */
 export const RESET_MINUTES = 60;
 
+async function onlyAgencyOf(accountId: string) {
+  const rows = await db
+    .select({ org: organizations })
+    .from(users)
+    .innerJoin(organizations, eq(organizations.id, users.orgId))
+    .where(and(eq(users.accountId, accountId), eq(users.active, true), eq(organizations.isDemo, false)))
+    .limit(2);
+  return rows.length === 1 ? rows[0].org : null;
+}
+
 export async function requestPasswordReset(email: string, lang: "ar" | "en") {
   const account = await db.query.accounts.findFirst({ where: eq(accounts.email, email.trim().toLowerCase()) });
   if (!account || !emailEnabled()) return;
@@ -29,8 +39,9 @@ export async function requestPasswordReset(email: string, lang: "ar" | "en") {
       expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000),
     });
   });
-  // The agency whose sign-in page this is (tenant host, /w/ hint, or the single agency) — URLs from config only.
-  const tenant = await getPublicTenant();
+  // The agency whose own address this is (or the single agency), else the person's only agency;
+  // someone in several agencies gets a neutral email. URLs come from config only, never the request.
+  const tenant = (await getPublicTenant()) ?? (await onlyAgencyOf(account.id));
   const r = (await getSaasT(lang)).t.reset;
   try {
     await sendEmail({

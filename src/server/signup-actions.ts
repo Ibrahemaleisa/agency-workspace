@@ -191,6 +191,17 @@ export async function resendSignupCode(_prev: ActionState, _fd: FormData): Promi
   return { ok: true };
 }
 
+/** A free internal address for a workspace name ("Nora Studio" → nora-studio, nora-studio-2, …). */
+async function freeSlug(name: string) {
+  let base = slugify(name).replace(/-+$/, "").slice(0, 34);
+  if (base.length < 3 || RESERVED_SLUGS.has(base)) base = `agency${base ? `-${base}` : ""}`.slice(0, 34).replace(/-+$/, "");
+  for (let i = 1; i <= 20; i++) {
+    const candidate = i === 1 ? base : `${base}-${i}`;
+    if (SLUG_RE.test(candidate) && (await slugAvailable(candidate))) return candidate;
+  }
+  return `${base}-${randomInt(1000, 9999)}`;
+}
+
 /* Step 2 — company */
 export async function signupCompany(_prev: ActionState, fd: FormData): Promise<ActionState> {
   platformOnly();
@@ -198,11 +209,9 @@ export async function signupCompany(_prev: ActionState, fd: FormData): Promise<A
   const e = (await getSaasT()).t.signup.errors;
   const companyName = str(fd, "companyName")?.slice(0, 120);
   if (!companyName) return { error: e.company };
-  const slug = slugify(str(fd, "slug") ?? companyName);
-  if (!SLUG_RE.test(slug)) return { error: e.slug };
-  if (!(await slugAvailable(slug))) {
-    return { error: RESERVED_SLUGS.has(slug) ? e.slugReserved : e.slugTaken };
-  }
+  // The workspace's internal address is made from its name; people never type or see it
+  // (everyone signs in with their email and password on the same page).
+  const slug = s.slug && s.companyName === companyName && (await slugAvailable(s.slug)) ? s.slug : await freeSlug(companyName);
   await db
     .update(signups)
     .set({
@@ -252,9 +261,9 @@ export async function signupStart(_prev: ActionState, fd: FormData): Promise<Act
   const chosen = str(fd, "plan");
   const plan = chosen ? await db.query.plans.findFirst({ where: and(eq(plans.code, chosen), eq(plans.active, true)) }) : null;
   const planCode = plan?.code ?? s.planCode;
-  // Re-check the address: someone may have taken it since step 2.
-  if (!(await slugAvailable(s.slug ?? ""))) return { error: (await getSaasT()).t.signup.errors.slugTaken };
-  await db.update(signups).set({ planCode, startMode: mode, step: 4, updatedAt: new Date() }).where(eq(signups.id, s.id));
+  // Someone may have taken the internal address since step 2: pick the next free one quietly.
+  const slug = (await slugAvailable(s.slug ?? "")) ? s.slug! : await freeSlug(s.companyName ?? "agency");
+  await db.update(signups).set({ slug, planCode, startMode: mode, step: 4, updatedAt: new Date() }).where(eq(signups.id, s.id));
   await track("signup_step", { signupId: s.id, meta: { step: 4, mode, plan: planCode } });
   redirect("/signup/provisioning");
 }

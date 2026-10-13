@@ -30,6 +30,7 @@ import { TONES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
 import { parseFocus, startOnboarding } from "@/lib/onboarding";
+import { TEMPLATE_LIBRARY, libraryTemplate } from "@/lib/template-library";
 
 const msg = async () => (await getT()).t.actions;
 
@@ -335,6 +336,30 @@ export async function saveTemplate(_prev: ActionState, fd: FormData): Promise<Ac
   refresh();
   if (!id) redirect("/templates");
   return { ok: true };
+}
+
+/** Admin: add templates from the library (one, or all not yet added) in the chosen language. */
+export async function addLibraryTemplates(fd: FormData) {
+  const user = await requireUser();
+  assertCan(user, "templates.manage");
+  const lang = str(fd, "lang") === "ar" ? "ar" : "en";
+  const wanted = fd.getAll("key").map(String);
+  const existing = await db
+    .select({ name: moduleTemplates.name, sourceKey: moduleTemplates.sourceKey })
+    .from(moduleTemplates)
+    .where(eq(moduleTemplates.orgId, user.orgId));
+  const haveKeys = new Set(existing.map((t) => t.sourceKey).filter(Boolean));
+  const haveNames = new Set(existing.map((t) => t.name.trim().toLowerCase()));
+  const rows = TEMPLATE_LIBRARY.filter((t) => wanted.includes(t.key) && !haveKeys.has(t.key))
+    .map((t) => libraryTemplate(t, lang))
+    .filter((t) => !haveNames.has(t.name.trim().toLowerCase()))
+    .map((t) => ({ ...t, orgId: user.orgId }));
+  if (rows.length) {
+    await db.insert(moduleTemplates).values(rows).onConflictDoNothing();
+    for (const r of rows) await logActivity(user, { action: "template.saved", summary: `added module template ${r.name}`, params: { name: r.name } });
+  }
+  revalidatePath("/templates");
+  redirect(`/templates?added=${rows.length}&tl=${lang}#library`);
 }
 
 /* ------------------------------------------------------------------ */

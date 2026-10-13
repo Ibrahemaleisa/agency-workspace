@@ -14,7 +14,7 @@ import {
   type Signup,
 } from "@/db/schema";
 import { DEFAULT_TRIAL_DAYS } from "./billing/defaults";
-import { DEFAULT_TEMPLATES } from "./default-templates";
+import { STARTER_TEMPLATES, TEMPLATE_LIBRARY, libraryTemplate } from "./template-library";
 import { RESERVED_SLUGS, SLUG_RE } from "./platform";
 
 export class ProvisioningError extends Error {
@@ -120,7 +120,12 @@ export async function provisionSignup(signupId: string): Promise<ProvisionResult
         .select({ n: sql<number>`count(*)::int` })
         .from(moduleTemplates)
         .where(eq(moduleTemplates.orgId, org.id));
-      if (n === 0) await tx.insert(moduleTemplates).values(DEFAULT_TEMPLATES.map((t) => ({ ...t, orgId: org.id })));
+      if (n === 0) {
+        // The starter functions from the template library, in the workspace's language (more in Templates → Library).
+        const lang = signup.defaultLang === "ar" ? "ar" : "en";
+        const starters = TEMPLATE_LIBRARY.filter((t) => STARTER_TEMPLATES.includes(t.key)).map((t) => libraryTemplate(t, lang));
+        await tx.insert(moduleTemplates).values(starters.map((t) => ({ ...t, orgId: org.id })));
+      }
 
       // Subscription: starts on the plan's trial; payment (if chosen) upgrades it via the provider.
       const plan = await tx.query.plans.findFirst({ where: eq(plans.code, signup.planCode) });

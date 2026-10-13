@@ -63,7 +63,7 @@ export const DEFAULT_TEMPLATES: {
     ],
     fields: [
       { key: "platforms", label: "Platforms", type: "text" },
-      { key: "monthlyBudget", label: "Monthly budget (USD)", type: "number" },
+      { key: "monthlyBudget", label: "Monthly budget (SAR)", type: "number" },
       { key: "objective", label: "Objective", type: "select", options: ["Awareness", "Traffic", "Leads", "Sales"] },
       { key: "kpi", label: "KPI target", type: "text" },
     ],

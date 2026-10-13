@@ -5,7 +5,6 @@ import { membershipsOf } from "@/lib/auth";
 import { orgBrand } from "@/lib/brand";
 import { chooserAccount } from "@/lib/handoff";
 import { getSaasT } from "@/lib/i18n-saas";
-import { tenantEntryUrl } from "@/lib/platform";
 import { BrandMark } from "@/components/site/brand";
 import { buttonClass } from "@/components/ui";
 
@@ -36,9 +35,6 @@ export default async function ChooseWorkspacePage() {
                   <BrandMark logo={brand.logo} name={brand.name[lang]} className="h-10" variant="light" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{brand.name[lang]}</p>
-                    <p className="truncate font-mono text-xs text-[#5B606B]" dir="ltr">
-                      {tenantEntryUrl(org).replace(/^https?:\/\//, "")}
-                    </p>
                     <p className="text-xs text-[#5B606B]">{t.roles[user.role]}</p>
                   </div>
                   <form action={chooseWorkspace}>

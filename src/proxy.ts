@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "apm_session";
-const TENANT_HINT_COOKIE = "operra_tenant";
+/** Old one-year agency hint cookie (no longer set); cleared so the shared address stops showing an agency. */
+const OLD_TENANT_HINT_COOKIE = "operra_tenant";
 const VISITOR_COOKIE = "operra_vid";
 const VISITOR_RE = /^[a-z0-9-]{8,64}$/;
 
@@ -31,8 +32,7 @@ const PUBLIC = [
 
 /**
  * Cheap gate based on cookies (full validation happens server-side):
- * - /w/{slug}[/path] is a tenant's branded entry in path-routing mode: remember the tenant
- *   (branding hint only — never used for authorization) and continue without the prefix;
+ * - /w/{slug}[/path] (old agency links) continue without the prefix — sign-in is the same for everyone;
  * - "/" shows the tenant's public landing page to visitors and the dashboard to signed-in users;
  * - every other app route bounces visitors to /login.
  */
@@ -41,6 +41,7 @@ export function proxy(request: NextRequest) {
   // Visible to this request's server code too (route() forwards the request headers).
   if (vid) request.cookies.set(VISITOR_COOKIE, vid);
   const res = route(request);
+  if (request.cookies.has(OLD_TENANT_HINT_COOKIE)) res.cookies.delete(OLD_TENANT_HINT_COOKIE);
   if (vid) {
     res.cookies.set(VISITOR_COOKIE, vid, {
       path: "/",
@@ -95,13 +96,13 @@ function contentSecurityPolicy(nonce: string) {
 function route(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Old agency links (/w/{slug}[/path]) keep working: everyone signs in on the same page with their
+  // email and password, so the agency name in the link is simply dropped.
   const tenantPath = pathname.match(/^\/w\/([a-z0-9-]{2,40})(\/.*)?$/);
   if (tenantPath) {
     const url = request.nextUrl.clone();
-    url.pathname = tenantPath[2] && tenantPath[2] !== "/" ? tenantPath[2] : "/";
-    const res = NextResponse.redirect(url);
-    res.cookies.set(TENANT_HINT_COOKIE, tenantPath[1], { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-    return res;
+    url.pathname = tenantPath[2] && tenantPath[2] !== "/" ? tenantPath[2] : "/login";
+    return NextResponse.redirect(url);
   }
 
   if (request.cookies.has(SESSION_COOKIE) || PUBLIC.some((re) => re.test(pathname))) {

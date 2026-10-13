@@ -81,12 +81,6 @@ export function ProvisioningRunner({
                 {result.serial}
               </dd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-[#5B606B]">{labels.address}</dt>
-              <dd className="mt-1 font-mono text-sm break-all" dir="ltr">
-                {result.entry}
-              </dd>
-            </div>
           </dl>
           <form action={enter} className="mt-6">
             <button type="submit" className={buttonClass("primary")}>

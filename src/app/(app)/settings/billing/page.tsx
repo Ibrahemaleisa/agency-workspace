@@ -8,7 +8,7 @@ import { requirePermission } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { getSaasT } from "@/lib/i18n-saas";
 import { billingProvider, effectiveStatus, getSubscription, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
-import { isPlatform, tenantEntryUrl } from "@/lib/platform";
+import { isPlatform } from "@/lib/platform";
 import { getOrgById } from "@/lib/tenant";
 import { storageLimitBytes, storageUsedBytes } from "@/lib/limits";
 import { openBillingPortal, startCheckout } from "@/server/billing-actions";
@@ -154,10 +154,6 @@ export default async function BillingPage({ searchParams }: PageProps<"/settings
             <div className="flex justify-between gap-4 py-2.5">
               <dt className="text-zinc-500">{b.instance}</dt>
               <dd className="font-medium tabular-nums" data-testid="billing-serial">{org.serial}</dd>
-            </div>
-            <div className="flex justify-between gap-4 py-2.5">
-              <dt className="text-zinc-500">{b.address}</dt>
-              <dd className="text-sm" dir="ltr">{tenantEntryUrl(org).replace(/^https?:\/\//, "")}</dd>
             </div>
           </dl>
         </Card>

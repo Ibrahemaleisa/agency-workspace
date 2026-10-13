@@ -5,7 +5,6 @@ import type { Organization, User } from "@/db/schema";
 import { createLoginToken, createSession } from "./auth";
 import { isPlatform, rootDomain, tenantBaseUrl } from "./platform";
 import { sign, verify } from "./secret";
-import { rememberTenant } from "./tenant";
 
 /**
  * If the tenant's workspace lives on another host than this request (subdomain or custom domain),
@@ -24,12 +23,11 @@ export async function workspaceRedirectUrl(org: Organization, userId: string, ne
 
 /**
  * Signs a membership in and takes them to their workspace: a handoff to the tenant's own host when
- * it has one, otherwise a session on this host (remembering the tenant for branding).
+ * it has one, otherwise a session on this host.
  */
 export async function enterWorkspace(user: User, org: Organization, next = "/"): Promise<never> {
   const target = await workspaceRedirectUrl(org, user.id, next);
   if (target) redirect(target);
-  await rememberTenant(org);
   await createSession(user.id);
   redirect(next);
 }

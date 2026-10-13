@@ -7,7 +7,6 @@ import { plans } from "@/db/schema";
 import { getSaasT } from "@/lib/i18n-saas";
 import { getLang } from "@/lib/lang";
 import { planPrice, planText } from "@/components/platform/plan-options";
-import { addressTemplate } from "@/lib/signup-view";
 import { providerName } from "@/lib/billing";
 import { currentSignup, signupStart } from "@/server/signup-actions";
 import { ActionForm } from "@/components/forms";
@@ -42,10 +41,6 @@ export default async function SignupStartPage() {
             <div className={row}>
               <dt className="text-[#5B606B]">{s.start.company}</dt>
               <dd className="font-medium">{signup.companyName}</dd>
-            </div>
-            <div className={row}>
-              <dt className="text-[#5B606B]">{s.start.address}</dt>
-              <dd className="font-mono text-xs" dir="ltr">{addressTemplate().replace("{slug}", signup.slug ?? "")}</dd>
             </div>
             <div className={row}>
               <dt className="text-[#5B606B]">{s.start.colours}</dt>
