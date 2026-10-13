@@ -333,9 +333,15 @@ export const moduleTemplates = pgTable(
     color: text("color").notNull().default("slate"),
     stages: jsonb("stages").$type<WorkflowStage[]>().notNull(),
     fields: jsonb("fields").$type<ModuleField[]>().notNull().default([]),
+    /** The template-library entry this was added from (lib/template-library.ts), if any. */
+    sourceKey: text("source_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("module_templates_org_idx").on(t.orgId)],
+  (t) => [
+    index("module_templates_org_idx").on(t.orgId),
+    // Each library template can be added to a workspace once.
+    uniqueIndex("module_templates_org_source_idx").on(t.orgId, t.sourceKey),
+  ],
 );
 
 /** A module instance attached to a project. Stages/fields are snapshotted from the template. */

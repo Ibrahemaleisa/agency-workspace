@@ -121,6 +121,20 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
   schema-vs-migrations drift check.
 - `vercel.json` must keep the two crons and the `claude/**` deploy exclusion (an edit on 12 Oct had removed them).
 
+## Added 13 Oct 2026
+
+- **Sign-in is email + password only, in one place** (`/login`). Agencies have no address people need to know:
+  old `/w/{slug}` links just open `/login`, and the old one-year `operra_tenant` cookie (which made the shared
+  address show one agency's page and pre-picked that agency at sign-in) is no longer set and is cleared when seen.
+  People in several agencies always choose from the list. The slug still exists internally (made from the name at
+  sign-up) but is never shown. Subdomain / custom-domain host checks are kept for if they are ever configured.
+- **Template library by agency function** (`src/lib/template-library.ts`): 18 workflows (strategy, social media,
+  copywriting, graphic design, video & motion, photography, branding, paid ads, media buying, SEO, influencer,
+  community management, PR, web, email & CRM, events, analytics & reporting, account management), each in
+  English and Arabic. Templates → Library adds one or all, in the chosen language (`module_templates.source_key`,
+  migration 0021). New workspaces start with 6 (`STARTER_TEMPLATES`) in their default language. The demo seed
+  still uses `lib/default-templates.ts` (its sample projects refer to those names).
+
 ## Marketing website (`site/`)
 
 The Operra marketing site is a **separate Next.js app in `site/`**, deployed as its own Vercel project

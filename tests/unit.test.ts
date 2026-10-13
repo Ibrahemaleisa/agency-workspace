@@ -201,3 +201,39 @@ describe("activity log text", () => {
     }
   });
 });
+
+describe("template library", async () => {
+  const { TEMPLATE_LIBRARY, STARTER_TEMPLATES, libraryTemplate } = await import("../src/lib/template-library");
+  const { MODULE_TONES } = await import("../src/lib/constants");
+  it("has one complete, bilingual workflow per agency function", () => {
+    assert.ok(TEMPLATE_LIBRARY.length >= 18);
+    assert.equal(new Set(TEMPLATE_LIBRARY.map((t) => t.key)).size, TEMPLATE_LIBRARY.length, "unique keys");
+    for (const t of TEMPLATE_LIBRARY) {
+      assert.ok(t.name.en && t.name.ar && t.description.en && t.description.ar, t.key);
+      assert.ok(t.stages.length >= 4 && t.stages.length <= 7, `${t.key}: 4–7 stages`);
+      assert.ok(t.stages.some((s) => s.approval), `${t.key}: at least one client approval`);
+      assert.ok((MODULE_TONES as string[]).includes(t.color), `${t.key}: module colour`);
+      for (const s of t.stages) assert.ok(s.en && s.ar, `${t.key}: stage text`);
+      for (const lang of ["en", "ar"] as const) {
+        const names = t.stages.map((s) => s[lang]);
+        assert.equal(new Set(names).size, names.length, `${t.key}: unique stage names (${lang})`);
+      }
+      for (const f of t.fields) {
+        assert.match(f.key, /^[A-Za-z][A-Za-z0-9_]{0,62}$/, `${t.key}.${f.key}`);
+        assert.ok(f.label.en && f.label.ar);
+        if (f.options) assert.equal(f.options.en.length, f.options.ar.length, `${t.key}.${f.key} options`);
+      }
+    }
+  });
+  it("starts new workspaces with existing library entries", () => {
+    for (const key of STARTER_TEMPLATES) assert.ok(TEMPLATE_LIBRARY.some((t) => t.key === key), key);
+  });
+  it("builds a workspace template in one language", () => {
+    const social = TEMPLATE_LIBRARY.find((t) => t.key === "social-media")!;
+    const ar = libraryTemplate(social, "ar");
+    assert.equal(ar.name, "إدارة السوشال ميديا");
+    assert.equal(ar.stages[0].clientApproval, true);
+    assert.equal(ar.sourceKey, "social-media");
+    assert.deepEqual(ar.fields.find((f) => f.key === "dialect")?.options?.[0], "لهجة سعودية");
+  });
+});
