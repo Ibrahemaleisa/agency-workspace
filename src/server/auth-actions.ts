@@ -7,11 +7,10 @@ import { accounts, users } from "@/db/schema";
 import { destroySession, membershipsOf, requireUser, verifyAccount } from "@/lib/auth";
 import { str, type ActionState } from "@/lib/action-state";
 import { getDict } from "@/lib/lang";
-import { TENANT_HINT_COOKIE, getHostTenant } from "@/lib/tenant";
+import { getHostTenant } from "@/lib/tenant";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { chooserAccount, endChooser, enterWorkspace, startChooser } from "@/lib/handoff";
-import { cookies } from "next/headers";
 import { track, trackLogin } from "@/lib/analytics";
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -42,12 +41,11 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
   // Emails follow the language the person signed in with.
   await db.update(users).set({ lang }).where(inArray(users.id, memberships.map((m) => m.user.id)));
 
-  // One agency, or the one whose branded sign-in page (/w/{slug}) this is: straight in.
-  const hint = (await cookies()).get(TENANT_HINT_COOKIE)?.value;
-  const chosen = memberships.length === 1 ? memberships[0] : memberships.find((m) => m.org.slug === hint);
-  if (chosen) {
-    await trackLogin(account.id, chosen.org.id);
-    return enterWorkspace(chosen.user, chosen.org);
+  // One agency: straight in. Several: the person picks one (never guessed from an old link).
+  if (memberships.length === 1) {
+    const [only] = memberships;
+    await trackLogin(account.id, only.org.id);
+    return enterWorkspace(only.user, only.org);
   }
   return startChooser(account.id);
 }

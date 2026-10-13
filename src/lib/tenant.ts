@@ -1,13 +1,10 @@
 import "server-only";
 import { cache } from "react";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations, type Organization } from "@/db/schema";
 import { RESERVED_SLUGS, appUrl, isPlatform, rootDomain } from "./platform";
-
-/** Branding hint set by /w/{slug} in path-routing mode. Never used for authorization. */
-export const TENANT_HINT_COOKIE = "operra_tenant";
 
 function requestHost(h: Headers) {
   return (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(",")[0].trim().toLowerCase().replace(/:\d+$/, "");
@@ -40,19 +37,14 @@ export async function isTenantHost() {
 
 /**
  * The tenant for public pages (landing, sign-in, lead form, invitations) before anyone is signed in:
- * host tenant → /w/{slug} hint → the only agency in a single-agency deployment.
+ * the tenant named by the host (subdomain / custom domain), or the only agency of a single-agency
+ * deployment. On the platform's shared address there is none: everyone signs in on the same page
+ * with their email and password, and the workspace takes its agency's brand after sign-in.
  */
 export const getPublicTenant = cache(async (): Promise<Organization | null> => {
   const host = await getHostTenant();
   if (host) return host;
-  if (isPlatform()) {
-    const hint = (await cookies()).get(TENANT_HINT_COOKIE)?.value;
-    if (hint) {
-      const org = await bySlug(hint);
-      if (org && !org.isDemo) return org;
-    }
-    return null;
-  }
+  if (isPlatform()) return null;
   const slug = process.env.SITE_ORG_SLUG;
   return (
     (await db.query.organizations.findFirst({
@@ -63,12 +55,3 @@ export const getPublicTenant = cache(async (): Promise<Organization | null> => {
 });
 
 export const getOrgById = cache(async (id: string) => db.query.organizations.findFirst({ where: eq(organizations.id, id) }));
-
-/**
- * Path routing: after signing in on the shared app host, remember the tenant as the branding hint so
- * signing out lands on that agency's own sign-in page. (Server actions / route handlers only.)
- */
-export async function rememberTenant(org: Organization) {
-  if (!isPlatform() || org.isDemo || (await getHostTenant())) return;
-  (await cookies()).set(TENANT_HINT_COOKIE, org.slug, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-}

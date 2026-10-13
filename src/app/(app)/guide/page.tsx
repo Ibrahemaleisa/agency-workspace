@@ -1,8 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/lang";
 import { GUIDE, type GuideAudience } from "@/content/guide";
-import { appUrl, tenantEntryUrl } from "@/lib/platform";
-import { getOrgById } from "@/lib/tenant";
+import { appUrl } from "@/lib/platform";
 import { getSaasT } from "@/lib/i18n-saas";
 import { restartTour } from "@/server/onboarding-actions";
 import { RestartTour } from "@/components/tour";
@@ -22,8 +21,8 @@ export default async function GuidePage() {
   const user = await requireUser();
   const { t, lang, brand } = await getT();
   const { t: st } = await getSaasT();
-  const org = await getOrgById(user.orgId);
-  const site = (org ? tenantEntryUrl(org) : appUrl()).replace(/^https?:\/\//, "");
+  // Everyone signs in at the same place with their email and password.
+  const site = `${appUrl()}/login`.replace(/^https?:\/\//, "");
   const sections = withBrand(GUIDE[lang], brand.name[lang])
     .filter((s) => visible(s.audience, user.role))
     .map((s) => ({ ...s, html: s.html.replaceAll("{site}", site) }));
