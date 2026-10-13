@@ -12,6 +12,7 @@ import {
   Percent,
   UserX,
 } from "lucide-react";
+import { TutorialTrack } from "@/components/tutorial-track";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userOnboarding } from "@/db/schema";
@@ -126,6 +127,7 @@ async function AdminDashboard({ user, t, lang }: Props) {
   return (
     <>
       <PageHeader title={d.greeting(greetingPart(), firstName(user))} description={`${today(lang)} · ${d.agencyOverview}`} />
+      <TutorialTrack user={user} />
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-5">
         <Stat label={d.activeProjects} value={active.length} href="/projects?status=active" tone="slate" icon={<FolderKanban className="size-4" />} />
         <Stat label={d.overdueTasks} value={overdueAll.length} tone={overdueAll.length ? "red" : "slate"} href="/tasks?view=overdue" icon={<AlertTriangle className="size-4" />} />
@@ -191,6 +193,7 @@ async function EmployeeDashboard({ user, t, lang }: Props) {
   return (
     <>
       <PageHeader title={d.greeting(greetingPart(), firstName(user))} description={`${today(lang)} · ${d.needsAttention}`} />
+      <TutorialTrack user={user} />
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <Stat label={d.myOpenTasks} value={mine.length} href="/tasks" tone="slate" icon={<ListTodo className="size-4" />} />
         <Stat label={d.dueToday} value={dueToday.length} tone="slate" href="/tasks?view=today" icon={<AlarmClock className="size-4" />} />
@@ -270,6 +273,7 @@ async function ClientDashboard({ user, t, lang }: Props) {
   return (
     <>
       <PageHeader title={d.welcome(firstName(user))} description={`${today(lang)} · ${d.atAGlance}`} />
+      <TutorialTrack user={user} />
 
       {approvals.length > 0 && (
         <Link
