@@ -13,7 +13,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "setup": "npm run db:migrate",
-    "vercel-build": "tsx src/db/migrate.ts && ([ \"$SEED_DEMO\" = \"true\" ] && tsx src/db/seed.ts --if-empty || true) && next build",
+    "vercel-build": "tsx src/db/rebuild-demo.ts && tsx src/db/migrate.ts && ([ \"$SEED_DEMO\" = \"true\" ] && tsx src/db/seed.ts --if-empty || true) && next build",
     "demo": "npm run db:migrate && npm run db:seed",
     "db:demo-copy": "tsx --import ./scripts/next-stubs.mjs scripts/make-demo-copy.ts",
     "verify:isolation": "tsx --import ./scripts/next-stubs.mjs scripts/verify-isolation.ts"
