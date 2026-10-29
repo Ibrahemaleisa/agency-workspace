@@ -57,6 +57,11 @@ but it only acts where `DEMO_RESET=true`, `SEED_DEMO=true` and `SHOW_DEMO_ACCOUN
 and `CRON_SECRET` matches; everywhere else it returns 404. Set
 `DEMO_RESET` and `CRON_SECRET` on `workspace-demo` only — **never on a customer**.
 
+**Demo database rebuild (one-off):** with `DEMO_REBUILD_DB=true` on `workspace-demo`, the next build empties the
+demo database (`src/db/rebuild-demo.ts`; only when the DB is named `workspace_demo` and the demo flags are set),
+then migrates and reloads Northwind. Used on 29 Oct 2026 because the demo DB's migration history no longer matched
+its tables (every build since 12 Oct failed on `relation "invoices" does not exist`). Remove the variable afterwards.
+
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
 ## Operra removed (29 Oct 2026)
