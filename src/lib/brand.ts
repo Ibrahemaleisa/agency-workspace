@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 import type { Organization } from "@/db/schema";
 import { getCurrentUser } from "./auth";
 import { getOrgById, getPublicTenant } from "./tenant";
-import { isPlatform } from "./platform";
 import type { Lang } from "./i18n";
 
 /**
@@ -43,16 +42,6 @@ export const DEFAULT_BRAND: Brand = {
 
 export const HEX = /^#[0-9a-f]{6}$/i;
 
-/** Operra's own look, used on platform pages (sign-up, preview, control center) and as the fallback. */
-export const OPERRA_BRAND: Brand = {
-  ...DEFAULT_BRAND,
-  name: { en: "Operra", ar: "أوبيرّا" },
-  primary: "#1F3FBF",
-  accent: "#E3E8FC",
-  defaultLang: "en",
-  showLanding: false,
-};
-
 export function orgBrand(org: Organization): Brand {
   return {
     orgId: org.id,
@@ -77,13 +66,13 @@ export async function getLogoDataUrl(orgId: string | null): Promise<string | nul
 }
 
 /**
- * Brand for this request: the signed-in user's tenant, else the tenant named by the host
- * (or /w/{slug}), else the only agency of a single-agency deployment, else Operra's own.
+ * Brand for this request: the signed-in user's agency, else the agency of this deployment
+ * (public pages), else the defaults.
  */
 export const getBrand = cache(async (): Promise<Brand> => {
   const user = await getCurrentUser().catch(() => null);
   const org = user ? await getOrgById(user.orgId) : await getPublicTenant().catch(() => null);
-  if (!org) return isPlatform() ? OPERRA_BRAND : DEFAULT_BRAND;
+  if (!org) return DEFAULT_BRAND;
   return orgBrand(org);
 });
 

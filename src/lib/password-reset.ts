@@ -2,11 +2,11 @@ import "server-only";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, organizations, passwordResets, sessions, users } from "@/db/schema";
-import { OPERRA_BRAND, orgBrand } from "./brand";
+import { DEFAULT_BRAND, orgBrand } from "./brand";
 import { hashPassword, hashToken, newToken } from "./auth";
 import { emailEnabled, notificationEmail, sendEmail } from "./email";
 import { getSaasT } from "./i18n-saas";
-import { appUrl, tenantBaseUrl } from "./platform";
+import { appUrl } from "./platform";
 import { getPublicTenant } from "./tenant";
 
 /**
@@ -51,8 +51,8 @@ export async function requestPasswordReset(email: string, lang: "ar" | "en") {
         title: r.emailTitle,
         body: r.emailBody,
         link: `/reset-password?token=${encodeURIComponent(token)}`,
-        brand: tenant ? orgBrand(tenant) : OPERRA_BRAND,
-        baseUrl: tenant ? tenantBaseUrl(tenant) : appUrl(),
+        brand: tenant ? orgBrand(tenant) : DEFAULT_BRAND,
+        baseUrl: appUrl(),
         cta: r.emailCta,
         footer: r.emailFooter(RESET_MINUTES),
       }),
@@ -63,7 +63,7 @@ export async function requestPasswordReset(email: string, lang: "ar" | "en") {
 }
 
 /**
- * Support: a one-time reset link that Operra staff hand to the person themselves (for example when
+ * Support: a one-time reset link that staff hand to the person themselves (for example when
  * email isn't set up). Valid 24 hours; any earlier unused link stops working.
  */
 export async function issueResetLink(accountId: string) {

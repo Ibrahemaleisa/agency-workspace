@@ -1,17 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, users } from "@/db/schema";
-import { destroySession, membershipsOf, requireUser, verifyAccount } from "@/lib/auth";
+import { users } from "@/db/schema";
+import { createSession, destroySession, getCurrentUser, membershipsOf, verifyAccount } from "@/lib/auth";
+import { deleteDemoCopy, isDemoCopy } from "@/lib/demo-sandbox";
+import { getOrgById } from "@/lib/tenant";
 import { str, type ActionState } from "@/lib/action-state";
 import { getDict } from "@/lib/lang";
-import { getHostTenant } from "@/lib/tenant";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
-import { chooserAccount, endChooser, enterWorkspace, startChooser } from "@/lib/handoff";
-import { track, trackLogin } from "@/lib/analytics";
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { t, lang } = await getDict();
@@ -26,55 +25,26 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
   if (limited) return { error: t.login.errorRateLimited };
 
   const account = await verifyAccount(email, password);
-  if (!account) {
-    // Attach the attempt to the person when the address exists (the control center shows it).
-    const known = await db.query.accounts.findFirst({ where: eq(accounts.email, email), columns: { id: true } });
-    await track("login_failed", { accountId: known?.id, meta: { reason: known ? "password" : "unknown_email" } });
-    return { error: t.login.errorInvalid };
-  }
+  if (!account) return { error: t.login.errorInvalid };
 
-  // On a tenant's own host only that tenant counts; elsewhere every agency the person belongs to.
-  const host = await getHostTenant();
-  const memberships = await membershipsOf(account.id, { tenantId: host?.id });
+  const memberships = await membershipsOf(account.id);
   if (memberships.length === 0) return { error: t.login.errorInvalid };
 
   // Emails follow the language the person signed in with.
   await db.update(users).set({ lang }).where(inArray(users.id, memberships.map((m) => m.user.id)));
 
-  // One agency: straight in. Several: the person picks one (never guessed from an old link).
-  if (memberships.length === 1) {
-    const [only] = memberships;
-    await trackLogin(account.id, only.org.id);
-    return enterWorkspace(only.user, only.org);
-  }
-  return startChooser(account.id);
+  await createSession(memberships[0].user.id);
+  redirect("/");
 }
 
-/** Picks one agency after sign-in (the password was checked a moment ago on this browser). */
-export async function chooseWorkspace(fd: FormData) {
-  const accountId = await chooserAccount();
-  if (!accountId) redirect("/login");
-  const memberships = await membershipsOf(accountId);
-  const chosen = memberships.find((m) => m.user.id === str(fd, "membershipId"));
-  if (!chosen) redirect("/login/choose");
-  await endChooser();
-  await trackLogin(accountId, chosen.org.id);
-  return enterWorkspace(chosen.user, chosen.org);
-}
-
-/**
- * Moves the signed-in person to another agency they belong to. The target must be one of *their*
- * memberships — the id from the form is only a choice among those, never trusted on its own.
- */
-export async function switchWorkspace(fd: FormData) {
-  const me = await requireUser({ allowLocked: true });
-  const target = (await membershipsOf(me.accountId)).find((m) => m.user.id === str(fd, "membershipId"));
-  if (!target || target.user.id === me.id) redirect("/");
-  await db.update(users).set({ lang: me.lang }).where(eq(users.id, target.user.id));
-  return enterWorkspace(target.user, target.org);
-}
-
+/** Signs out. On the public demo, signing out of a private copy deletes it with every change made. */
 export async function logoutAction() {
+  const user = await getCurrentUser();
+  const org = user ? await getOrgById(user.orgId) : null;
   await destroySession();
+  if (isDemoCopy(org)) {
+    await deleteDemoCopy(org.id);
+    redirect("/?demo=ended");
+  }
   redirect("/login");
 }

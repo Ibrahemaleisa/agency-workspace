@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CreditCard, LayoutTemplate, Palette, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, LayoutTemplate, Palette, Users } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getT } from "@/lib/lang";
-import { isPlatform, isSharedDemo } from "@/lib/platform";
-import { getOrgById } from "@/lib/tenant";
-import { deleteMyAccount, deleteWorkspace } from "@/server/lifecycle-actions";
+import { isSharedDemo } from "@/lib/platform";
+import { deleteMyAccount } from "@/server/lifecycle-actions";
 import { changeOwnPassword, updateProfile } from "@/server/profile-actions";
 import { ActionForm, DangerForm, SubmitButton } from "@/components/forms";
 import { Card, Checkbox, Field, Input, PageHeader, Select, buttonClass } from "@/components/ui";
@@ -17,21 +16,18 @@ export async function generateMetadata() {
 
 /** Settings: every user's own profile and password; admins also get the workspace's settings pages. */
 export default async function SettingsPage() {
-  const user = await requireUser({ allowLocked: true });
+  const user = await requireUser();
   const { t, lang } = await getT();
   const st = t.settings;
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
   const lc = t.lifecycle;
-  const org = await getOrgById(user.orgId);
   const canExport = can(user, "users.manage") && !user.readOnly;
-  const canDeleteWorkspace = isPlatform() && can(user, "billing.manage") && can(user, "users.manage") && !user.readOnly && !!org && !org.isDemo;
   const canDeleteAccount = !user.readOnly && !isSharedDemo();
 
   const cards = [
     { href: "/settings/brand", icon: Palette, text: st.cards.brand, show: can(user, "brand.manage") },
     { href: "/team", icon: Users, text: st.cards.team, show: can(user, "users.manage") },
     { href: "/templates", icon: LayoutTemplate, text: st.cards.templates, show: can(user, "templates.manage") },
-    { href: "/settings/billing", icon: CreditCard, text: st.cards.billing, show: can(user, "billing.manage") && isPlatform() },
   ].filter((c) => c.show);
 
   return (
@@ -116,24 +112,10 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {(canDeleteWorkspace || canDeleteAccount) && (
+      {canDeleteAccount && (
         <section className="mt-8">
           <Card title={lc.dangerZone} className="border-red-200">
             <div className="grid gap-8 lg:grid-cols-2">
-              {canDeleteWorkspace && org && (
-                <DangerForm
-                  action={deleteWorkspace}
-                  expected={org.slug}
-                  needsPassword
-                  labels={{
-                    title: lc.deleteWorkspace,
-                    body: lc.deleteWorkspaceBody,
-                    confirm: lc.typeToConfirm(org.slug),
-                    password: lc.password,
-                    submit: lc.deleteWorkspace,
-                  }}
-                />
-              )}
               {canDeleteAccount && (
                 <DangerForm
                   action={deleteMyAccount}

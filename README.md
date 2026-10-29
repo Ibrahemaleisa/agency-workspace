@@ -8,12 +8,9 @@ This edition carries **no built-in brand**. Each customer agency sets its own na
 default language and public page from **Settings → Brand**, and everything — sidebar, sign-in,
 landing page, browser icon, emails, guide — follows it.
 
-It runs in two modes:
-
-- **Single-agency mode** (default) — one agency per deployment and database, described below.
-- **Operra platform mode** (`OPERRA_PLATFORM=true`) — the multi-tenant Operra SaaS: self-serve sign-up
-  with provisioning (serials `OPR-000001`…), subscriptions (Stripe), invitations, role-specific guided
-  tours, a read-only demo preview and the Operra control center. See **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+One agency per deployment and database. The public demo deployment (`SHOW_DEMO_ACCOUNTS=true`)
+adds a product landing page where visitors pick a name and colours and try the whole system in a
+private copy of the sample agency, without signing in (`src/lib/demo-sandbox.ts`).
 
 ## How white-labelling works
 
@@ -94,18 +91,16 @@ projects, tasks and users — every demo account uses the password `password`.
 | `EMAIL_FROM` | for email | Sender, e.g. `Acme <no-reply@acme.com>` |
 | `APP_URL` | recommended | Public URL used in email links (auto-detected on Vercel) |
 | `BLOB_READ_WRITE_TOKEN` | optional | Store uploads in Vercel Blob instead of the database |
-| `SHOW_DEMO_ACCOUNTS` | optional | `true` lists demo logins on the sign-in page (demo sites only) |
+| `SHOW_DEMO_ACCOUNTS` | optional | `true` makes this the public demo: product landing page + private try-it copies (demo site only — never a customer) |
 | `SEED_DEMO` | optional | `true` loads the demo agency on the first build of an **empty** database (demo sites only) |
 | `LEGAL_ENTITY_NAME` / `LEGAL_CONTACT_EMAIL` | recommended | Fill the `/terms` and `/privacy` pages (default: the agency's name and contact email) |
 | `ALERT_WEBHOOK_URL` | optional | Post unexpected server errors to a Slack / Discord / Teams webhook |
 
-Platform mode adds `OPERRA_PLATFORM`, `APP_SECRET`, `APP_ROOT_DOMAIN`, `CRON_SECRET`, `SEED_PREVIEW`,
-`BILLING_PROVIDER`, `STRIPE_*` and more — all in [DEPLOYMENT.md](DEPLOYMENT.md) and `.env.example`.
+`CRON_SECRET` lets Vercel Cron run the daily cleanup (and the demo reset) — see `.env.example`.
 
 ## Fonts
 
-English uses **DM Sans** and Arabic uses **IBM Plex Sans Arabic**; Operra's own screens (sign-up,
-preview, control center) and the marketing site use **Alexandria** (see `BRAND.md`) — all open-source (SIL OFL), so the edition can be
+English uses **DM Sans** and Arabic uses **IBM Plex Sans Arabic** — both open-source (SIL OFL), so the edition can be
 redistributed to any customer. Don't add a commercially licensed font here unless
 its licence covers every customer deployment.
 
@@ -113,13 +108,10 @@ its licence covers every customer deployment.
 
 ```
 src/
-  app/(public)/          landing (/welcome), sign-in, first-run setup, invitations
-  app/(app)/             the workspace (dashboard, projects, tasks, chat, settings/brand, billing, guide…)
-  app/(platform)/        platform mode: sign-up wizard, provisioning, /preview, test checkout
-  app/operra/            platform mode: Operra control center (staff only)
-  lib/tenant.ts          which tenant a request is for (subdomain, custom domain, /w/{slug})
-  lib/provisioning.ts    idempotent tenant provisioning · lib/billing/  provider abstraction
-  lib/verification.ts, lib/password-reset.ts   email verification and self-service password reset
+  app/(public)/          landing (/welcome; the demo's product page), sign-in, first-run setup, invitations
+  app/(app)/             the workspace (dashboard, projects, tasks, chat, settings/brand, guide…)
+  lib/demo-sandbox.ts    public demo: visitors' private copies of the sample agency
+  lib/password-reset.ts  self-service password reset
   lib/brand.ts           brand settings + colour theming
   lib/permissions.ts     central role → permission policy
   lib/i18n.ts, i18n-app.ts   Arabic + English copy ("{brand}" is replaced with the agency name)
@@ -127,8 +119,5 @@ src/
   db/schema.ts           database schema (Drizzle) · drizzle/ migrations
   content/guide.ts       built-in user guide
 ```
-
-The Operra marketing website (English at `/`, Arabic at `/ar`) is a separate app in `site/` with
-its own Vercel project — see `site/README.md`. It is not part of the workspace build.
 
 Stack: Next.js 16 · React 19 · Tailwind CSS 4 · Drizzle ORM · PostgreSQL.

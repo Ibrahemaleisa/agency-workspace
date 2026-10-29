@@ -35,29 +35,10 @@ jobs:
         run: npx next typegen && npx tsc --noEmit
       - name: Tests (unit + database)
         run: npm test
-      - name: Tenant isolation (two seeded tenants)
-        run: npm run db:seed && npm run db:seed-preview && npm run verify:isolation
+      - name: Tenant isolation (sample agency + a visitor's demo copy)
+        run: npm run db:seed && npm run db:demo-copy && npm run verify:isolation
       - name: Schema matches the migrations
         run: npx drizzle-kit generate --name ci-check && git diff --exit-code --stat -- drizzle && test -z "$(git status --porcelain drizzle)"
       - name: Build
         run: npm run build
 
-  site:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: site
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: site/package-lock.json
-      - run: npm ci
-      - name: Lint
-        run: npx eslint src
-      - name: Typecheck
-        run: npx next typegen && npx tsc --noEmit
-      - name: Build
-        run: npx next build

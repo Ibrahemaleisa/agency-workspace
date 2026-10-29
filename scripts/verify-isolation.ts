@@ -4,7 +4,7 @@
  *
  *   npm run verify:isolation
  *
- * Needs at least two tenants with data (e.g. `npm run db:seed-preview` plus one signed-up agency).
+ * Needs at least two tenants with data (e.g. `npm run db:seed` plus `npm run db:demo-copy`).
  * Exits non-zero on the first leak.
  */
 import "dotenv/config";

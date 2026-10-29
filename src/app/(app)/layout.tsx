@@ -1,5 +1,4 @@
-import { getAccount, membershipsOf, requireUser } from "@/lib/auth";
-import { orgBrand } from "@/lib/brand";
+import { requireUser } from "@/lib/auth";
 import { navFor } from "@/lib/navigation";
 import { getT } from "@/lib/lang";
 import { Search } from "lucide-react";
@@ -7,70 +6,24 @@ import { Sidebar } from "@/components/sidebar";
 import { NotificationBell } from "@/components/notification-bell";
 import { unreadNotificationCount, unreadTeamMessages } from "@/server/queries";
 import { can } from "@/lib/permissions";
-import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { userOnboarding } from "@/db/schema";
-import { getOrgById } from "@/lib/tenant";
-import { effectiveStatus, getPlan, getSubscription, hasAccess, subscribedInTrial, trialDaysLeft } from "@/lib/billing";
-import { isPlatform } from "@/lib/platform";
 import { getSaasT } from "@/lib/i18n-saas";
 import { flowFor } from "@/lib/onboarding";
 import { TOUR_TARGETS } from "@/lib/tour";
 import { saveTourProgress } from "@/server/onboarding-actions";
 import { TourClient as Tour } from "@/components/tour-client";
-import { SubscribedWelcome } from "@/components/subscribed-welcome";
-import type { PlanBadgeInfo } from "@/components/sidebar";
-import { WorkspaceGate } from "@/components/workspace-gate";
-import { PreviewBanner, TrialBanner } from "@/components/workspace-banners";
-import { VerifyBanner } from "@/components/verify-banner";
-import { emailEnabled } from "@/lib/email";
+import { DemoBar } from "@/components/demo-bar";
+import { isDemoCopy } from "@/lib/demo-sandbox";
+import { DEMO_DICT } from "@/lib/i18n-demo";
+import { getOrgById } from "@/lib/tenant";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  // The layout shows its own gate for paused / ended workspaces, so it never throws for them.
-  const user = await requireUser({ allowLocked: true });
+  const user = await requireUser();
   const [{ t, lang, brand }, { t: st }, org] = await Promise.all([getT(), getSaasT(), getOrgById(user.orgId)]);
 
-  // A paused or cancelled tenant can't be used, whatever its subscription says.
-  if (!org || org.status === "suspended" || org.status === "cancelled") {
-    return <WorkspaceGate title={st.gate.suspendedTitle} body={st.gate.suspendedBody} signOutLabel={st.gate.signOut} />;
-  }
-  // Trial ended / subscription cancelled: admins can still reach billing to subscribe.
-  const sub = isPlatform() && !org.isDemo ? await getSubscription(org.id) : null;
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  if (!hasAccess(org, sub) && !(can(user, "billing.manage") && pathname.startsWith("/settings/billing"))) {
-    const admin = can(user, "billing.manage");
-    if (admin && (await headers()).get("x-subscribed")) {
-      return (
-        <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-          <SubscribedWelcome state="pending" labels={{ pending: st.subscribed.pending, title: "", body: "", cta: "" }} />
-        </main>
-      );
-    }
-    return (
-      <WorkspaceGate
-        title={st.gate.endedTitle}
-        body={admin ? st.gate.endedAdmin : st.gate.endedMember}
-        billingHref={admin ? "/settings/billing" : undefined}
-        billingLabel={st.gate.goBilling}
-        signOutLabel={st.gate.signOut}
-      />
-    );
-  }
-  const days = sub && !subscribedInTrial(sub) ? trialDaysLeft(sub) : null;
-  // Plan badge under the logo: free trial, or the paid plan's tier.
-  let planBadge: PlanBadgeInfo | null = null;
-  if (sub) {
-    const status = effectiveStatus(sub);
-    const paid = status === "active" || status === "past_due" || subscribedInTrial(sub);
-    if (status === "trialing" && !paid) planBadge = { kind: "trial", label: st.badge.trial };
-    else if (paid) {
-      const p = await getPlan(sub.planCode);
-      if (p) planBadge = { kind: p.tier === "full" ? "full" : "standard", label: (lang === "ar" && p.nameAr) || p.name };
-    }
-  }
-
-  // Tutorial: saved per user; preview sessions keep it in the tab only.
+  // Tutorial: saved per user; read-only sessions keep it in the tab only.
   const onboarding = user.readOnly ? null : await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
   const flow = user.readOnly ? flowFor(user.role, user.focus) : onboarding?.status === "active" ? (onboarding.flow as keyof typeof TOUR_TARGETS) : null;
   const tourSteps = flow
@@ -81,34 +34,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     can(user, "chat.internal") ? unreadTeamMessages(user) : 0,
   ]);
   const items = navFor(user, t).map((i) => (i.icon === "teamChat" ? { ...i, badge: chatUnread } : i));
-  // Email confirmation prompt: only where it can be acted on (platform, email configured).
-  const account = isPlatform() && !user.readOnly && emailEnabled() ? await getAccount(user.accountId) : null;
-  const unverifiedEmail = account && !account.emailVerifiedAt ? account.email : null;
-  // Other agencies this person belongs to (platform mode; never from a preview session).
-  const workspaces =
-    isPlatform() && !user.readOnly
-      ? (await membershipsOf(user.accountId))
-          .filter((m) => m.user.id !== user.id)
-          .map((m) => ({ id: m.user.id, name: orgBrand(m.org).name[lang], switchLabel: st.switchTo }))
-      : [];
   const bell = { title: t.bell.title, viewAll: t.bell.viewAll, empty: t.bell.empty, markAll: t.bell.markAll };
   return (
     <div className="min-h-screen">
-      {user.readOnly && (
-        <PreviewBanner
-          text={st.banner.preview}
-          startTrial={st.banner.startTrial}
-          exit={st.banner.exit}
-          readOnlyTitle={st.readOnly.title}
-          readOnlyBody={st.readOnly.body}
-        />
-      )}
-      {days !== null && can(user, "billing.manage") && <TrialBanner text={st.banner.trial(days)} cta={st.billing.title} />}
-      {unverifiedEmail && (
-        <VerifyBanner title={st.verify.bannerTitle} body={st.verify.bannerBody(unverifiedEmail)} resend={st.verify.resend} sent={st.verify.sent} />
-      )}
-      {/* The tutorial waits while the admin is paying or managing billing. */}
-      {tourSteps && !pathname.startsWith("/settings/billing") && (
+      {tourSteps && (
         <Tour
           steps={tourSteps}
           initialStep={onboarding?.step ?? 0}
@@ -131,11 +60,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         bellLabels={bell}
         orgName={brand.name[lang]}
         logo={brand.logo}
-        plan={planBadge}
         initialUnread={unread}
-        workspaces={workspaces}
       />
       <main className="min-w-0 md:ps-64">
+        {isDemoCopy(org) && <DemoBar role={user.role} canBrand={can(user, "brand.manage")} t={DEMO_DICT[lang].bar} />}
         {/* Desktop top bar: global search + notifications */}
         <div className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-zinc-200/70 bg-[#f6f5f2]/80 px-8 py-2.5 backdrop-blur-md md:flex">
           <form action="/search" role="search" className="relative w-80" data-tour="search">

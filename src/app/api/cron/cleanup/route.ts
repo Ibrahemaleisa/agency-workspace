@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
-import { emailVerifications, invitations, notifications, passwordResets, loginTokens, platformEvents, platformSessions, rateLimits, sessions, signups } from "@/db/schema";
-import { expireTrials } from "@/lib/billing";
+import { pruneDemoCopies } from "@/lib/demo-sandbox";
+import { emailVerifications, invitations, notifications, passwordResets, rateLimits, sessions } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +15,8 @@ function authorized(req: Request) {
 }
 
 /**
- * GET /api/cron/cleanup — daily housekeeping (vercel.json → crons): expired sessions, tokens and
- * sign-ups, and ended free trials. Vercel sends
+ * GET /api/cron/cleanup — daily housekeeping (vercel.json → crons): expired sessions and tokens,
+ * old notifications, expired demo copies. Vercel sends
  * `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set the route refuses to run.
  */
 export async function GET(req: Request) {
@@ -24,7 +24,6 @@ export async function GET(req: Request) {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const halfYearAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
   const yearAgo = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
   const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
@@ -32,27 +31,7 @@ export async function GET(req: Request) {
     const n = (rows: unknown[]) => rows.length;
     return {
       sessions: n(await tx.delete(sessions).where(lt(sessions.expiresAt, now)).returning({ id: sessions.id })),
-      platformSessions: n(
-        await tx.delete(platformSessions).where(lt(platformSessions.expiresAt, now)).returning({ id: platformSessions.id }),
-      ),
-      loginTokens: n(await tx.delete(loginTokens).where(lt(loginTokens.expiresAt, now)).returning({ id: loginTokens.tokenHash })),
       rateLimits: n(await tx.delete(rateLimits).where(lt(rateLimits.windowStart, dayAgo)).returning({ key: rateLimits.key })),
-      // Abandoned sign-ups that never became a workspace: kept 180 days for the control center's
-      // drop-off report (without the password, see below), then deleted.
-      signups: n(
-        await tx
-          .delete(signups)
-          .where(and(isNull(signups.orgId), lt(signups.expiresAt, halfYearAgo)))
-          .returning({ id: signups.id }),
-      ),
-      // Expired sign-ups (finished or not) keep their record but never the password hash or logo.
-      scrubbed: n(
-        await tx
-          .update(signups)
-          .set({ passwordHash: "", logo: null })
-          .where(and(lt(signups.expiresAt, now), sql`${signups.passwordHash} <> ''`))
-          .returning({ id: signups.id }),
-      ),
       // Notifications: read ones after 90 days, unread ones after about 13 months. (The activity
       // log is the workspace's history and is kept; it goes with the workspace when that's deleted.)
       notifications: n(
@@ -61,8 +40,6 @@ export async function GET(req: Request) {
           .where(or(and(isNotNull(notifications.readAt), lt(notifications.createdAt, quarterAgo)), lt(notifications.createdAt, yearAgo)))
           .returning({ id: notifications.id }),
       ),
-      // Analytics events older than about 13 months.
-      platformEvents: n(await tx.delete(platformEvents).where(lt(platformEvents.createdAt, yearAgo)).returning({ id: platformEvents.id })),
       // Used or expired email-verification links.
       emailVerifications: n(
         await tx
@@ -84,8 +61,8 @@ export async function GET(req: Request) {
       ),
     };
   });
-  // Record trials that ended without a subscription (access already follows the end date live).
-  const trialsExpired = (await expireTrials()).length;
-  console.info("[cron] cleanup", { ...counts, trialsExpired });
-  return Response.json({ ok: true, ...counts, trialsExpired });
+  // Visitors' private demo copies that outlived their session (public demo only).
+  const demoCopies = await pruneDemoCopies();
+  console.info("[cron] cleanup", { ...counts, demoCopies });
+  return Response.json({ ok: true, ...counts, demoCopies });
 }

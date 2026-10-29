@@ -23,7 +23,7 @@ import {
   Sparkles,
   Users,
   X,
-  ArrowLeftRight,
+  
   CalendarDays,
   Settings,
 } from "lucide-react";
@@ -31,7 +31,7 @@ import { cn } from "./ui";
 import { BrandMark } from "./site/brand";
 import { LangSwitch } from "./site/lang-switch";
 import type { Lang } from "@/lib/i18n";
-import { logoutAction, switchWorkspace } from "@/server/auth-actions";
+import { logoutAction } from "@/server/auth-actions";
 import { NotificationBell, useUnread } from "./notification-bell";
 
 const ICONS = {
@@ -74,8 +74,6 @@ export function Sidebar({
   lang,
   labels,
   bellLabels,
-  workspaces = [],
-  plan = null,
 }: {
   items: NavItem[];
   user: { name: string; roleLabel: string };
@@ -85,10 +83,6 @@ export function Sidebar({
   lang: Lang;
   labels: { more: string; signOut: string; alerts: string; workspace: string; close: string; search: string };
   bellLabels: { title: string; viewAll: string; empty: string; markAll: string };
-  /** The person's other agencies (same sign-in); empty for most people. */
-  workspaces?: { id: string; name: string; switchLabel: string }[];
-  /** The agency's plan badge under its logo (platform mode). */
-  plan?: PlanBadgeInfo | null;
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -112,7 +106,7 @@ export function Sidebar({
     <>
       {/* ---------------- Desktop sidebar ---------------- */}
       <aside className="fixed inset-y-0 start-0 z-20 hidden w-64 flex-col bg-ink text-zinc-300 md:flex">
-        <Brand orgName={orgName} logo={logo} workspace={labels.workspace} plan={plan} />
+        <Brand orgName={orgName} logo={logo} workspace={labels.workspace} />
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2">
           {items.map((item, i) => {
             const Icon = ICONS[item.icon];
@@ -162,7 +156,6 @@ export function Sidebar({
               </button>
             </form>
           </div>
-          {workspaces.length > 0 && <WorkspaceSwitch workspaces={workspaces} tone="dark" />}
           <LangSwitch lang={lang} next={pathname} className="mx-2 mt-2 w-fit" />
         </div>
       </aside>
@@ -172,7 +165,6 @@ export function Sidebar({
         <div className="flex items-center gap-2">
           <BrandMark logo={logo} name={orgName} className="h-8" variant="light" />
           <span className="text-[15px] font-semibold">{orgName}</span>
-          {plan && <PlanBadge badge={plan} />}
         </div>
         <div className="flex items-center gap-2">
           <LangSwitch lang={lang} next={pathname} tone="light" />
@@ -274,11 +266,6 @@ export function Sidebar({
                   </Link>
                 );
               })}
-              {workspaces.length > 0 && (
-                <div className="col-span-3">
-                  <WorkspaceSwitch workspaces={workspaces} tone="light" />
-                </div>
-              )}
               <form action={logoutAction} className="contents">
                 <button className="flex flex-col items-center gap-1.5 rounded-xl border border-zinc-200 px-2 py-3 text-xs font-medium text-red-600">
                   <LogOut className="size-5 rtl:-scale-x-100" />
@@ -293,70 +280,14 @@ export function Sidebar({
   );
 }
 
-export type PlanBadgeInfo = { kind: "trial" | "standard" | "full"; label: string };
-
-const BADGE_STYLE: Record<PlanBadgeInfo["kind"], { className: string; style?: React.CSSProperties }> = {
-  // Free trial: white with black text.
-  trial: { className: "border-zinc-300 bg-white text-black" },
-  // Standard: light grey with black text.
-  standard: { className: "border-zinc-300 bg-zinc-200 text-black" },
-  // Full package: gold, with white lettering outlined in black.
-  full: {
-    className: "border-[#8a6a12] bg-gradient-to-b from-[#f3d27a] via-[#d4a82f] to-[#b8871b] text-white",
-    style: { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 0 0 #000, -1px 0 0 #000" },
-  },
-};
-
-/** The agency's plan, shaped like a button but not clickable (information only). */
-export function PlanBadge({ badge, className = "" }: { badge: PlanBadgeInfo; className?: string }) {
-  const b = BADGE_STYLE[badge.kind];
+function Brand({ orgName, logo, workspace }: { orgName: string; logo: string | null; workspace: string }) {
   return (
-    <span
-      data-testid="plan-badge"
-      data-plan={badge.kind}
-      className={`inline-flex cursor-default items-center rounded-md border px-2 py-0.5 text-[11px] leading-4 font-bold tracking-wide whitespace-nowrap shadow-sm select-none ${b.className} ${className}`}
-      style={b.style}
-    >
-      {badge.label}
-    </span>
-  );
-}
-
-function Brand({ orgName, logo, workspace, plan }: { orgName: string; logo: string | null; workspace: string; plan?: PlanBadgeInfo | null }) {
-  return (
-    <div className={`flex items-center gap-3 px-5 ${plan ? "min-h-16 py-3" : "h-16"}`}>
+    <div className="flex h-16 items-center gap-3 px-5">
       <BrandMark logo={logo} name={orgName} className="h-8" variant="dark" />
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-white">{orgName}</div>
-        {plan ? <PlanBadge badge={plan} className="mt-1" /> : <div className="text-[11px] text-zinc-400">{workspace}</div>}
+        <div className="text-[11px] text-zinc-400">{workspace}</div>
       </div>
     </div>
-  );
-}
-
-/** Other agencies this person belongs to. Each button only names a membership; the server checks it's theirs. */
-function WorkspaceSwitch({ workspaces, tone }: { workspaces: { id: string; name: string; switchLabel: string }[]; tone: "dark" | "light" }) {
-  return (
-    <ul className={cn("mt-2 space-y-1", tone === "dark" ? "px-2" : "")} aria-label={workspaces[0].switchLabel}>
-      {workspaces.map((w) => (
-        <li key={w.id}>
-          <form action={switchWorkspace}>
-            <input type="hidden" name="membershipId" value={w.id} />
-            <button
-              data-testid="switch-workspace"
-              className={cn(
-                "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-xs",
-                tone === "dark" ? "text-zinc-400 hover:bg-white/10 hover:text-white" : "border border-zinc-200 text-zinc-700",
-              )}
-            >
-              <ArrowLeftRight className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {w.switchLabel} <bdi className="font-medium">{w.name}</bdi>
-              </span>
-            </button>
-          </form>
-        </li>
-      ))}
-    </ul>
   );
 }

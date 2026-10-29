@@ -17,9 +17,7 @@ Talk to the owner in **English** (they write in Arabic or English); the product 
   the GitHub repo `Ibrahemaleisa/agency-pm`, the Vercel project `agency-pm`
   (`agency-pm-gilt.vercel.app`), or its Neon database `neondb`. All work happens here.
 - **No commercially licensed fonts.** Only open-source fonts (currently DM Sans and IBM Plex Sans
-  Arabic in customer workspaces, and Alexandria for Operra's own screens and the marketing site). Fada's Thmanyah font is licensed to Fada only and must never be added here.
-- **Operra's identity is "Cadence · Kashida"** (lapis, bone, graphite, amber only for waiting on the
-  client; Alexandria; the stage-bar mark that fills in the reading direction). Rules: `BRAND.md`.
+  Arabic). Fada's Thmanyah font is licensed to Fada only and must never be added here.
   Design skill for this repo: `.claude/skills/frontend-design`.
 - **No Fada branding** in code, copy, seed data or defaults. Brand text uses the `{brand}`
   placeholder (see `lib/brand.ts` → `withBrand`).
@@ -34,88 +32,55 @@ Every push to `main` redeploys all customer projects connected to this repo.
 | Deployment | Vercel project | URL | Database |
 |---|---|---|---|
 | Demo for buyers | `workspace-demo` (team fada-team) | workspace-demo-sooty.vercel.app | Neon DB `workspace_demo` with its own restricted login `workspace_demo_app` |
-| Operra platform (production) | `operra` (team fada-team, `prj_XS23mKnRjhM495bF8OxymXG6p7bQ`) | operra-eight.vercel.app (operra.com is **not owned** — its DNS points to someone else's CloudFront; the operra.com entries on the project do nothing) | Neon `neon-coffee-feather` (Vercel Marketplace, connected to `operra` only) |
-| Operra marketing site | `operra-site` (team fada-team, `prj_3saJesxjb81s4uAlvfgF3wpRfGKr`, Root Directory `site`) | operra-site.vercel.app (English `/`, Arabic `/ar`) | none |
 
-The `operra` project has previews disabled, Vercel login only on previews, a private Blob store
-(`operra-uploads`) and Production-only `OPERRA_PLATFORM`, `APP_SECRET`, `CRON_SECRET`, `SEED_PREVIEW`, `APP_URL`,
-`MARKETING_URL`, `PLATFORM_ADMIN_*` (build creates the staff account; remove after first sign-in).
-Neither project is Git-connected: production deploys are made from the API/dashboard for a chosen branch or commit.
 Note: `workspace-demo`'s `DATABASE_URL` also targets **Preview**, so any branch preview build migrates the demo DB —
 which is why `claude/**` branches are excluded from deployments in `vercel.json`.
 
 Demo env vars: `DATABASE_URL`, `SEED_DEMO=true` (loads "Northwind Studio" sample data on the first
-build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. Demo logins use the password `password`
-(admin `sara@northwind.agency`). No email configured on the demo.
-On a deployment with `SHOW_DEMO_ACCOUNTS=true` (not the platform), passwords, emails, roles and account
-status are read-only, so visitors can't lock each other out (`isSharedDemo()` in `lib/platform.ts`).
+build of an empty DB), `SHOW_DEMO_ACCOUNTS=true`. The Northwind logins still use the password `password`
+(admin `sara@northwind.agency`) but are no longer listed. No email configured on the demo.
+
+**The public demo (29 Oct 2026, owner's direction):** the link we send to prospects. With
+`SHOW_DEMO_ACCOUNTS=true` (`isSharedDemo()` in `lib/platform.ts`):
+- `/` for visitors is a product landing page (`components/demo/landing.tsx`, copy in `lib/i18n-demo.ts`):
+  the visitor types an agency name and picks colours — the whole page and a workspace preview re-tint
+  live — then enters as admin, team member or client. No sign-up, no password.
+- Each entry creates a **private copy** of the Northwind sample agency in that name and colours
+  (`lib/demo-sandbox.ts`: organizations with `is_demo = true` and a `try-` slug, people with `.invalid`
+  addresses). Only that visitor sees their changes. A bar inside lets them switch role, open Brand
+  settings, or end the demo. Signing out / "End demo" deletes the copy; copies also expire after 8 hours
+  (pruned when a new one starts and by the daily cleanup cron). Max 300 at once, 20 starts per IP per hour.
+- Passwords, emails, roles and account status stay read-only there.
 
 **Nightly demo reset:** `vercel.json` schedules `/api/cron/reset-demo` daily at 03:00 UTC for every project,
-but it only acts where `DEMO_RESET=true`, `SEED_DEMO=true` and `SHOW_DEMO_ACCOUNTS=true` are all set, the
-deployment is not the Operra platform, and `CRON_SECRET` matches; everywhere else it returns 404. Set
+but it only acts where `DEMO_RESET=true`, `SEED_DEMO=true` and `SHOW_DEMO_ACCOUNTS=true` are all set
+and `CRON_SECRET` matches; everywhere else it returns 404. Set
 `DEMO_RESET` and `CRON_SECRET` on `workspace-demo` only — **never on a customer**.
 
 New customers: see README → "Add a new customer". Recommended: a separate Neon project per customer.
 
-## Operra platform mode
+## Operra removed (29 Oct 2026)
 
-`OPERRA_PLATFORM=true` turns this repo into the multi-tenant Operra SaaS (sign-up, provisioning, billing,
-invitations, tours, `/preview`, control center at `/operra`). It must run on its **own** Vercel project and
-database — never on a single-agency customer's. Everything about it: `DEPLOYMENT.md`.
-Without the flag, single-agency deployments behave exactly as before (billing, sign-up and preview are off).
-
-- Isolation check (read-only): `npm run verify:isolation`.
-- Preview tenant (safe, only touches slug `demo`): `npm run db:seed-preview`.
-- Free trial: **14 days** (confirmed by the owner, 27 Sep 2026). Live value per plan in `plans.trial_days`,
-  edited in the control center → Plans; code default `DEFAULT_TRIAL_DAYS` in `src/lib/billing/defaults.ts`.
-- **Plans agreed by the owner (27 Sep 2026):** Standard 299 (up to 10 team members, 10 clients) and Full package 499
-  (unlimited), SAR per month (currency/interval assumed — editable in the control center → Plans). Seeded by migration 0013;
-  the old `workspace` plan is hidden. Limits are enforced in `src/lib/limits.ts` (invites, new users, re-activation, clients).
-  Flow: sign-up (or sign-in after the trial) → choose plan → payment → invoice (table `invoices`, emailed to admins) →
-  workspace opens (tutorial for new customers, congratulations for returning ones). Plan badge under the logo:
-  trial white, Standard grey, Full gold.
-- **Selling without a payment gateway (current mode):** "Subscribe" creates a plan request (`plan_requests`); the
-  workspace opens at once (3-day grace if the trial had ended). Staff activate it in the control center (home page
-  "Waiting for activation", or the customer page) for 1–12 months → subscription `provider = manual`, invoice recorded
-  and emailed, congratulations shown once; it locks again at its paid-until date (renew from the customer page).
-  `src/lib/billing/manual.ts`. Connecting a gateway later switches Subscribe to online checkout automatically.
-- **Card payments: Lemon Squeezy** (merchant of record — no company needed; cards, Apple Pay, Google Pay, PayPal; no
-  mada). `src/lib/billing/lemonsqueezy.ts`; env `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`,
-  `LEMONSQUEEZY_WEBHOOK_SECRET` (+ `LEMONSQUEEZY_TEST_MODE=true` to try); each plan's "Payment provider ID" = its
-  variant id. Webhook `/api/billing/webhook` (shared with Stripe; told apart by `X-Signature`). Set-up steps in the
-  control center → Payments. Until it's connected: bank transfer (if an IBAN is set there, with receipt upload) or a
-  plan confirmation that staff activate. Moyasar (mada) once there's a freelance document / company.
-- Support: control center → People → person → "Create password reset link" (24 h, one use) for when email isn't set up.
-- Product (27 Sep 2026): `/settings` (everyone: profile, language, email notifications, own password; admins: links to
-  brand, team, templates, billing), task board (`/tasks?layout=board`, drag-and-drop + "Move to" menu, same server
-  action as the list), and `/calendar` (month view of task deadlines, weeks start Sunday).
-- Control center analytics (`src/lib/analytics.ts`, table `platform_events`): site page views (beacon from `site/` to
-  `/api/t`, anonymous `operra_vid` visitor id carried into sign-up as `?vid=`), sign-up steps shown/completed,
-  workspace creation, sign-ins/failed attempts, daily activity; `accounts.last_login_at/login_count`,
-  `users.last_seen_at`. Pages: `/operra/signups` (funnel + who didn't finish) and `/operra/people` (+ timeline).
-  No raw IPs; abandoned sign-ups kept 180 days without password; events pruned after ~13 months (cron).
-- Customer workspaces are hosted by Operra (path `/w/{slug}` on the app host, or `{slug}.<root domain>` once a
-  real domain is set). Customers can't set a custom domain or touch the backend; only staff can (control center).
-- People vs agencies: `accounts` = a person (email, password, verified email); `users` = their **membership** in one
-  agency (role, client link). One person can belong to several agencies and switch between them; sessions and
-  every tenant query work on a membership.
+The owner cancelled Operra (the multi-tenant SaaS, its marketing site and its identity). Removed from the
+code: `site/`, sign-up/provisioning, billing (Lemon Squeezy, Stripe, manual plans, limits), the control
+center (`/operra`), `/preview`, analytics, subdomain/custom-domain tenancy, `DEPLOYMENT.md`, `BRAND.md`.
+Its tables (plans, subscriptions, invoices, signups, platform_* …) are **left in the schema** with no
+migration, so existing databases keep working; they are unused. The Vercel projects `operra` and
+`operra-site` and their Neon database were not touched — pause or delete them from the dashboard if wanted.
+Git history has the full Operra code (last commit before removal: `ac99aec`).
 
 ## Added 12 Oct 2026 (full-product pass)
 
 - **Data lifecycle:** delete projects / clients (typed confirmation), templates, leads; remove people from a
   workspace; edit/delete own comments, delete own chat messages (admins: any); JSON export
-  (`/api/export`); delete my account; delete a workspace (customer: Settings → Danger zone; staff: control center).
-  Invoices survive a deletion (`invoices.org_id` → null, name/serial copied). `src/lib/lifecycle.ts`.
+  (`/api/export`); delete my account. `src/lib/lifecycle.ts`.
 - **Work tracking:** task checklists, time entries, repeating tasks (`src/lib/recurrence.ts`), Reports page with
   CSV (`/reports`, `/api/reports/*`, permission `reports.view`), private iCalendar feed (`/api/calendar/{secret}`).
-- **Security:** control-center two-step sign-in (TOTP, `src/lib/totp.ts`) and audit log (`platform_audit`,
-  `/operra/audit`); nonce CSP in `proxy.ts`; sign-up email code (when email is set up); `src/instrumentation.ts`
-  error alerts (`ALERT_WEBHOOK_URL`).
-- **Billing:** webhooks follow plan switches made in the provider's portal (`resolvePlanCode`); grace period only
-  once per workspace; per-plan storage limit (`plans.max_storage_mb`, editable with member/client limits in the
-  control center); direct browser → Blob uploads up to 500 MB (`/api/uploads`).
+- **Security:** nonce CSP in `proxy.ts`; `src/instrumentation.ts` error alerts (`ALERT_WEBHOOK_URL`).
+- Direct browser → Blob uploads (`components/direct-upload.tsx`) point at `/api/uploads`, a route that does not
+  exist in the repo (it was already missing before the Operra removal) — needs adding before relying on it.
 - **Legal:** `/terms`, `/privacy` (`src/content/legal.ts`, filled from `LEGAL_*` env) — a starting text that
-  **must be reviewed by a lawyer** before relying on it. Consent required at sign-up and stored.
+  **must be reviewed by a lawyer** before relying on it.
 - **Lists are paged** (tasks, notifications, leads, chat history); old notifications are pruned by the cron.
 - **Tests:** `npm test` (`tests/unit.test.ts`, `tests/db.test.ts`); CI also runs the isolation check and a
   schema-vs-migrations drift check.
@@ -123,27 +88,13 @@ Without the flag, single-agency deployments behave exactly as before (billing, s
 
 ## Added 13 Oct 2026
 
-- **Sign-in is email + password only, in one place** (`/login`). Agencies have no address people need to know:
-  old `/w/{slug}` links just open `/login`, and the old one-year `operra_tenant` cookie (which made the shared
-  address show one agency's page and pre-picked that agency at sign-in) is no longer set and is cleared when seen.
-  People in several agencies always choose from the list. The slug still exists internally (made from the name at
-  sign-up) but is never shown. Subdomain / custom-domain host checks are kept for if they are ever configured.
+- **Sign-in is email + password only, in one place** (`/login`); old `/w/{slug}` links just open `/login`.
 - **Template library by agency function** (`src/lib/template-library.ts`): 18 workflows (strategy, social media,
   copywriting, graphic design, video & motion, photography, branding, paid ads, media buying, SEO, influencer,
   community management, PR, web, email & CRM, events, analytics & reporting, account management), each in
   English and Arabic. Templates → Library adds one or all, in the chosen language (`module_templates.source_key`,
   migration 0021). New workspaces start with 6 (`STARTER_TEMPLATES`) in their default language. The demo seed
   still uses `lib/default-templates.ts` (its sample projects refer to those names).
-
-## Marketing website (`site/`)
-
-The Operra marketing site is a **separate Next.js app in `site/`**, deployed as its own Vercel project
-(Root Directory `site`). It is excluded from the product's `tsconfig.json` and ESLint, so customer
-workspaces never build or ship it. English at `/`, Arabic at `/ar` (`app/[lang]`); copy lives in
-`site/src/content/en` and `site/src/content/ar` (same shapes). `NEXT_PUBLIC_APP_URL` points its calls to
-action at the platform's sign-up, preview and sign-in; screenshots are real captures of
-the demo data (`site/scripts/capture-screenshots.mjs`). Pricing numbers are deliberately unset
-(`site/src/content/pricing.ts`) until agreed. See `site/README.md`.
 
 ## Architecture in one minute
 
@@ -162,7 +113,7 @@ the demo data (`site/scripts/capture-screenshots.mjs`). Pricing numbers are deli
   (`approvals.override`) can complete it without the client or remove the approval requirement.
 - Clients' project progress and counts only include tasks shared with them.
 - Logos are stored as data URLs but served from `/brand-logo/{orgId}?v=<hash>`; pages never inline them.
-- CI (`.github/workflows/ci.yml`) runs migrations, lint, typecheck and build for the app and `site/`.
+- CI (`.github/workflows/ci.yml`) runs migrations, lint, typecheck, tests, the isolation check and the build.
 
 ## Working locally
 

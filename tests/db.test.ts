@@ -1,6 +1,5 @@
 /**
- * Database tests: tenant isolation, role scoping, billing events, plan requests, repeating tasks
- * and workspace deletion. They create their own throw-away agencies (slug prefix "t-") and remove
+ * Database tests: tenant isolation, role scoping, repeating tasks and workspace deletion. They create their own throw-away agencies (slug prefix "t-") and remove
  * them afterwards, so they can run against any development database — never a customer's.
  * Skipped when DATABASE_URL isn't set.
  */
@@ -16,11 +15,9 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
   const s = await import("../src/db/schema");
   const { getAccessibleProject, getAccessibleTask, projectScope, taskScope } = await import("../src/lib/access");
   const { listProjects, listTasks } = await import("../src/server/queries");
-  const { applyBillingEvent } = await import("../src/lib/billing");
-  const { requestPlan, dismissRequest } = await import("../src/lib/billing/manual");
   const { spawnNextIfRecurring } = await import("../src/lib/recurrence");
   const { deleteOrganization } = await import("../src/lib/lifecycle");
-  const { storageUsedBytes } = await import("../src/lib/limits");
+  const { createDemoCopy, deleteDemoCopy, demoPersona } = await import("../src/lib/demo-sandbox");
 
   type World = Awaited<ReturnType<typeof makeAgency>>;
   const run = randomUUID().slice(0, 8);
@@ -114,50 +111,6 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
     assert.equal(leak.n, 0);
   });
 
-  it("counts stored bytes per agency", async () => {
-    assert.equal(await storageUsedBytes(A.org.id), 1234);
-  });
-
-  it("applies a billing event once and follows the plan the provider says is active", async () => {
-    const variant = String(900_000_000 + Math.floor(Math.random() * 99_999_999));
-    await db.insert(s.plans).values({ code: `t${run}`, name: "Test plan", stripePriceId: variant }).onConflictDoNothing();
-    const evt = {
-      // "test" stands in for Lemon Squeezy here, so deleting the workspace later calls no real API.
-      provider: "test" as const,
-      eventId: `subscription_updated:${run}`,
-      type: "subscription_updated",
-      orgId: A.org.id,
-      subscriptionId: `ls-${run}`,
-      customerId: "c1",
-      status: "active" as const,
-      planRef: { variantId: variant, code: "standard" },
-      invoice: { providerInvoiceId: `ls_inv_${run}`, amountCents: 29900, currency: "sar" },
-      raw: {},
-    };
-    assert.equal(await applyBillingEvent(evt), true);
-    assert.equal(await applyBillingEvent(evt), false); // retried webhook: ignored
-    const sub = await db.query.subscriptions.findFirst({ where: eq(s.subscriptions.orgId, A.org.id) });
-    assert.equal(sub?.status, "active");
-    assert.equal(sub?.planCode, `t${run}`);
-    const invs = await db.select().from(s.invoices).where(eq(s.invoices.orgId, A.org.id));
-    assert.equal(invs.length, 1);
-    assert.equal(invs[0].orgName, A.org.name);
-    assert.equal(invs[0].currency, "SAR");
-  });
-
-  it("gives a grace period only once per workspace, even after a dismissed request", async () => {
-    const first = await requestPlan(B.org.id, "standard", B.admin.id);
-    assert.ok(first);
-    const graced = await db.query.subscriptions.findFirst({ where: eq(s.subscriptions.orgId, B.org.id) });
-    assert.equal(graced?.status, "trialing");
-    assert.ok(graced!.trialEndsAt! > new Date());
-    await dismissRequest(first!.id, "staff@example.test");
-    await db.update(s.subscriptions).set({ trialEndsAt: new Date(Date.now() - 1000) }).where(eq(s.subscriptions.orgId, B.org.id));
-    await requestPlan(B.org.id, "standard", B.admin.id);
-    const again = await db.query.subscriptions.findFirst({ where: eq(s.subscriptions.orgId, B.org.id) });
-    assert.ok(again!.trialEndsAt! < new Date(), "no second grace period");
-  });
-
   it("creates the next repeating task exactly once", async () => {
     const [t] = await db
       .insert(s.tasks)
@@ -175,7 +128,7 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
     assert.equal(await spawnNextIfRecurring(A.admin, t.id), null);
   });
 
-  it("deleting a workspace removes its data and lone accounts but keeps invoices and other agencies", async () => {
+  it("deleting a workspace removes its data and lone accounts but keeps other agencies", async () => {
     const [extra] = await db.insert(s.organizations).values({ name: "Doomed", slug: `t-${run}-doomed` }).returning();
     const [lone] = await db.insert(s.accounts).values({ email: `lone-${run}@example.test`, passwordHash: "x" }).returning();
     await db.insert(s.users).values({ orgId: extra.id, accountId: lone.id, name: "Lone", email: lone.email, role: "admin" });
@@ -183,17 +136,32 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
     await db.insert(s.users).values({ orgId: extra.id, accountId: A.admin.accountId, name: "Shared", email: `admin-a-${run}@example.test`, role: "admin" });
     const [c] = await db.insert(s.clients).values({ orgId: extra.id, name: "C" }).returning();
     await db.insert(s.projects).values({ orgId: extra.id, clientId: c.id, name: "P" });
-    await db.insert(s.invoices).values({ orgId: extra.id, orgName: "Doomed", orgSerial: extra.serial, amountCents: 100, currency: "SAR", provider: "manual", providerInvoiceId: `manual_${run}` });
 
     await deleteOrganization(extra.id);
     assert.equal((await db.select().from(s.organizations).where(eq(s.organizations.id, extra.id))).length, 0);
     assert.equal((await db.select().from(s.projects).where(eq(s.projects.orgId, extra.id))).length, 0);
     assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.id, lone.id))).length, 0);
     assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.id, A.admin.accountId))).length, 1);
-    const [inv] = await db.select().from(s.invoices).where(eq(s.invoices.providerInvoiceId, `manual_${run}`));
-    assert.equal(inv.orgId, null);
-    assert.equal(inv.orgName, "Doomed");
     assert.ok(!(await refuses(() => getAccessibleProject(A.admin, A.project.id))), "other agencies untouched");
-    await db.delete(s.invoices).where(eq(s.invoices.id, inv.id));
+  });
+
+  it("a visitor's demo copy is a full private agency, and only copies can be deleted as one", async () => {
+    const copy = await createDemoCopy({ name: "Visitor Co", primary: "#13294b", accent: "#8fd3fe", lang: "ar" });
+    assert.equal(copy.isDemo, true);
+    assert.equal(copy.primaryColor, "#13294b");
+    const admin = await demoPersona(copy.id, "admin");
+    const client = await demoPersona(copy.id, "client");
+    assert.ok(admin && client);
+    assert.equal(admin.lang, "ar");
+    assert.match(admin.email, /\.invalid$/);
+    const own = await listProjects({ ...admin, readOnly: false });
+    assert.ok(own.length > 0);
+    const ids = (await db.select({ id: s.projects.id }).from(s.projects).where(eq(s.projects.orgId, copy.id))).map((r) => r.id);
+    assert.ok(own.every((p) => ids.includes(p.id)), "a copy sees only its own projects");
+    await deleteDemoCopy(A.org.id); // a real agency: refused silently
+    assert.equal((await db.select().from(s.organizations).where(eq(s.organizations.id, A.org.id))).length, 1);
+    await deleteDemoCopy(copy.id);
+    assert.equal((await db.select().from(s.organizations).where(eq(s.organizations.id, copy.id))).length, 0);
+    assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.email, admin.email))).length, 0);
   });
 });

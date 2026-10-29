@@ -33,7 +33,6 @@ import { bool, idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { taskStatusLabel } from "@/lib/constants";
 import { MAX_UPLOAD_BYTES, attachmentKeysForTasks, removeFile, removeFiles, saveFile, statFile } from "@/lib/uploads";
 import { getT } from "@/lib/lang";
-import { storageLimitError } from "@/lib/limits";
 import { parseRecurrence, spawnNextIfRecurring } from "@/lib/recurrence";
 
 const msg = async () => (await getT()).t.actions;
@@ -87,10 +86,6 @@ export async function createTask(_prev: ActionState, fd: FormData): Promise<Acti
 
   if (fd.getAll("files").some((f) => f instanceof File && f.size > MAX_UPLOAD_BYTES))
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
-  const newFiles = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  const overQuota = newFiles.length ? await storageLimitError(user.orgId, newFiles.reduce((n, f) => n + f.size, 0)) : null;
-  if (overQuota) return { error: overQuota };
-
   const requiresApproval = bool(fd, "requiresApproval");
   const [task] = await db
     .insert(tasks)
@@ -512,9 +507,6 @@ async function storeAttachments(
   assertCan(user, "files.upload");
   if (files.some((f) => f.size > MAX_UPLOAD_BYTES))
     return { error: (await msg()).fileTooLarge(MAX_UPLOAD_BYTES / 1024 / 1024) };
-  const overQuota = await storageLimitError(user.orgId, files.reduce((n, f) => n + f.size, 0));
-  if (overQuota) return { error: overQuota };
-
   for (const file of files) {
     const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(-100);
     const storageKey = `${user.orgId}/${randomUUID()}-${safeName}`;
@@ -567,11 +559,6 @@ export async function registerDirectUploads(input: {
     files.push({ key: f.key, name: String(f.name ?? "file").slice(0, 200), size: stat.size, type: stat.contentType || "application/octet-stream" });
   }
   if (files.length === 0) return { error: (await msg()).chooseFile };
-  const over = await storageLimitError(user.orgId, files.reduce((n, f) => n + f.size, 0));
-  if (over) {
-    await removeFiles(files.map((f) => f.key));
-    return { error: over };
-  }
   for (const f of files) {
     await db.insert(attachments).values({
       orgId: user.orgId,

@@ -14,7 +14,7 @@ import { isSharedDemo } from "@/lib/platform";
 
 /** Anyone: their own name, job title, language and email notifications (this membership). */
 export async function updateProfile(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser({ allowLocked: true });
+  const user = await requireUser();
   const { t } = await getT();
   const name = str(fd, "name")?.slice(0, 120);
   if (!name) return { error: t.settings.errors.name };
@@ -41,7 +41,7 @@ export async function updateProfile(_prev: ActionState, fd: FormData): Promise<A
  * every other session of the person, in every agency, is signed out — this one stays.
  */
 export async function changeOwnPassword(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser({ allowLocked: true });
+  const user = await requireUser();
   const { t } = await getT();
   const e = t.settings.errors;
   // The public demo shares its logins between visitors (SHOW_DEMO_ACCOUNTS=true).

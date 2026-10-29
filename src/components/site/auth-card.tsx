@@ -1,23 +1,17 @@
-import "@fontsource-variable/alexandria";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { OPERRA_BRAND, brandCss, getBrand, type Brand } from "@/lib/brand";
+import { brandCss, getBrand, type Brand } from "@/lib/brand";
 import { getLang } from "@/lib/lang";
-import { isPlatform } from "@/lib/platform";
 import type { Lang } from "@/lib/i18n";
-import { OperraWordmark } from "../platform/operra-mark";
 import { buttonClass, cn } from "../ui";
 import { BrandMark } from "./brand";
 import { LangSwitch } from "./lang-switch";
 
 /**
  * Frame for every account screen (sign-in, invitation, password reset, email confirmation, setup).
- *
- * - On Operra's own host with no agency yet, it wears the Operra identity (bone, lapis, Alexandria),
- *   the same as sign-up and the preview.
- * - Everywhere else it wears the agency's brand: a panel in the agency's dark colour with its logo,
- *   and a light form side, so a client signing in sees the agency, not us.
+ * It wears the agency's brand: a panel in the agency's dark colour with its logo, and a light form
+ * side, so a client signing in sees the agency, not us.
  */
 export function AuthShell({
   brand,
@@ -37,7 +31,6 @@ export function AuthShell({
   panel?: ReactNode;
   children: ReactNode;
 }) {
-  const operra = isPlatform() && !brand.orgId;
   const Back = lang === "ar" ? ArrowRight : ArrowLeft;
   const name = brand.name[lang];
 
@@ -46,25 +39,6 @@ export function AuthShell({
       <Back aria-hidden className="size-4" /> {back.label}
     </Link>
   );
-
-  if (operra) {
-    return (
-      <div className="operra-platform min-h-screen bg-[#F7F7F4] text-[#15171C]">
-        <style>{`${brandCss(OPERRA_BRAND)} .operra-platform{font-family:"Alexandria Variable",system-ui,sans-serif}`}</style>
-        <header className="border-b border-[#E1E2DE]">
-          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-            <Link href={process.env.MARKETING_URL ?? "/"} aria-label="Operra" className="-m-2 p-2">
-              <OperraWordmark lang={lang === "ar" ? "ar" : "en"} />
-            </Link>
-            <LangSwitch lang={lang} next={langNext} tone="light" />
-          </div>
-        </header>
-        <main id="main" className="mx-auto w-full max-w-md px-4 py-12 sm:px-6 sm:py-16">
-          {children}
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-[#F7F7F4] text-zinc-900">

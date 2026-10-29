@@ -1,7 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { resetDemoDatabase } from "@/db/demo-data";
-import { isPlatform } from "@/lib/platform";
 
 /**
  * GET /api/cron/reset-demo — nightly reset of the SHARED PUBLIC DEMO back to Northwind Studio
@@ -9,14 +8,13 @@ import { isPlatform } from "@/lib/platform";
  *
  * Every project built from this repo gets the cron, and the reset wipes the database, so it only
  * acts when the deployment is explicitly marked as the demo (DEMO_RESET, SEED_DEMO and
- * SHOW_DEMO_ACCOUNTS all "true"), is not the Operra platform, and Vercel Cron's secret matches.
+ * SHOW_DEMO_ACCOUNTS all "true") and Vercel Cron's secret matches.
  * Everywhere else it answers 404 and touches nothing.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const isDemoDeployment = () =>
-  !isPlatform() &&
   process.env.DEMO_RESET === "true" &&
   process.env.SEED_DEMO === "true" &&
   process.env.SHOW_DEMO_ACCOUNTS === "true";

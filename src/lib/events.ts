@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { activityLog, notifications, organizations, projectMembers, projects, taskComments, tasks, users } from "@/db/schema";
 import { notificationEmail, sendEmail } from "./email";
 import { orgBrand } from "./brand";
-import { tenantBaseUrl } from "./platform";
+import { appUrl } from "./platform";
 import type { SessionUser } from "./auth";
 
 /* ------------------------------------------------------------------ */
@@ -90,7 +90,7 @@ async function emailRecipients(orgId: string, ids: string[], n: { title: Localiz
     .from(users)
     .where(and(inArray(users.id, ids), eq(users.orgId, orgId), eq(users.active, true), eq(users.emailNotifications, true)));
   const brand = orgBrand(org);
-  const baseUrl = tenantBaseUrl(org);
+  const baseUrl = appUrl();
   await Promise.allSettled(
     people.map(async (p) => {
       const lang = p.lang === "en" ? "en" : "ar";

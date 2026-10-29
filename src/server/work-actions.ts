@@ -10,8 +10,7 @@ import { assertCan, ForbiddenError } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
 import { idOf, str, type ActionState } from "@/lib/action-state";
 import { getT } from "@/lib/lang";
-import { appUrl, tenantBaseUrl } from "@/lib/platform";
-import { getOrgById } from "@/lib/tenant";
+import { appUrl } from "@/lib/platform";
 import { formatMinutes } from "@/lib/time";
 
 const taskPath = (id: string) => `/tasks/${id}`;
@@ -115,8 +114,7 @@ export async function createCalendarFeed(_prev: ActionState, _fd: FormData): Pro
   const user = await requireUser();
   const token = newToken();
   await db.update(users).set({ calendarTokenHash: hashToken(token) }).where(eq(users.id, user.id));
-  const org = await getOrgById(user.orgId);
-  const base = org ? tenantBaseUrl(org) : appUrl();
+  const base = appUrl();
   revalidatePath("/calendar");
   return { ok: true, link: `${base}/api/calendar/${token}` };
 }
