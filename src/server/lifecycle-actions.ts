@@ -22,10 +22,9 @@ import { assertCan, ForbiddenError } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
 import { idOf, str, type ActionState } from "@/lib/action-state";
 import { getT } from "@/lib/lang";
-import { isPlatform, isSharedDemo } from "@/lib/platform";
-import { ProviderCancelError, deleteOrganization, deleteOrphanAccounts, fileKeysForProjects } from "@/lib/lifecycle";
+import { isSharedDemo } from "@/lib/platform";
+import { deleteOrphanAccounts, fileKeysForProjects } from "@/lib/lifecycle";
 import { removeFiles } from "@/lib/uploads";
-import { audit } from "@/lib/audit";
 
 const errs = async () => (await getT()).t.lifecycle.errors;
 const refresh = () => revalidatePath("/", "layout");
@@ -123,7 +122,7 @@ export async function removeMember(fd: FormData) {
  * the only active admin of a workspace that would be left without one.
  */
 export async function deleteMyAccount(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser({ allowLocked: true });
+  const user = await requireUser();
   const e = await errs();
   if (isSharedDemo()) return { error: e.demo };
   if (!confirmed(fd, user.email)) return { error: e.confirm };
@@ -202,30 +201,4 @@ export async function deleteTeamMessage(fd: FormData) {
   if (msg.authorId !== user.id && user.role !== "admin") throw new ForbiddenError();
   await db.delete(teamMessages).where(eq(teamMessages.id, msg.id));
   revalidatePath("/chat");
-}
-
-/* ------------------------------------------------------------------ */
-/* The whole workspace                                                 */
-/* ------------------------------------------------------------------ */
-
-/** Admin (platform mode): delete this workspace for everyone. Needs the address typed and the password. */
-export async function deleteWorkspace(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser({ allowLocked: true });
-  assertCan(user, "billing.manage");
-  assertCan(user, "users.manage");
-  const e = await errs();
-  if (!isPlatform()) return { error: e.notFound };
-  const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.orgId) });
-  if (!org || org.isDemo) return { error: e.demo };
-  if (!confirmed(fd, org.slug)) return { error: e.confirm };
-  if (!(await passwordOk(user, fd))) return { error: e.password };
-  try {
-    await deleteOrganization(org.id);
-  } catch (err) {
-    if (err instanceof ProviderCancelError) return { error: e.provider };
-    throw err;
-  }
-  await audit({ adminEmail: user.email, action: "workspace.deleted_by_customer", target: `${org.serial} ${org.slug}`, meta: { name: org.name } });
-  await destroySession();
-  redirect("/login");
 }

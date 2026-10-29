@@ -15,7 +15,6 @@ import {
   pgSequence,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { DEFAULT_TRIAL_DAYS } from "../lib/billing/defaults";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
@@ -642,7 +641,7 @@ export const plans = pgTable("plans", {
   priceCents: integer("price_cents"),
   currency: text("currency").notNull().default("USD"),
   interval: text("interval").notNull().default("month"),
-  trialDays: integer("trial_days").notNull().default(DEFAULT_TRIAL_DAYS),
+  trialDays: integer("trial_days").notNull().default(14),
   /** The payment provider's price for this plan (e.g. a Stripe Price ID). Falls back to STRIPE_PRICE_<CODE>. */
   stripePriceId: text("stripe_price_id"),
   active: boolean("active").notNull().default(true),

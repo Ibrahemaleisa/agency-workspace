@@ -4,48 +4,14 @@
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
-import { base32Decode, base32Encode, totpCode, verifyTotp, newTotpSecret } from "../src/lib/totp";
 import { can } from "../src/lib/permissions";
-import { effectiveStatus, hasAccess } from "../src/lib/billing";
 import { nextDueDate } from "../src/lib/recurrence";
 import { toCsv } from "../src/lib/reports";
 import { safePath } from "../src/lib/request";
 import { resolveMentions } from "../src/lib/events";
-import { verifyStripeSignature } from "../src/lib/billing/stripe";
-import { normalizeLemonSqueezyEvent, verifyLemonSqueezySignature } from "../src/lib/billing/lemonsqueezy";
-import { sign, verify } from "../src/lib/secret";
 import { activityText } from "../src/lib/activity-text";
 import { APP_DICT } from "../src/lib/i18n-app";
 import { formatMinutes, hoursOf } from "../src/lib/time";
-
-describe("TOTP (authenticator codes)", () => {
-  // RFC 6238 appendix B: SHA-1 secret "12345678901234567890", T = 59 s → 94287082 (8 digits).
-  const secret = base32Encode(Buffer.from("12345678901234567890"));
-  it("matches the RFC 6238 test vector", () => {
-    assert.equal(secret, "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ");
-    assert.equal(totpCode(secret, Math.floor(59 / 30)), "287082");
-    assert.equal(totpCode(secret, Math.floor(1111111109 / 30)), "081804");
-  });
-  it("round-trips base32", () => {
-    const s = newTotpSecret();
-    assert.equal(base32Encode(base32Decode(s)), s);
-  });
-  it("accepts the current code once and refuses a replay", () => {
-    const s = newTotpSecret();
-    const now = Date.now();
-    const step = Math.floor(now / 30_000);
-    const code = totpCode(s, step);
-    const used = verifyTotp(s, code, null, now);
-    assert.equal(used, step);
-    assert.equal(verifyTotp(s, code, used, now), null);
-  });
-  it("refuses wrong or malformed codes", () => {
-    const s = newTotpSecret();
-    assert.equal(verifyTotp(s, "12345"), null);
-    assert.equal(verifyTotp(s, "abcdef"), null);
-  });
-});
 
 describe("permissions", () => {
   it("clients can only comment, chat with the agency and decide approvals", () => {
@@ -64,35 +30,6 @@ describe("permissions", () => {
     for (const p of ["users.manage", "billing.manage", "reports.view", "approvals.override", "brand.manage"] as const) assert.ok(can(a, p), p);
     assert.ok(!can(a, "dashboard.client"));
     assert.ok(!can(null, "tasks.edit"));
-  });
-});
-
-describe("subscription access", () => {
-  const past = new Date(Date.now() - 86_400_000);
-  const future = new Date(Date.now() + 86_400_000);
-  it("an ended trial is expired at once, without waiting for the daily job", () => {
-    assert.equal(effectiveStatus({ status: "trialing", trialEndsAt: past, providerSubscriptionId: null }), "expired");
-    assert.equal(effectiveStatus({ status: "trialing", trialEndsAt: future, providerSubscriptionId: null }), "trialing");
-  });
-  it("a trial with a paid subscription behind it is left to the provider", () => {
-    assert.equal(effectiveStatus({ status: "trialing", trialEndsAt: past, providerSubscriptionId: "sub_1" }), "trialing");
-  });
-  it("a manually activated plan locks at its paid-until date", () => {
-    assert.equal(effectiveStatus({ status: "active", provider: "manual", currentPeriodEnd: past, trialEndsAt: null, providerSubscriptionId: null }), "expired");
-    assert.equal(effectiveStatus({ status: "active", provider: "manual", currentPeriodEnd: future, trialEndsAt: null, providerSubscriptionId: null }), "active");
-  });
-  it("only applies on the platform, and never to the demo tenant", () => {
-    const sub = { status: "canceled", trialEndsAt: null, providerSubscriptionId: null } as never;
-    const before = process.env.OPERRA_PLATFORM;
-    process.env.OPERRA_PLATFORM = "true";
-    try {
-      assert.equal(hasAccess({ isDemo: false }, sub), false);
-      assert.equal(hasAccess({ isDemo: true }, sub), true);
-      assert.equal(hasAccess({ isDemo: false }, { status: "past_due", trialEndsAt: null, providerSubscriptionId: "x" } as never), true);
-    } finally {
-      process.env.OPERRA_PLATFORM = before;
-    }
-    assert.equal(hasAccess({ isDemo: false }, sub), before === "true" ? false : true);
   });
 });
 
@@ -146,47 +83,6 @@ describe("mentions", () => {
     assert.deepEqual(resolveMentions("hi @sara and @omar.khalil", people).sort(), ["1", "2"]);
     assert.deepEqual(resolveMentions("مرحبا @سارة", people), ["3"]);
     assert.deepEqual(resolveMentions("no mention", people), []);
-  });
-});
-
-describe("webhook signatures", () => {
-  it("verifies Stripe signatures with a 5-minute window", () => {
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
-    const body = '{"id":"evt_1"}';
-    const t = Math.floor(Date.now() / 1000);
-    const sig = createHmac("sha256", "whsec_test").update(`${t}.${body}`).digest("hex");
-    assert.ok(verifyStripeSignature(body, `t=${t},v1=${sig}`));
-    assert.ok(!verifyStripeSignature(body + " ", `t=${t},v1=${sig}`));
-    const old = t - 600;
-    const oldSig = createHmac("sha256", "whsec_test").update(`${old}.${body}`).digest("hex");
-    assert.ok(!verifyStripeSignature(body, `t=${old},v1=${oldSig}`));
-  });
-  it("verifies Lemon Squeezy signatures", () => {
-    process.env.LEMONSQUEEZY_WEBHOOK_SECRET = "ls_test";
-    const body = '{"meta":{}}';
-    const sig = createHmac("sha256", "ls_test").update(body).digest("hex");
-    assert.ok(verifyLemonSqueezySignature(body, sig));
-    assert.ok(!verifyLemonSqueezySignature(body, "0".repeat(64)));
-    assert.ok(!verifyLemonSqueezySignature(body, null));
-  });
-  it("reads the plan a Lemon Squeezy subscription is on now (its variant)", () => {
-    const evt = normalizeLemonSqueezyEvent({
-      meta: { event_name: "subscription_updated", custom_data: { org_id: "o1", plan: "standard" } },
-      data: { id: "77", type: "subscriptions", attributes: { status: "active", variant_id: 555, customer_id: 9, renews_at: null, ends_at: null, cancelled: false, updated_at: "2026-10-01T00:00:00Z" } },
-    });
-    assert.equal(evt?.planRef?.variantId, "555");
-    assert.equal(evt?.planRef?.code, "standard");
-    assert.equal(evt?.status, "active");
-  });
-});
-
-describe("signed tokens", () => {
-  it("rejects tampering and expiry", () => {
-    const tok = sign({ a: 1 }, 60);
-    assert.deepEqual(verify<{ a: number }>(tok)?.a, 1);
-    const [body, mac] = tok.split(".");
-    assert.equal(verify(`${body}x.${mac}`), null);
-    assert.equal(verify(sign({ a: 1 }, -1)), null);
   });
 });
 

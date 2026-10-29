@@ -1,68 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "apm_session";
-/** Old one-year agency hint cookie (no longer set); cleared so the shared address stops showing an agency. */
-const OLD_TENANT_HINT_COOKIE = "operra_tenant";
-const VISITOR_COOKIE = "operra_vid";
-const VISITOR_RE = /^[a-z0-9-]{8,64}$/;
 
 /** Routes anyone may open without a session. */
 const PUBLIC = [
-  /^\/login(\/choose)?$/,
-  /^\/verify-email$/,
+  /^\/login$/,
   /^\/(forgot|reset)-password$/,
   /^\/welcome$/,
   /^\/(terms|privacy)$/,
   /^\/setup$/,
   /^\/lang$/,
   /^\/brand-logo\//, // agency logos (public, like the sign-in page that shows them)
-  /^\/signup(\/|$)/,
-  /^\/preview(\/|$)/,
   /^\/invite\//,
-  /^\/auth\//,
-  /^\/operra(\/|$)/, // Operra control center (its own sign-in)
-  /^\/billing\/test-checkout$/,
-  /^\/api\/billing\/webhook$/,
   /^\/api\/cron\//,
   /^\/api\/health$/,
-  /^\/api\/t$/, // marketing-site page views
-  /^\/api\/plans$/, // public plan list
   /^\/api\/calendar\/[A-Za-z0-9_.-]+$/, // private calendar feeds (the secret in the URL is the credential)
 ];
 
 /**
  * Cheap gate based on cookies (full validation happens server-side):
- * - /w/{slug}[/path] (old agency links) continue without the prefix — sign-in is the same for everyone;
- * - "/" shows the tenant's public landing page to visitors and the dashboard to signed-in users;
+ * - /w/{slug}[/path] (old agency links) continue without the prefix;
+ * - "/" shows the agency's public landing page to visitors and the dashboard to signed-in users;
  * - every other app route bounces visitors to /login.
  */
 export function proxy(request: NextRequest) {
-  const vid = newVisitorId(request);
-  // Visible to this request's server code too (route() forwards the request headers).
-  if (vid) request.cookies.set(VISITOR_COOKIE, vid);
-  const res = route(request);
-  if (request.cookies.has(OLD_TENANT_HINT_COOKIE)) res.cookies.delete(OLD_TENANT_HINT_COOKIE);
-  if (vid) {
-    res.cookies.set(VISITOR_COOKIE, vid, {
-      path: "/",
-      sameSite: "lax",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 365,
-    });
-  }
-  return res;
-}
-
-/**
- * Platform mode: every browser gets an anonymous visitor id (first-party, for the control center's
- * funnel). Links from the marketing site pass theirs as ?vid= so a visit and a sign-up line up.
- * Returns the id to set, or null when there is one already (or outside platform mode).
- */
-function newVisitorId(request: NextRequest) {
-  if (process.env.OPERRA_PLATFORM !== "true" || VISITOR_RE.test(request.cookies.get(VISITOR_COOKIE)?.value ?? "")) return null;
-  const fromSite = request.nextUrl.searchParams.get("vid") ?? "";
-  return VISITOR_RE.test(fromSite) ? fromSite : crypto.randomUUID();
+  return route(request);
 }
 
 /**
@@ -72,10 +34,6 @@ function newVisitorId(request: NextRequest) {
  */
 function contentSecurityPolicy(nonce: string) {
   const dev = process.env.NODE_ENV === "development";
-  const root = process.env.APP_ROOT_DOMAIN?.trim().toLowerCase();
-  // Pages may hand the browser over to a payment page or a tenant's own address after a form post.
-  const formTargets = ["'self'", "https://checkout.stripe.com", "https://billing.stripe.com", "https://*.lemonsqueezy.com"];
-  if (root) formTargets.push(`https://*.${root}`);
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
@@ -87,7 +45,7 @@ function contentSecurityPolicy(nonce: string) {
     "media-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    `form-action ${formTargets.join(" ")}`,
+    "form-action 'self'",
     "frame-ancestors 'none'",
     ...(dev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
@@ -96,8 +54,7 @@ function contentSecurityPolicy(nonce: string) {
 function route(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Old agency links (/w/{slug}[/path]) keep working: everyone signs in on the same page with their
-  // email and password, so the agency name in the link is simply dropped.
+  // Old agency links (/w/{slug}[/path]) keep working: the agency name in the link is simply dropped.
   const tenantPath = pathname.match(/^\/w\/([a-z0-9-]{2,40})(\/.*)?$/);
   if (tenantPath) {
     const url = request.nextUrl.clone();
@@ -106,13 +63,7 @@ function route(request: NextRequest) {
   }
 
   if (request.cookies.has(SESSION_COOKIE) || PUBLIC.some((re) => re.test(pathname))) {
-    // Let layouts know the path (e.g. a locked workspace still opens its billing page).
-    const headers = new Headers(request.headers);
-    headers.set("x-pathname", pathname);
-    // Back from paying: a workspace still waiting for the provider's confirmation shows "confirming", not locked.
-    if (request.nextUrl.searchParams.has("subscribed")) headers.set("x-subscribed", "1");
-    else headers.delete("x-subscribed");
-    return withCsp(headers, (h) => NextResponse.next({ request: { headers: h } }));
+    return withCsp(new Headers(request.headers), (h) => NextResponse.next({ request: { headers: h } }));
   }
 
   const url = request.nextUrl.clone();

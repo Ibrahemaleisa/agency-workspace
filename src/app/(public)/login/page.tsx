@@ -4,12 +4,11 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { BadgeCheck, FolderKanban, MessagesSquare } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { isPlatform } from "@/lib/platform";
 import { getDict } from "@/lib/lang";
 import { getSaasT } from "@/lib/i18n-saas";
 import { loginAction } from "@/server/auth-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { AuthHeading, AuthShell, authButton, authField, authLabel, authLink } from "@/components/site/auth-card";
+import { AuthHeading, AuthShell, authButton, authField, authLabel } from "@/components/site/auth-card";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDict();
@@ -27,12 +26,9 @@ const HIGHLIGHT_ICONS = [FolderKanban, BadgeCheck, MessagesSquare];
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
   const [{ lang, t, brand }, { t: st }] = await Promise.all([getDict(), getSaasT()]);
-  const platform = isPlatform();
-  if (!brand.orgId && !platform) redirect("/setup");
-  // Single-agency deployments may list the sample logins; the platform uses /preview instead.
-  const showDemo = !platform && (process.env.NODE_ENV !== "production" || process.env.SHOW_DEMO_ACCOUNTS === "true");
-  // Operra's own sign-in (no tenant yet): people sign in by email and land in their workspace.
-  const operraRoot = platform && !brand.orgId;
+  if (!brand.orgId) redirect("/setup");
+  // Local development lists the sample logins (the public demo has its own entry, /try).
+  const showDemo = process.env.NODE_ENV !== "production";
 
   // The agency's panel: what its clients and team get from signing in.
   const panel = (
@@ -57,7 +53,7 @@ export default async function LoginPage() {
       brand={brand}
       lang={lang}
       langNext="/login"
-      back={!operraRoot && brand.showLanding ? { href: "/", label: t.login.back } : undefined}
+      back={brand.showLanding ? { href: "/", label: t.login.back } : undefined}
       panel={panel}
     >
       <AuthHeading title={t.login.title} sub={t.login.sub} />
@@ -80,22 +76,6 @@ export default async function LoginPage() {
           {t.login.submit}
         </SubmitButton>
       </ActionForm>
-
-      {operraRoot && (
-        <div className="mt-8 space-y-2 border-t border-[#E1E2DE] pt-6 text-sm text-[#5B606B]">
-          <p>
-            {t.login.newHere}{" "}
-            <Link href="/signup" className="font-medium text-[#15171C] underline underline-offset-4">
-              {t.login.startTrial}
-            </Link>
-          </p>
-          <p>
-            <Link href="/preview" className={authLink}>
-              {t.login.preview}
-            </Link>
-          </p>
-        </div>
-      )}
 
       <LegalNote labels={st.legal} className="mt-8 text-xs text-[#5B606B]" />
 

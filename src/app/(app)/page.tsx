@@ -12,15 +12,7 @@ import {
   Percent,
   UserX,
 } from "lucide-react";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { userOnboarding } from "@/db/schema";
 import { requireUser, type SessionUser } from "@/lib/auth";
-import { effectiveStatus, getPlan, getSubscription, subscribedInTrial } from "@/lib/billing";
-import { getSaasT } from "@/lib/i18n-saas";
-import { SubscribedWelcome } from "@/components/subscribed-welcome";
-import { unwelcomedActivation } from "@/lib/billing/manual";
-import { dismissActivationWelcome } from "@/server/billing-actions";
 import { can } from "@/lib/permissions";
 import { TASK_STATUSES } from "@/lib/constants";
 import { getT } from "@/lib/lang";
@@ -52,57 +44,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.nav.dashboard };
 }
 
-export default async function DashboardPage({ searchParams }: PageProps<"/">) {
+export default async function DashboardPage() {
   const user = await requireUser();
   const { t, lang } = await getT();
   const props = { user, t, lang };
-  // Back from paying: confirm, then welcome (the tutorial greets brand-new customers instead).
-  // A plan activated by Operra staff is welcomed once, on the admin's next visit.
-  const back = !!(await searchParams).subscribed;
-  if (can(user, "billing.manage")) {
-    const welcome = back ? await subscribedWelcome(user, lang) : await activationWelcome(user, lang);
-    if (welcome) {
-      return (
-        <>
-          {welcome}
-          {can(user, "dashboard.admin") ? <AdminDashboard {...props} /> : <EmployeeDashboard {...props} />}
-        </>
-      );
-    }
-  }
   if (can(user, "dashboard.admin")) return <AdminDashboard {...props} />;
   if (can(user, "dashboard.client")) return <ClientDashboard {...props} />;
   return <EmployeeDashboard {...props} />;
 }
 
 type Props = { user: SessionUser; t: AppDict; lang: Lang };
-
-async function activationWelcome(user: SessionUser, lang: Lang) {
-  if (user.readOnly) return null;
-  const activated = await unwelcomedActivation(user.orgId);
-  if (!activated) return null;
-  const tour = await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
-  if (tour?.status === "active") return null;
-  const { t: st } = await getSaasT();
-  const plan = await getPlan(activated.planCode);
-  const name = plan ? (lang === "ar" && plan.nameAr) || plan.name : activated.planCode;
-  const w = st.subscribed;
-  return <SubscribedWelcome state="welcome" labels={{ pending: w.pending, title: w.title(name), body: w.body, cta: w.cta }} onDone={dismissActivationWelcome} />;
-}
-
-async function subscribedWelcome(user: SessionUser, lang: Lang) {
-  const sub = await getSubscription(user.orgId);
-  if (!sub) return null;
-  const { t: st } = await getSaasT();
-  const w = st.subscribed;
-  const paid = effectiveStatus(sub) === "active" || subscribedInTrial(sub);
-  if (!paid) return <SubscribedWelcome state="pending" labels={{ pending: w.pending, title: "", body: "", cta: "" }} />;
-  const tour = await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
-  if (tour?.status === "active") return null;
-  const plan = await getPlan(sub.planCode);
-  const name = plan ? (lang === "ar" && plan.nameAr) || plan.name : sub.planCode;
-  return <SubscribedWelcome state="welcome" labels={{ pending: w.pending, title: w.title(name), body: w.body, cta: w.cta }} />;
-}
 
 /* ------------------------------------------------------------------ */
 

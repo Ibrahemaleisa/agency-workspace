@@ -20,7 +20,7 @@ import type { Localized } from "../lib/events";
 /**
  * DESTRUCTIVE: wipes the whole database and loads Northwind Studio as the only agency.
  * Used by `npm run demo` (seed.ts) and the shared demo's nightly reset (/api/cron/reset-demo).
- * Never run against a customer's database or the Operra platform.
+ * Never run against a customer's database.
  */
 export async function resetDemoDatabase(passwordHash: string) {
   // Files in external storage (Vercel Blob) don't go away with the tables, so remove them too.

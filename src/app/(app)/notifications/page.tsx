@@ -3,9 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { AtSign, BadgeCheck, Bell, FolderKanban, Mail, MailX, MessageSquare, MessagesSquare, RefreshCw, Sparkles, UserPlus } from "lucide-react";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
-import { getAccount, requireUser } from "@/lib/auth";
-import { getSaasT } from "@/lib/i18n-saas";
-import { isPlatform } from "@/lib/platform";
+import { requireUser } from "@/lib/auth";
 import { markAllNotificationsRead, markNotificationRead, sendTestEmail, setEmailNotifications } from "@/server/admin-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { can } from "@/lib/permissions";
@@ -36,9 +34,6 @@ const PAGE = 50;
 export default async function NotificationsPage({ searchParams }: PageProps<"/notifications">) {
   const user = await requireUser();
   const page = pageParam((await searchParams).page);
-  // The person behind this membership: verification status (platform mode; previews have no real address).
-  const account = isPlatform() && !user.readOnly ? await getAccount(user.accountId) : null;
-  const { t: st } = await getSaasT();
   const { t, locale, lang } = await getT();
   const items = await db
     .select()
@@ -71,14 +66,6 @@ export default async function NotificationsPage({ searchParams }: PageProps<"/no
             {user.emailNotifications ? t.bell.emailOn : t.bell.emailOff}
           </span>
           <span className="text-zinc-500" dir="ltr">· {user.email}</span>
-          {account && (
-            <span
-              data-testid="email-status"
-              className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", account.emailVerifiedAt ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800")}
-            >
-              {account.emailVerifiedAt ? st.verify.verified : st.verify.unverified}
-            </span>
-          )}
         </span>
         <form action={setEmailNotifications}>
           <input type="hidden" name="on" value={user.emailNotifications ? "0" : "1"} />

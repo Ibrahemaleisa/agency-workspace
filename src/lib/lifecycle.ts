@@ -1,8 +1,7 @@
 import "server-only";
-import { and, eq, inArray, isNotNull, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, attachments, organizations, planRequests, projects, subscriptions, tasks, users } from "@/db/schema";
-import { providerByName } from "./billing";
+import { accounts, attachments, organizations, projects, tasks, users } from "@/db/schema";
 import { removeFiles } from "./uploads";
 
 /*
@@ -34,35 +33,13 @@ export async function deleteOrphanAccounts(accountIds: string[]) {
     );
 }
 
-export class ProviderCancelError extends Error {}
-
-/**
- * Deletes a workspace and everything in it. A subscription with a payment provider is stopped
- * first — if that fails nothing is deleted, so nobody keeps paying for a workspace that's gone.
- * Invoices are kept (their workspace link becomes empty; name and serial were copied onto them).
- */
+/** Deletes a workspace and everything in it (used for visitors' private demo copies). */
 export async function deleteOrganization(orgId: string) {
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, orgId) });
   if (!org) return null;
-  const sub = await db.query.subscriptions.findFirst({ where: eq(subscriptions.orgId, orgId) });
-  if (sub?.providerSubscriptionId && sub.status !== "canceled" && sub.status !== "expired") {
-    const provider = providerByName(sub.provider);
-    if (provider && sub.provider !== "manual") {
-      try {
-        await provider.cancel(sub.providerSubscriptionId);
-      } catch (err) {
-        console.error("[delete workspace] provider cancel failed", { orgId, err });
-        throw new ProviderCancelError();
-      }
-    }
-  }
-  const [members, files, receipts] = await Promise.all([
+  const [members, files] = await Promise.all([
     db.select({ accountId: users.accountId }).from(users).where(eq(users.orgId, orgId)),
     db.select({ key: attachments.storageKey }).from(attachments).where(eq(attachments.orgId, orgId)),
-    db
-      .select({ key: planRequests.receiptKey })
-      .from(planRequests)
-      .where(and(eq(planRequests.orgId, orgId), isNotNull(planRequests.receiptKey))),
   ]);
   // Projects restrict deleting their client, so they go first (tasks, files rows, chat cascade).
   await db.transaction(async (tx) => {
@@ -71,6 +48,6 @@ export async function deleteOrganization(orgId: string) {
   });
   // People whose only workspace this was lose their sign-in too.
   await deleteOrphanAccounts(members.map((m) => m.accountId));
-  await removeFiles([...files.map((f) => f.key), ...receipts.map((r) => r.key!).filter(Boolean)]);
+  await removeFiles(files.map((f) => f.key));
   return org;
 }

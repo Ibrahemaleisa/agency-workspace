@@ -4,14 +4,10 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, loginTokens, organizations, sessions, users, type Account, type Organization, type User } from "@/db/schema";
+import { accounts, organizations, sessions, users, type Account, type Organization, type User } from "@/db/schema";
 import { can, type Permission } from "./permissions";
-import { getHostTenant, getOrgById } from "./tenant";
-import { getSubscription, hasAccess } from "./billing";
-import { isPlatform } from "./platform";
-import { touchLastSeen } from "./analytics";
 
 export const SESSION_COOKIE = "apm_session";
 const SESSION_DAYS = 30;
@@ -48,22 +44,14 @@ export const getAccount = cache(async (accountId: string) => db.query.accounts.f
 
 export type Membership = { user: User; org: Organization };
 
-/**
- * The agencies a person can sign in to: active memberships, optionally only in one tenant.
- * In platform mode the demo tenant is excluded — it's reached through /preview, never a password.
- */
-export async function membershipsOf(accountId: string, opts: { tenantId?: string | null } = {}): Promise<Membership[]> {
+/** The agencies a person can sign in to: their active memberships. */
+export async function membershipsOf(accountId: string): Promise<Membership[]> {
   const rows = await db
     .select({ user: users, org: organizations })
     .from(users)
     .innerJoin(organizations, eq(organizations.id, users.orgId))
     .where(
-      and(
-        eq(users.accountId, accountId),
-        eq(users.active, true),
-        opts.tenantId ? eq(users.orgId, opts.tenantId) : undefined,
-        isPlatform() ? eq(organizations.isDemo, false) : undefined,
-      ),
+and(eq(users.accountId, accountId), eq(users.active, true)),
     )
     .orderBy(organizations.name);
   return rows;
@@ -90,27 +78,7 @@ export async function destroySession() {
   store.delete(SESSION_COOKIE);
 }
 
-/** Single-use, 2-minute token that carries a sign-in to another host (tenant subdomain / custom domain). */
-export async function createLoginToken(userId: string) {
-  const token = newToken();
-  await db.insert(loginTokens).values({ tokenHash: hashToken(token), userId, expiresAt: new Date(Date.now() + 120_000) });
-  return token;
-}
-
-/** Redeems a handoff token exactly once. Returns the user id, or null. */
-export async function consumeLoginToken(token: string) {
-  const [row] = await db
-    .update(loginTokens)
-    .set({ usedAt: new Date() })
-    .where(and(eq(loginTokens.tokenHash, hashToken(token)), isNull(loginTokens.usedAt), gt(loginTokens.expiresAt, new Date())))
-    .returning({ userId: loginTokens.userId });
-  return row?.userId ?? null;
-}
-
-/**
- * Current user for this request (memoized per request).
- * A session only counts on its own tenant's host: a cookie can never cross into another tenant.
- */
+/** Current user for this request (memoized per request). */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -121,8 +89,6 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     .where(and(eq(sessions.id, hashToken(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
   if (!row || !row.user.active) return null;
-  const host = await getHostTenant();
-  if (host && host.id !== row.user.orgId) return null;
   return { ...row.user, readOnly: row.readOnly };
 });
 
@@ -141,34 +107,11 @@ async function assertWritableRequest(user: SessionUser) {
   if ((await headers()).has("next-action")) throw new ReadOnlyError();
 }
 
-export class WorkspaceLockedError extends Error {
-  constructor() {
-    super("WORKSPACE_LOCKED");
-  }
-}
-
-/**
- * Platform mode: a paused workspace, or one whose trial ended without a subscription, can't make
- * changes. Pages show their own gate; this stops server actions posted directly.
- */
-async function assertWorkspaceOpen(user: SessionUser) {
-  if (!isPlatform() || user.readOnly) return;
-  if (!(await headers()).has("next-action")) return;
-  const [org, sub] = await Promise.all([getOrgById(user.orgId), getSubscription(user.orgId)]);
-  if (!org || org.status !== "active" || !hasAccess(org, sub)) throw new WorkspaceLockedError();
-}
-
-/**
- * The signed-in membership, for pages and server actions. Refuses writes from read-only previews
- * and from locked workspaces — except where `allowLocked` (billing, switching agency, verification)
- * is how a locked workspace gets back in.
- */
-export async function requireUser(opts: { allowLocked?: boolean } = {}): Promise<SessionUser> {
+/** The signed-in membership, for pages and server actions. Refuses writes from read-only sessions. */
+export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   await assertWritableRequest(user);
-  if (!opts.allowLocked) await assertWorkspaceOpen(user);
-  await touchLastSeen(user);
   return user;
 }
 

@@ -3,8 +3,7 @@ import { addDays, format } from "date-fns";
 import { db } from "@/db";
 import { organizations, users } from "@/db/schema";
 import { hashToken } from "@/lib/auth";
-import { getSubscription, hasAccess } from "@/lib/billing";
-import { isPlatform, tenantBaseUrl } from "@/lib/platform";
+import { appUrl } from "@/lib/platform";
 import { listTasks } from "@/server/queries";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +36,6 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/calendar/[token
   if (!user || !user.active) return new Response("Not found", { status: 404 });
   const org = await db.query.organizations.findFirst({ where: eq(organizations.id, user.orgId) });
   if (!org || org.status !== "active") return new Response("Not found", { status: 404 });
-  if (isPlatform() && !hasAccess(org, await getSubscription(org.id))) return new Response("Not found", { status: 404 });
 
   const now = new Date();
   const rows = await listTasks(
@@ -49,7 +47,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/calendar/[token
       limit: 2000,
     },
   );
-  const base = tenantBaseUrl(org);
+  const base = appUrl();
   const stamp = format(now, "yyyyMMdd'T'HHmmss'Z'");
   const host = new URL(base).hostname;
   const lines = [

@@ -3,7 +3,6 @@ import { count } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getT } from "@/lib/lang";
-import { isPlatform } from "@/lib/platform";
 import { createWorkspace } from "@/server/setup-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { DEFAULT_BRAND } from "@/lib/brand";
@@ -15,8 +14,6 @@ export async function generateMetadata() {
 }
 
 export default async function SetupPage() {
-  // On the Operra platform agencies sign up instead; this first-run screen is for single-agency deployments.
-  if (isPlatform()) redirect("/signup");
   // Only a brand-new deployment (no users yet) can be set up.
   const [{ n }] = await db.select({ n: count() }).from(users);
   if (n > 0) redirect("/login");

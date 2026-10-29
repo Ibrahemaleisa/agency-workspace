@@ -1,24 +1,22 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, clients, invitations, organizations, roleEnum, users, type Role } from "@/db/schema";
 import { ensureAccount } from "@/db/accounts";
-import { hashPassword, hashToken, newToken, requireUser, verifyAccount } from "@/lib/auth";
+import { createSession, hashPassword, hashToken, newToken, requireUser, verifyAccount } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions";
 import { logActivity } from "@/lib/events";
 import { idOf, optId, str, type ActionState } from "@/lib/action-state";
 import { emailEnabled, notificationEmail, sendEmail } from "@/lib/email";
 import { orgBrand } from "@/lib/brand";
-import { tenantBaseUrl } from "@/lib/platform";
+import { appUrl } from "@/lib/platform";
 import { rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { getSaasT } from "@/lib/i18n-saas";
 import { parseFocus, startOnboarding } from "@/lib/onboarding";
-import { enterWorkspace } from "@/lib/handoff";
-import { getHostTenant } from "@/lib/tenant";
-import { teamLimitError } from "@/lib/limits";
 import { TERMS_VERSION } from "@/lib/legal";
 
 const INVITE_DAYS = 7;
@@ -45,10 +43,6 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
   }
   // Already in this agency? (Belonging to other agencies is fine: they'll join with their own password.)
   if (await db.query.users.findFirst({ where: and(eq(users.orgId, admin.orgId), eq(users.email, email)) })) return { error: e.exists };
-  if (role !== "client") {
-    const limit = await teamLimitError(admin.orgId);
-    if (limit) return { error: limit };
-  }
   if (!(await rateLimit(`invite:${admin.orgId}`, 50, 3600))) return { error: e.rate };
 
   // One live invitation per address: re-inviting replaces the previous link.
@@ -71,7 +65,7 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
   }).returning({ id: invitations.id });
 
   const org = (await db.query.organizations.findFirst({ where: eq(organizations.id, admin.orgId) }))!;
-  const link = `${tenantBaseUrl(org)}/invite/${token}`;
+  const link = `${appUrl()}/invite/${token}`;
   let emailed = false;
   if (emailEnabled() && !org.isDemo) {
     try {
@@ -86,7 +80,7 @@ export async function createInvitation(_prev: ActionState, fd: FormData): Promis
           body: ti.emailBody,
           link: `/invite/${token}`,
           brand,
-          baseUrl: tenantBaseUrl(org),
+          baseUrl: appUrl(),
           footer: ti.emailFooter(INVITE_DAYS),
           cta: ti.emailCta,
         }),
@@ -130,16 +124,14 @@ export async function findInvitation(token: string) {
     )
     .limit(1);
   if (!row || row.org.status !== "active" || row.org.isDemo) return null;
-  const host = await getHostTenant();
-  if (host && host.id !== row.org.id) return null;
   const account = await db.query.accounts.findFirst({ where: eq(accounts.email, row.invite.email), columns: { id: true } });
   return { ...row, hasAccount: !!account };
 }
 
 /**
  * Public: joining through an invitation.
- * - New to Operra: they choose a name and password, which creates their account.
- * - Already on Operra (another agency): they confirm with their existing password — an invitation
+ * - New here: they choose a name and password, which creates their account.
+ * - Already have an account (another agency): they confirm with their existing password — an invitation
  *   link alone can never set or replace someone's password.
  */
 export async function acceptInvitation(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -155,11 +147,6 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
   if (!found) return { error: e.invalid };
   const { invite, org } = found;
   if (await db.query.users.findFirst({ where: and(eq(users.orgId, org.id), eq(users.email, invite.email)) })) return { error: e.exists };
-  if (invite.role !== "client") {
-    // The invitation itself was counted when it was sent; only people already in count here.
-    const limit = await teamLimitError(org.id, { countInvites: false });
-    if (limit) return { error: limit };
-  }
 
   let passwordHash: string;
   if (found.hasAccount) {
@@ -207,5 +194,6 @@ export async function acceptInvitation(_prev: ActionState, fd: FormData): Promis
 
   await startOnboarding(user);
   await logActivity({ ...user, readOnly: false }, { action: "user.joined", summary: `${name} joined the workspace`, params: {} });
-  return enterWorkspace(user, org);
+  await createSession(user.id);
+  redirect("/");
 }
