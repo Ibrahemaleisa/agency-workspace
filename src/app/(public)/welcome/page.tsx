@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDict } from "@/lib/lang";
+import { isSharedDemo } from "@/lib/platform";
+import { DEMO_DICT } from "@/lib/i18n-demo";
+import { DemoLanding } from "@/components/demo/landing";
 import { BrandLogo, BrandMark } from "@/components/site/brand";
 import { Reveal } from "@/components/site/reveal";
 import { LeadForm } from "@/components/site/lead-form";
@@ -23,6 +26,10 @@ import { LangSwitch } from "@/components/site/lang-switch";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { lang, t, brand } = await getDict();
+  if (isSharedDemo()) {
+    const d = DEMO_DICT[lang].meta;
+    return { title: { absolute: d.title }, description: d.description };
+  }
   return {
     title: { absolute: `${brand.name[lang]} · ${t.footer.tagline}` },
     description: t.hero.sub,
@@ -31,8 +38,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const SERVICE_ICONS = { content: PenTool, production: Clapperboard, paid: Megaphone, account: Handshake } as const;
 
-export default async function LandingPage() {
+export default async function LandingPage({ searchParams }: PageProps<"/welcome">) {
   const [{ lang, t, brand }, user] = await Promise.all([getDict(), getCurrentUser()]);
+  // The public demo: a product page where visitors pick a name and colours and try the system.
+  if (isSharedDemo()) {
+    const d = DEMO_DICT[lang];
+    const flag = (await searchParams).demo;
+    const notice = flag === "ended" || flag === "busy" || flag === "unavailable" ? d.notices[flag] : null;
+    return <DemoLanding lang={lang} t={d} notice={notice} />;
+  }
   // The agency can switch the public landing page off; visitors then go straight to sign-in.
   if (!brand.showLanding) {
     if (user) redirect("/");

@@ -17,6 +17,7 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
   const { listProjects, listTasks } = await import("../src/server/queries");
   const { spawnNextIfRecurring } = await import("../src/lib/recurrence");
   const { deleteOrganization } = await import("../src/lib/lifecycle");
+  const { createDemoCopy, deleteDemoCopy, demoPersona } = await import("../src/lib/demo-sandbox");
 
   type World = Awaited<ReturnType<typeof makeAgency>>;
   const run = randomUUID().slice(0, 8);
@@ -142,5 +143,25 @@ describe("database", { skip: !enabled && "DATABASE_URL not set" }, async () => {
     assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.id, lone.id))).length, 0);
     assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.id, A.admin.accountId))).length, 1);
     assert.ok(!(await refuses(() => getAccessibleProject(A.admin, A.project.id))), "other agencies untouched");
+  });
+
+  it("a visitor's demo copy is a full private agency, and only copies can be deleted as one", async () => {
+    const copy = await createDemoCopy({ name: "Visitor Co", primary: "#13294b", accent: "#8fd3fe", lang: "ar" });
+    assert.equal(copy.isDemo, true);
+    assert.equal(copy.primaryColor, "#13294b");
+    const admin = await demoPersona(copy.id, "admin");
+    const client = await demoPersona(copy.id, "client");
+    assert.ok(admin && client);
+    assert.equal(admin.lang, "ar");
+    assert.match(admin.email, /\.invalid$/);
+    const own = await listProjects({ ...admin, readOnly: false });
+    assert.ok(own.length > 0);
+    const ids = (await db.select({ id: s.projects.id }).from(s.projects).where(eq(s.projects.orgId, copy.id))).map((r) => r.id);
+    assert.ok(own.every((p) => ids.includes(p.id)), "a copy sees only its own projects");
+    await deleteDemoCopy(A.org.id); // a real agency: refused silently
+    assert.equal((await db.select().from(s.organizations).where(eq(s.organizations.id, A.org.id))).length, 1);
+    await deleteDemoCopy(copy.id);
+    assert.equal((await db.select().from(s.organizations).where(eq(s.organizations.id, copy.id))).length, 0);
+    assert.equal((await db.select().from(s.accounts).where(eq(s.accounts.email, admin.email))).length, 0);
   });
 });

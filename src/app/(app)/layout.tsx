@@ -14,12 +14,16 @@ import { flowFor } from "@/lib/onboarding";
 import { TOUR_TARGETS } from "@/lib/tour";
 import { saveTourProgress } from "@/server/onboarding-actions";
 import { TourClient as Tour } from "@/components/tour-client";
+import { DemoBar } from "@/components/demo-bar";
+import { isDemoCopy } from "@/lib/demo-sandbox";
+import { DEMO_DICT } from "@/lib/i18n-demo";
+import { getOrgById } from "@/lib/tenant";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
-  const [{ t, lang, brand }, { t: st }] = await Promise.all([getT(), getSaasT()]);
+  const [{ t, lang, brand }, { t: st }, org] = await Promise.all([getT(), getSaasT(), getOrgById(user.orgId)]);
 
-  // Tutorial: saved per user; preview sessions keep it in the tab only.
+  // Tutorial: saved per user; read-only sessions keep it in the tab only.
   const onboarding = user.readOnly ? null : await db.query.userOnboarding.findFirst({ where: eq(userOnboarding.userId, user.id) });
   const flow = user.readOnly ? flowFor(user.role, user.focus) : onboarding?.status === "active" ? (onboarding.flow as keyof typeof TOUR_TARGETS) : null;
   const tourSteps = flow
@@ -59,6 +63,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         initialUnread={unread}
       />
       <main className="min-w-0 md:ps-64">
+        {isDemoCopy(org) && <DemoBar role={user.role} canBrand={can(user, "brand.manage")} t={DEMO_DICT[lang].bar} />}
         {/* Desktop top bar: global search + notifications */}
         <div className="sticky top-0 z-10 hidden items-center justify-end gap-3 border-b border-zinc-200/70 bg-[#f6f5f2]/80 px-8 py-2.5 backdrop-blur-md md:flex">
           <form action="/search" role="search" className="relative w-80" data-tour="search">

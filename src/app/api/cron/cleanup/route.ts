@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/db";
+import { pruneDemoCopies } from "@/lib/demo-sandbox";
 import { emailVerifications, invitations, notifications, passwordResets, rateLimits, sessions } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ function authorized(req: Request) {
 
 /**
  * GET /api/cron/cleanup — daily housekeeping (vercel.json → crons): expired sessions and tokens,
- * old notifications. Vercel sends
+ * old notifications, expired demo copies. Vercel sends
  * `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET set the route refuses to run.
  */
 export async function GET(req: Request) {
@@ -60,6 +61,8 @@ export async function GET(req: Request) {
       ),
     };
   });
-  console.info("[cron] cleanup", counts);
-  return Response.json({ ok: true, ...counts });
+  // Visitors' private demo copies that outlived their session (public demo only).
+  const demoCopies = await pruneDemoCopies();
+  console.info("[cron] cleanup", { ...counts, demoCopies });
+  return Response.json({ ok: true, ...counts, demoCopies });
 }

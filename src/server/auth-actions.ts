@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, destroySession, membershipsOf, verifyAccount } from "@/lib/auth";
+import { createSession, destroySession, getCurrentUser, membershipsOf, verifyAccount } from "@/lib/auth";
+import { deleteDemoCopy, isDemoCopy } from "@/lib/demo-sandbox";
+import { getOrgById } from "@/lib/tenant";
 import { str, type ActionState } from "@/lib/action-state";
 import { getDict } from "@/lib/lang";
 import { rateLimit } from "@/lib/rate-limit";
@@ -35,7 +37,14 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
   redirect("/");
 }
 
+/** Signs out. On the public demo, signing out of a private copy deletes it with every change made. */
 export async function logoutAction() {
+  const user = await getCurrentUser();
+  const org = user ? await getOrgById(user.orgId) : null;
   await destroySession();
+  if (isDemoCopy(org)) {
+    await deleteDemoCopy(org.id);
+    redirect("/?demo=ended");
+  }
   redirect("/login");
 }

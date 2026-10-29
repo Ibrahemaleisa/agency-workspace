@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { BadgeCheck, FolderKanban, MessagesSquare } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDict } from "@/lib/lang";
+import { isSharedDemo } from "@/lib/platform";
+import { DEMO_DICT } from "@/lib/i18n-demo";
 import { getSaasT } from "@/lib/i18n-saas";
 import { loginAction } from "@/server/auth-actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
@@ -76,6 +78,14 @@ export default async function LoginPage() {
           {t.login.submit}
         </SubmitButton>
       </ActionForm>
+
+      {isSharedDemo() && (
+        <p className="mt-6 rounded-lg bg-[#EEEEEA] px-4 py-3 text-sm text-[#15171C]">
+          <Link href="/#studio" className="font-medium underline underline-offset-4">
+            {DEMO_DICT[lang].nav.try}
+          </Link>
+        </p>
+      )}
 
       <LegalNote labels={st.legal} className="mt-8 text-xs text-[#5B606B]" />
 

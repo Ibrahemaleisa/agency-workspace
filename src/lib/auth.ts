@@ -11,11 +11,11 @@ import { can, type Permission } from "./permissions";
 
 export const SESSION_COOKIE = "apm_session";
 const SESSION_DAYS = 30;
-const PREVIEW_HOURS = 4;
+const READ_ONLY_HOURS = 4;
 
 /** The signed-in membership (one person in one agency). */
 export type SessionUser = User & {
-  /** Preview session into the demo tenant: every write is refused. */
+  /** Read-only session: every write is refused. */
   readOnly: boolean;
 };
 
@@ -57,9 +57,10 @@ and(eq(users.accountId, accountId), eq(users.active, true)),
   return rows;
 }
 
-export async function createSession(userId: string, opts: { readOnly?: boolean } = {}) {
+/** Signs a membership in on this browser: 30 days, or `hours` (read-only sessions: 4 hours). */
+export async function createSession(userId: string, opts: { readOnly?: boolean; hours?: number } = {}) {
   const token = newToken();
-  const ms = opts.readOnly ? PREVIEW_HOURS * 3600_000 : SESSION_DAYS * 86_400_000;
+  const ms = opts.hours ? opts.hours * 3600_000 : opts.readOnly ? READ_ONLY_HOURS * 3600_000 : SESSION_DAYS * 86_400_000;
   const expiresAt = new Date(Date.now() + ms);
   await db.insert(sessions).values({ id: hashToken(token), userId, expiresAt, readOnly: !!opts.readOnly });
   (await cookies()).set(SESSION_COOKIE, token, {
@@ -99,7 +100,7 @@ export class ReadOnlyError extends Error {
 }
 
 /**
- * The single choke point for preview sessions: any server action (a write) from a read-only
+ * The single choke point for read-only sessions: any server action (a write) from a read-only
  * session is refused here, before the action runs any of its own logic.
  */
 async function assertWritableRequest(user: SessionUser) {

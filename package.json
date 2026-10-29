@@ -15,6 +15,7 @@
     "setup": "npm run db:migrate",
     "vercel-build": "tsx src/db/migrate.ts && ([ \"$SEED_DEMO\" = \"true\" ] && tsx src/db/seed.ts --if-empty || true) && next build",
     "demo": "npm run db:migrate && npm run db:seed",
+    "db:demo-copy": "tsx --import ./scripts/next-stubs.mjs scripts/make-demo-copy.ts",
     "verify:isolation": "tsx --import ./scripts/next-stubs.mjs scripts/verify-isolation.ts"
   },
   "dependencies": {
